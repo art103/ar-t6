@@ -13,6 +13,7 @@
  * Author: Richard Taylor (richard@artaylor.co.uk)
  */
 
+#include "stm32f10x.h"
 #include "tasks.h"
 
 static bool tasks[TASK_END];
@@ -42,7 +43,7 @@ void task_init(void)
 void task_register(Tasks task, void (*fn)(uint32_t))
 {
 	task_fn[task] = fn;
-	tasks[task] = false;
+	tasks[task] = FALSE;
 }
 
 /**
@@ -54,7 +55,7 @@ void task_register(Tasks task, void (*fn)(uint32_t))
   */
 void task_schedule(Tasks task, uint32_t data)
 {
-	tasks[task] = true;
+	tasks[task] = TRUE;
 	task_data[task] = data;
 }
 
@@ -71,12 +72,12 @@ void task_process_all(void)
 	/* Run all scheduled tasks */
 	for (task = 0; task < TASK_END; ++task)
 	{
-		if (tasks[task] == true)
+		if (tasks[task] == TRUE)
 		{
 			if (task_fn[task] != 0)
 			{
 				task_fn[task](task_data[task]);
-				tasks[task] = false;
+				tasks[task] = FALSE;
 			}
 		}
 	}

@@ -13,10 +13,11 @@
  * Author: Richard Taylor (richard@artaylor.co.uk)
  */
 
-#include "stm32f10x_gpio.h"
-#include "stm32f10x_exti.h"
-#include "misc.h"
+#include "stm32f10x.h"
+#include "tasks.h"
 #include "keypad.h"
+
+extern uint32_t system_ticks;
 
 /**
   * @brief  ExtI IRQ handler
@@ -81,4 +82,14 @@ void EXTI9_5_IRQHandler(void)
 		// Clear the IRQ
 		EXTI->PR = KEYPAD_EXTI_LINES;
 	}
+}
+
+/**
+  * @brief  This function handles the SysTick.
+  * @param  None
+  * @retval None
+  */
+void SysTick_Handler(void)
+{
+	system_ticks++;
 }

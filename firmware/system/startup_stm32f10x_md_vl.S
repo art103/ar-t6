@@ -27,7 +27,6 @@
  *
  * <h2><center>&copy; COPYRIGHT 2010 STMicroelectronics</center></h2>
  */
-    
   .syntax unified
   .cpu cortex-m3
   .fpu softvfp

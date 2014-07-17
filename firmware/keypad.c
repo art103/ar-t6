@@ -13,10 +13,9 @@
  * Author: Richard Taylor (richard@artaylor.co.uk)
  */
 
+#include "stm32f10x.h"
 #include "keypad.h"
-#include "stm32f10x_gpio.h"
-#include "stm32f10x_exti.h"
-#include "misc.h"
+#include "tasks.h"
 
 #define ROW_MASK       (0x07 << 12)
 #define COL_MASK       (0x0F << 8)
@@ -46,18 +45,6 @@
   */
 void keypad_init(void)
 {
-	GPIO_InitTypeDef cols = { 
-								.GPIO_Pin = COL_MASK,
-								.GPIO_Speed = GPIO_Speed_2MHz,
-								.GPIO_Mode = GPIO_Mode_IN_FLOATING
-						    };
-
-	GPIO_InitTypeDef rows = { 
-								.GPIO_Pin = ROW_MASK,
-								.GPIO_Speed = GPIO_Speed_2MHz,
-								.GPIO_Mode = GPIO_Mode_Out_OD
-						    };
-	
 	GPIO_InitTypeDef gpioInit;
 	EXTI_InitTypeDef extiInit;
 	NVIC_InitTypeDef nvicInit;
@@ -124,7 +111,7 @@ void keypad_init(void)
 KEYPAD_KEY keypad_scan_keys(void)
 {
 	KEYPAD_KEY key = KEY_NONE;
-	bool found = false;
+	bool found = FALSE;
 	uint8_t row;
 	uint16_t cols;
 	
@@ -135,7 +122,7 @@ KEYPAD_KEY keypad_scan_keys(void)
 		GPIO_ResetBits(GPIOB, ROW(row));
 		
 		// Allow some time for the GPIO to settle.
-		DelayUS(500);
+		delay_us(500);
 		
 		// The columns are pulled high externally. 
 		// Any '0' seen here is due to a switch connecting to our active '0' on a row.
@@ -143,7 +130,7 @@ KEYPAD_KEY keypad_scan_keys(void)
 		if ((cols & COL_MASK) != COL_MASK)
 		{
 			// Only support one key pressed at a time.
-			found = true;
+			found = TRUE;
 			break;
 		}
 	}
@@ -255,7 +242,7 @@ void keypad_process(uint32_t data)
 		case KEY_LEFT:
 		case KEY_RIGHT:
 			// gui_key_input(key);
-		break
+		break;
 		
 		default: 
 		break;

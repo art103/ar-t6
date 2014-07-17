@@ -13,6 +13,8 @@
  * Author: Richard Taylor (richard@artaylor.co.uk)
  */
  
+#include <stdint.h>
+
 #define KEYPAD_EXTI_LINES	(EXTI_Line8 | EXTI_Line9 | EXTI_Line10 | EXTI_Line11)
 #define ROTARY_EXTI_LINES	(EXTI_Line15)
 

@@ -13,8 +13,10 @@
  * Author: Richard Taylor (richard@artaylor.co.uk)
  */
 
+#include "stm32f10x.h"
 #include "tasks.h"
-
+#include "keypad.h"
+#include "lcd.h"
 
 /**
   * @brief  Main Loop for non-IRQ based work
@@ -22,18 +24,41 @@
   * @param  None
   * @retval None
   */
-void main(void)
+int main(void)
 {
 	// PLL and stack setup has aready been done.
+
+	// 1ms System tick
+	SysTick_Config(SystemCoreClock / 1000);
 
 	// Initialize the task loop.
 	task_init();
 
-	// Initialize the keypad scanner (with IRQ wakeup)
+	// Initialize the LCD and display logo.
+	lcd_init();
+
+	while(1);
+
+	// Initialize the keypad scanner (with IRQ wakeup).
 	keypad_init();
 
 	while (1)
 	{
 		task_process_all();
 	}
+}
+
+uint32_t system_ticks = 0;
+
+void delay_ms(uint32_t delay)
+{
+	uint32_t start = system_ticks;
+	delay_us(delay * 1000);
+	//while (system_ticks == start);
+}
+
+void delay_us(uint32_t delay)
+{
+	volatile uint32_t i;
+	for (i=0; i < delay * 3; ++i);
 }

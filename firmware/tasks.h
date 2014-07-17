@@ -16,7 +16,9 @@
  /* 
   * Module to provide very simple round robin task scheduler.
   */
- 
+
+#include <stdint.h>
+
 typedef enum
 {
 	TASK_PROCESS_KEYPAD,
