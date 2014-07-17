@@ -93,10 +93,12 @@ static void lcd_send_data(uint8_t *data, uint16_t len)
 	gpio &= ~(LCD_WR | LCD_DATA);
 	gpio |= LCD_A0;
 
+	data += (len-1);
+
 	for (i=0; i<len; ++i)
 	{
 		gpio &= ~LCD_DATA;
-		gpio |= *data++;
+		gpio |= *data--;
 		GPIO_Write(GPIOC, gpio);
 
 		// Toggle the Enable lines.
