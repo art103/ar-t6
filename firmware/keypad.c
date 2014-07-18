@@ -26,69 +26,6 @@
 static uint32_t keys_pressed = 0;
 
 /**
-  * @brief  Initialise the keypad scanning pins.
-  * @note   Row used as output, Col as input.
-  * @param  None
-  * @retval None
-  */
-void keypad_init(void)
-{
-	GPIO_InitTypeDef gpioInit;
-	EXTI_InitTypeDef extiInit;
-	NVIC_InitTypeDef nvicInit;
-	
-	// Enable the GPIO block clocks and setup the pins.
-	RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOB | RCC_APB2Periph_AFIO, ENABLE);
-
-	gpioInit.GPIO_Speed = GPIO_Speed_2MHz;
-
-	// Configure the Column pins
-	gpioInit.GPIO_Pin = COL_MASK;
-	gpioInit.GPIO_Mode = GPIO_Mode_Out_OD;
-	GPIO_ResetBits(GPIOB, COL_MASK);
-	GPIO_Init(GPIOB, &gpioInit);
-	
-	// Configure the Row pins.
-	gpioInit.GPIO_Pin = ROW_MASK;
-	gpioInit.GPIO_Mode = GPIO_Mode_IPU;
-	GPIO_Init(GPIOB, &gpioInit);
-
-	// Set the cols as Ext. Interrupt sources.
-    GPIO_EXTILineConfig(GPIO_PortSourceGPIOB, 12);
-    GPIO_EXTILineConfig(GPIO_PortSourceGPIOB, 13);
-    GPIO_EXTILineConfig(GPIO_PortSourceGPIOB, 14);
-    
-
-	gpioInit.GPIO_Pin = 1 << 15;
-	gpioInit.GPIO_Mode = GPIO_Mode_IN_FLOATING;
-	GPIO_Init(GPIOC, &gpioInit);
-
-	// Set the rotary encoder as Ext. Interrupt source.
-    GPIO_EXTILineConfig(GPIO_PortSourceGPIOC, 15);
-
-	// Configure keypad lines as falling edge IRQs
-    extiInit.EXTI_Mode = EXTI_Mode_Interrupt;
-    extiInit.EXTI_Trigger = EXTI_Trigger_Falling;
-    extiInit.EXTI_LineCmd = ENABLE;
-    extiInit.EXTI_Line = KEYPAD_EXTI_LINES;
-    EXTI_Init(&extiInit);
-
-	// Configure rotary line as rising + falling edge IRQ
-    extiInit.EXTI_Trigger = EXTI_Trigger_Rising_Falling;
-    extiInit.EXTI_Line = ROTARY_EXTI_LINES;
-    EXTI_Init(&extiInit);
-
-    // Configure the Interrupt to the lowest priority
-    nvicInit.NVIC_IRQChannelPreemptionPriority = 0x0F;
-    nvicInit.NVIC_IRQChannelSubPriority = 0x0F;
-    nvicInit.NVIC_IRQChannelCmd = ENABLE;
-    nvicInit.NVIC_IRQChannel = EXTI15_10_IRQn;
-    NVIC_Init(&nvicInit);
-
-	task_register(TASK_PROCESS_KEYPAD, keypad_process);
-}
-
-/**
   * @brief  Scan the keypad and return the active key.
   * @note   Will only return the first key found if multiple keys pressed.
   * @param  None
@@ -97,7 +34,7 @@ void keypad_init(void)
   *     @arg KEY_xxx: The key that was pressed
   *     @arg KEY_NONE: No key was pressed
   */
-KEYPAD_KEY keypad_scan_keys(void)
+static KEYPAD_KEY keypad_scan_keys(void)
 {
 	KEYPAD_KEY key = KEY_NONE;
 	bool found = FALSE;
@@ -181,7 +118,7 @@ KEYPAD_KEY keypad_scan_keys(void)
   * @param  data: EXTI lines that triggered the update.
   * @retval None
   */
-void keypad_process(uint32_t data)
+static void keypad_process(uint32_t data)
 {
 	KEYPAD_KEY key = keypad_scan_keys();
 	
@@ -247,6 +184,74 @@ void keypad_process(uint32_t data)
 }
 
 /**
+  * @brief  Initialise the keypad scanning pins.
+  * @note   Row used as output, Col as input.
+  * @param  None
+  * @retval None
+  */
+void keypad_init(void)
+{
+	GPIO_InitTypeDef gpioInit;
+	EXTI_InitTypeDef extiInit;
+	NVIC_InitTypeDef nvicInit;
+
+	// Enable the GPIO block clocks and setup the pins.
+	RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOB | RCC_APB2Periph_GPIOB | RCC_APB2Periph_AFIO, ENABLE);
+
+	gpioInit.GPIO_Speed = GPIO_Speed_2MHz;
+
+	// Configure the Column pins
+	gpioInit.GPIO_Pin = COL_MASK;
+	gpioInit.GPIO_Mode = GPIO_Mode_Out_OD;
+	GPIO_ResetBits(GPIOB, COL_MASK);
+	GPIO_Init(GPIOB, &gpioInit);
+
+	// Configure the Row pins and SWA, SWB, SWC.
+	gpioInit.GPIO_Pin = ROW_MASK | GPIO_Pin_0 | GPIO_Pin_1 | GPIO_Pin_5;
+	gpioInit.GPIO_Mode = GPIO_Mode_IPU;
+	GPIO_Init(GPIOB, &gpioInit);
+
+	// Configure SWD.
+	gpioInit.GPIO_Pin = GPIO_Pin_13;
+	gpioInit.GPIO_Mode = GPIO_Mode_IPU;
+	GPIO_Init(GPIOC, &gpioInit);
+
+	// Set the cols as Ext. Interrupt sources.
+    GPIO_EXTILineConfig(GPIO_PortSourceGPIOB, 12);
+    GPIO_EXTILineConfig(GPIO_PortSourceGPIOB, 13);
+    GPIO_EXTILineConfig(GPIO_PortSourceGPIOB, 14);
+
+
+	gpioInit.GPIO_Pin = 1 << 15;
+	gpioInit.GPIO_Mode = GPIO_Mode_IN_FLOATING;
+	GPIO_Init(GPIOC, &gpioInit);
+
+	// Set the rotary encoder as Ext. Interrupt source.
+    GPIO_EXTILineConfig(GPIO_PortSourceGPIOC, 15);
+
+	// Configure keypad lines as falling edge IRQs
+    extiInit.EXTI_Mode = EXTI_Mode_Interrupt;
+    extiInit.EXTI_Trigger = EXTI_Trigger_Falling;
+    extiInit.EXTI_LineCmd = ENABLE;
+    extiInit.EXTI_Line = KEYPAD_EXTI_LINES;
+    EXTI_Init(&extiInit);
+
+	// Configure rotary line as rising + falling edge IRQ
+    extiInit.EXTI_Trigger = EXTI_Trigger_Rising_Falling;
+    extiInit.EXTI_Line = ROTARY_EXTI_LINES;
+    EXTI_Init(&extiInit);
+
+    // Configure the Interrupt to the lowest priority
+    nvicInit.NVIC_IRQChannelPreemptionPriority = 0x0F;
+    nvicInit.NVIC_IRQChannelSubPriority = 0x0F;
+    nvicInit.NVIC_IRQChannelCmd = ENABLE;
+    nvicInit.NVIC_IRQChannel = EXTI15_10_IRQn;
+    NVIC_Init(&nvicInit);
+
+	task_register(TASK_PROCESS_KEYPAD, keypad_process);
+}
+
+/**
   * @brief  Poll to see if a specific key has been pressed
   * @note
   * @param  key: Key to check.
@@ -260,4 +265,28 @@ bool keypad_get_pressed(KEYPAD_KEY key)
 		return TRUE;
 	}
 	return FALSE;
+}
+
+/**
+  * @brief  Scan the switches' state
+  * @note
+  * @param  None
+  * @retval uint8_t: Bitmask of the switches
+  */
+uint8_t keypad_get_switches(void)
+{
+	uint8_t switches = 0;
+	if (GPIO_ReadInputDataBit(GPIOB, GPIO_Pin_0))
+		switches |= SWITCH_SWA;
+
+	if (GPIO_ReadInputDataBit(GPIOB, GPIO_Pin_1))
+		switches |= SWITCH_SWB;
+
+	if (GPIO_ReadInputDataBit(GPIOB, GPIO_Pin_5))
+		switches |= SWITCH_SWC;
+
+	if (GPIO_ReadInputDataBit(GPIOC, GPIO_Pin_13))
+		switches |= SWITCH_SWD;
+
+	return switches;
 }

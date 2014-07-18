@@ -15,6 +15,7 @@
 
 #include "stm32f10x.h"
 #include "tasks.h"
+#include "lcd.h"
 #include "gui.h"
 
 typedef enum
@@ -34,7 +35,7 @@ static uint32_t gui_timeout = 0;
 
 static const char *msg[GUI_MSG_MAX] = {
 		"",
-		"Please move sticks and POTs to all extents.",
+		"Please move analog controls to their extents.",
 		"Please centre the sticks.",
 		"OK",
 		"Operation Cancelled."
@@ -61,7 +62,18 @@ void gui_init(void)
 void gui_process(uint32_t data)
 {
 	if (new_layout)
+	{
 		current_layout = new_layout;
+		// Clear the screen.
+		lcd_draw_rect(0, 0, LCD_WIDTH - 1, LCD_HEIGHT - 1, 0, RECT_FILL);
+	}
+
+	if (gui_timeout != 0)
+	{
+		new_layout = current_layout;
+		// Clear the screen.
+		lcd_draw_rect(0, 0, LCD_WIDTH - 1, LCD_HEIGHT - 1, 0, RECT_FILL);
+	}
 
 	switch (current_layout)
 	{
@@ -77,9 +89,82 @@ void gui_process(uint32_t data)
 		break;
 
 		case GUI_LAYOUT_MAIN:
+			#define BOX_W	24
+			#define BOX_H	24
+
+			#define BOX_Y	35
+			#define BOX_L_X	30
+			#define BOX_R_X	72
+
+			#define POT_W	2
+			#define POT_Y	(BOX_Y + BOX_H)
+			#define POT_L_X 59
+			#define POT_R_X 65
+
+			#define SW_Y	(BOX_Y + 6)
+			#define SW_L_X	(BOX_L_X - 20)
+			#define SW_R_X	(BOX_R_X + BOX_W + 4)
+
 			if (new_layout)
 			{
 				// Draw the main screen.
+
+				// Stick Boxes
+				lcd_draw_rect(BOX_L_X, BOX_Y, BOX_L_X + BOX_W, BOX_Y + BOX_H, 1, RECT_ROUNDED);
+				lcd_draw_rect(BOX_R_X, BOX_Y, BOX_R_X + BOX_W, BOX_Y + BOX_H, 1, RECT_ROUNDED);
+			}
+			switch (data)
+			{
+				case UPDATE_STICKS:
+				{
+					int x, y;
+					float *pFloat;
+					sticks_get(&pFloat);
+
+					// Stick boxes
+					lcd_draw_rect(BOX_L_X, BOX_Y, BOX_L_X + BOX_W, BOX_Y + BOX_H, 0, RECT_FILL);
+					lcd_draw_rect(BOX_R_X, BOX_Y, BOX_R_X + BOX_W, BOX_Y + BOX_H, 0, RECT_FILL);
+					lcd_draw_rect(BOX_L_X, BOX_Y, BOX_L_X + BOX_W, BOX_Y + BOX_H, 1, RECT_ROUNDED);
+					lcd_draw_rect(BOX_R_X, BOX_Y, BOX_R_X + BOX_W, BOX_Y + BOX_H, 1, RECT_ROUNDED);
+
+					// Centre point
+					lcd_draw_rect(BOX_L_X + BOX_W / 2 - 1, BOX_Y + BOX_H / 2 - 1, BOX_L_X + BOX_W / 2 + 1, BOX_Y + BOX_H / 2 + 1, 1, RECT_ROUNDED);
+					lcd_draw_rect(BOX_R_X + BOX_W / 2 - 1, BOX_Y + BOX_H / 2 - 1, BOX_R_X + BOX_W / 2 + 1, BOX_Y + BOX_H / 2 + 1, 1, RECT_ROUNDED);
+
+					// Stick position (Right)
+					x = BOX_W / 2 + (BOX_W-2) * pFloat[0] / 200;
+					y = BOX_W / 2 + (BOX_W-2) * -pFloat[1] / 200;
+					lcd_draw_rect(BOX_R_X + x - 2, BOX_Y + y - 2, BOX_R_X + x + 2, BOX_Y + y + 2, 1, RECT_ROUNDED);
+
+					// Stick position (Left)
+					x = BOX_W / 2 + (BOX_W-2) * pFloat[3] / 200;
+					y = BOX_W / 2 + (BOX_W-2) * -pFloat[2] / 200;
+					lcd_draw_rect(BOX_L_X + x - 2, BOX_Y + y - 2, BOX_L_X + x + 2, BOX_Y + y + 2, 1, RECT_ROUNDED);
+
+					// VRB
+					x = BOX_H * (100 + pFloat[5]) / 200;
+					lcd_draw_rect(POT_L_X, POT_Y - BOX_H, POT_L_X + POT_W, POT_Y, 0, RECT_FILL);
+					lcd_draw_rect(POT_L_X, POT_Y - x, POT_L_X + POT_W, POT_Y, 1, RECT_FILL);
+
+					// VRA
+					x = BOX_H * (100 + pFloat[4]) / 200;
+					lcd_draw_rect(POT_R_X, POT_Y - BOX_H, POT_R_X + POT_W, POT_Y, 0, RECT_FILL);
+					lcd_draw_rect(POT_R_X, POT_Y - x, POT_R_X + POT_W, POT_Y, 1, RECT_FILL);
+
+					x = keypad_get_switches();
+					lcd_set_cursor(SW_L_X, SW_Y);
+					lcd_write_string("SWB", (x&SWITCH_SWB)?1:0);
+					lcd_set_cursor(SW_L_X, SW_Y + 8);
+					lcd_write_string("SWD", (x&SWITCH_SWD)?1:0);
+					lcd_set_cursor(SW_R_X, SW_Y);
+					lcd_write_string("SWA", (x&SWITCH_SWA)?1:0);
+					lcd_set_cursor(SW_R_X, SW_Y + 8);
+					lcd_write_string("SWC", (x&SWITCH_SWC)?1:0);
+				}
+				break;
+
+				case UPDATE_MSG:
+				break;
 			}
 		break;
 
@@ -96,13 +181,18 @@ void gui_process(uint32_t data)
 		break;
 
 		case GUI_LAYOUT_STICK_CALIBRATION:
+			if (new_layout)
+			{
+				// Draw the whole screen.
+				lcd_set_cursor(0, 56);
+				lcd_write_string("CALIBRATION", 0);
+			}
 			switch (data)
 			{
 				case UPDATE_STICKS:
 				break;
 
 				case UPDATE_MSG:
-
 				break;
 			}
 		break;
@@ -112,12 +202,23 @@ void gui_process(uint32_t data)
 	{
 		current_msg = new_msg;
 
+		// Draw the background.
+		lcd_draw_rect(6, 4, LCD_WIDTH - 6, LCD_HEIGHT - 22, 0, RECT_FILL);
+		lcd_draw_rect(6, 4, LCD_WIDTH - 6, LCD_HEIGHT - 22, 1, RECT_NONE);
+		lcd_draw_rect(8, 6, LCD_WIDTH - 8, LCD_HEIGHT - 24, 1, RECT_NONE);
 		// Draw the message
-		lcd_draw_message(msg[new_msg], 0, 1);
+		lcd_set_cursor(10, 12);
+		lcd_draw_message(msg[new_msg], 1);
+
 	}
 
 	new_layout = GUI_LAYOUT_NONE;
 	new_msg = GUI_MSG_NONE;
+
+	lcd_update();
+
+	if (gui_timeout != 0)
+		task_schedule(TASK_PROCESS_GUI, UPDATE_MSG, gui_timeout);
 }
 
 /**
@@ -127,12 +228,13 @@ void gui_process(uint32_t data)
   * @param  len: number of inputs.
   * @retval None
   */
-void gui_input_sticks(float *data, uint8_t len)
+void gui_update_sticks(void)
 {
 	switch (current_layout)
 	{
+		case GUI_LAYOUT_MAIN:
 		case GUI_LAYOUT_STICK_CALIBRATION:
-			// Don't do crazy on the updates. limit to 25fps.
+			// Don't go crazy on the updates. limit to 25fps.
 			task_schedule(TASK_PROCESS_GUI, UPDATE_STICKS, 40);
 		break;
 
@@ -181,10 +283,7 @@ void gui_set_layout(GUI_LAYOUT layout)
 void gui_set_message(GUI_MSG msg, uint16_t timeout)
 {
 	new_msg = msg;
-	if (timeout != 0)
-		gui_timeout = system_ticks + timeout;
-	else
-		gui_timeout = 0;
+	gui_timeout = timeout;
 
 	task_schedule(TASK_PROCESS_GUI, UPDATE_MSG, 0);
 }

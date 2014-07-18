@@ -43,7 +43,7 @@ typedef enum
 
 void gui_init(void);
 void gui_process(uint32_t data);
-void gui_input_sticks(float *data, uint8_t len);
+void gui_update_sticks(void);
 void gui_input_key(KEYPAD_KEY key);
 void gui_set_layout(GUI_LAYOUT layout);
 void gui_set_message(GUI_MSG msg, uint16_t timeout);

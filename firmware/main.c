@@ -18,30 +18,7 @@
 #include "keypad.h"
 #include "sticks.h"
 #include "lcd.h"
-
-volatile uint32_t system_ticks = 0;
-
-/**
-  * @brief  Delay timer using the system tick timer
-  * @param  delay: delay in ms.
-  * @retval None
-  */
-void delay_ms(uint32_t delay)
-{
-	uint32_t start = system_ticks;
-	while (system_ticks <  start + delay);
-}
-
-/**
-  * @brief  Spin loop us delay routine
-  * @param  delay: delay in us.
-  * @retval None
-  */
-void delay_us(uint32_t delay)
-{
-	volatile uint32_t i;
-	for (i=0; i < delay * 3; ++i);
-}
+#include "gui.h"
 
 /**
   * @brief  Main Loop for non-IRQ based work
@@ -51,16 +28,19 @@ void delay_us(uint32_t delay)
   */
 int main(void)
 {
+	uint8_t tick;
 	// PLL and stack setup has aready been done.
 
 	// 1ms System tick
 	SysTick_Config(SystemCoreClock / 1000);
+	RCC_APB1PeriphClockCmd(RCC_APB1Periph_PWR, ENABLE);
 
 	// Initialize the task loop.
 	task_init();
 
 	// Initialize the LCD and display logo.
 	lcd_init();
+	gui_init();
 
 	// Initialize the keypad scanner (with IRQ wakeup).
 	keypad_init();
@@ -88,7 +68,13 @@ int main(void)
 		// Process any tasks.
 		task_process_all();
 
+		/*
+		lcd_set_cursor(0, 48);
+		lcd_write_int(tick++, 1, 0);
+		lcd_update();
+		*/
+
 		// Wait for an interrupt
-		PWR_EnterSTANDBYMode();
+		//PWR_EnterSTANDBYMode();
 	}
 }

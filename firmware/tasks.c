@@ -16,6 +16,8 @@
 #include "stm32f10x.h"
 #include "tasks.h"
 
+volatile uint32_t system_ticks = 0;
+
 static uint32_t tasks[TASK_END];
 static uint32_t task_data[TASK_END];
 static void (*task_fn[TASK_END])(uint32_t);
@@ -86,3 +88,26 @@ void task_process_all(void)
 		}
 	}
 }
+
+/**
+  * @brief  Delay timer using the system tick timer
+  * @param  delay: delay in ms.
+  * @retval None
+  */
+void delay_ms(uint32_t delay)
+{
+	uint32_t start = system_ticks;
+	while (system_ticks <  start + delay);
+}
+
+/**
+  * @brief  Spin loop us delay routine
+  * @param  delay: delay in us.
+  * @retval None
+  */
+void delay_us(uint32_t delay)
+{
+	volatile uint32_t i;
+	for (i=0; i < delay * 3; ++i);
+}
+

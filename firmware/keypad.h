@@ -39,10 +39,17 @@ typedef enum
     KEY_RIGHT = 0x1000	// Rotary encoder
 } KEYPAD_KEY;
 
+typedef enum
+{
+	SWITCH_SWA = 0x01,
+	SWITCH_SWB = 0x02,
+	SWITCH_SWC = 0x04,
+	SWITCH_SWD = 0x08,
+} KEYPAD_SWITCH;
+
 void keypad_init(void);
-KEYPAD_KEY keypad_scan(void);
-void keypad_process(uint32_t data);
 bool keypad_get_pressed(KEYPAD_KEY key);
+uint8_t keypad_get_switches(void);
 
 #endif // _KEYPAD_H
 

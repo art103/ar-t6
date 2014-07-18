@@ -80,6 +80,6 @@ void EXTI15_10_IRQHandler(void)
   */
 void DMA1_Channel1_IRQHandler(void)
 {
-	task_schedule(TASK_PROCESS_STICKS, 0, 0);
+	task_schedule(TASK_PROCESS_STICKS, 0, 100);
 	DMA_ClearITPendingBit(DMA_IT_TC);
 }

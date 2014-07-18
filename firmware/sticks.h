@@ -19,5 +19,6 @@
 void sticks_init(void);
 void sticks_process(uint32_t data);
 void sticks_calibrate(void);
+int sticks_get(float **data);
 
 #endif // _STICKS_H
