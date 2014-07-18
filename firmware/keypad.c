@@ -22,6 +22,9 @@
 #define ROW(n)         (1 << (12 + n))
 #define COL(n)         (1 << (8 + n))
 
+// Keys that have been pressed since the last check.
+static uint32_t keys_pressed = 0;
+
 /**
   * @brief  Initialise the keypad scanning pins.
   * @note   Row used as output, Col as input.
@@ -198,42 +201,63 @@ void keypad_process(uint32_t data)
 		}
 	}
 	
-	switch (key)
+	if (key != 0)
 	{
-		case KEY_CH1_UP:
-			// mixer_adjust_trim(1, 1);
-		break;
-		case KEY_CH1_DN:
-			// mixer_adjust_trim(1, -1);
-		break;
-		case KEY_CH2_UP:
-			// mixer_adjust_trim(2, 1);
-		break;
-		case KEY_CH2_DN:
-			// mixer_adjust_trim(2, -1);
-		break;
-		case KEY_CH3_UP:
-			// mixer_adjust_trim(3, 1);
-		break;
-		case KEY_CH3_DN:
-			// mixer_adjust_trim(3, -1);
-		break;
-		case KEY_CH4_UP:
-			// mixer_adjust_trim(4, 1);
-		break;
-		case KEY_CH4_DN:
-			// mixer_adjust_trim(4, -1);
-		break;
+		keys_pressed |= key;
 
-		case KEY_OK:
-		case KEY_SEL:
-		case KEY_CANCEL:
-		case KEY_LEFT:
-		case KEY_RIGHT:
-			// gui_key_input(key);
-		break;
-		
-		default: 
-		break;
+		switch (key)
+		{
+			case KEY_CH1_UP:
+				// mixer_adjust_trim(1, 1);
+			break;
+			case KEY_CH1_DN:
+				// mixer_adjust_trim(1, -1);
+			break;
+			case KEY_CH2_UP:
+				// mixer_adjust_trim(2, 1);
+			break;
+			case KEY_CH2_DN:
+				// mixer_adjust_trim(2, -1);
+			break;
+			case KEY_CH3_UP:
+				// mixer_adjust_trim(3, 1);
+			break;
+			case KEY_CH3_DN:
+				// mixer_adjust_trim(3, -1);
+			break;
+			case KEY_CH4_UP:
+				// mixer_adjust_trim(4, 1);
+			break;
+			case KEY_CH4_DN:
+				// mixer_adjust_trim(4, -1);
+			break;
+
+			case KEY_OK:
+			case KEY_SEL:
+			case KEY_CANCEL:
+			case KEY_LEFT:
+			case KEY_RIGHT:
+				// gui_key_input(key);
+			break;
+
+			default:
+			break;
+		}
 	}
+}
+
+/**
+  * @brief  Poll to see if a specific key has been pressed
+  * @note
+  * @param  key: Key to check.
+  * @retval bool: TRUE if pressed, FALSE if not.
+  */
+bool keypad_get_pressed(KEYPAD_KEY key)
+{
+	if ((keys_pressed & key) != 0)
+	{
+		keys_pressed &= ~key;
+		return TRUE;
+	}
+	return FALSE;
 }

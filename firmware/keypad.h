@@ -24,47 +24,25 @@
 typedef enum
 {
 	KEY_NONE = 0,
-    KEY_CH1_UP,	// Trim(s)
-    KEY_CH1_DN,
-    KEY_CH2_UP,
-    KEY_CH2_DN,
-    KEY_CH3_UP,
-    KEY_CH3_DN,
-    KEY_CH4_UP,
-    KEY_CH4_DN,
-    KEY_SEL,	// Rotary encoder click
-    KEY_OK,
-    KEY_CANCEL,
-    KEY_LEFT,	// Rotary encoder
-    KEY_RIGHT	// Rotary encoder
+    KEY_CH1_UP = 0x0001,	// Trim(s)
+    KEY_CH1_DN = 0x0002,
+    KEY_CH2_UP = 0x0004,
+    KEY_CH2_DN = 0x0008,
+    KEY_CH3_UP = 0x0010,
+    KEY_CH3_DN = 0x0020,
+    KEY_CH4_UP = 0x0040,
+    KEY_CH4_DN = 0x0080,
+    KEY_SEL = 0x0100,	// Rotary encoder click
+    KEY_OK = 0x0200,
+    KEY_CANCEL = 0x0400,
+    KEY_LEFT = 0x0800,	// Rotary encoder
+    KEY_RIGHT = 0x1000	// Rotary encoder
 } KEYPAD_KEY;
 
-/**
-  * @brief  Initialise the keypad scanning pins.
-  * @note   Row used as output, Col as input.
-  * @param  None
-  * @retval None
-  */
 void keypad_init(void);
-
-/**
-  * @brief  Scan the keypad and return the active key.
-  * @note   Will only return the first key found if multiple keys pressed.
-  * @param  None
-  * @retval KEYPAD_KEY
-  *   Returns the active key
-  *     @arg KEY_xxx: The key that was pressed
-  *     @arg KEY_NONE: No key was pressed
-  */
 KEYPAD_KEY keypad_scan(void);
-
-/**
-  * @brief  Process keys and drive updates through the system.
-  * @note   Called from the scheduler.
-  * @param  data: EXTI lines that triggered the update.
-  * @retval None
-  */
 void keypad_process(uint32_t data);
+bool keypad_get_pressed(KEYPAD_KEY key);
 
 #endif // _KEYPAD_H
 

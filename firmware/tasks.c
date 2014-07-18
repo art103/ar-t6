@@ -16,7 +16,7 @@
 #include "stm32f10x.h"
 #include "tasks.h"
 
-static bool tasks[TASK_END];
+static uint32_t tasks[TASK_END];
 static uint32_t task_data[TASK_END];
 static void (*task_fn[TASK_END])(uint32_t);
 
@@ -51,12 +51,16 @@ void task_register(Tasks task, void (*fn)(uint32_t))
   * @note
   * @param  task: ID of the task to register.
   * @param  data: Data to pass to the task function.
+  * @param  time_ms: When to schedule the task in ms from now (0 for ASAP).
   * @retval None
   */
-void task_schedule(Tasks task, uint32_t data)
+void task_schedule(Tasks task, uint32_t data, uint32_t time_ms)
 {
-	tasks[task] = TRUE;
-	task_data[task] = data;
+	if (tasks[task] == 0 || tasks[task] > system_ticks + time_ms)
+	{
+		tasks[task]  = system_ticks + time_ms;
+		task_data[task] = data;
+	}
 }
 
 /**
@@ -72,12 +76,12 @@ void task_process_all(void)
 	/* Run all scheduled tasks */
 	for (task = 0; task < TASK_END; ++task)
 	{
-		if (tasks[task] == TRUE)
+		if (tasks[task] != 0 && tasks[task] <= system_ticks)
 		{
 			if (task_fn[task] != 0)
 			{
 				task_fn[task](task_data[task]);
-				tasks[task] = FALSE;
+				tasks[task] = 0;
 			}
 		}
 	}

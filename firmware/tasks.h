@@ -20,46 +20,19 @@
   */
 
 #include <stdint.h>
+extern volatile uint32_t system_ticks;
 
 typedef enum
 {
 	TASK_PROCESS_KEYPAD,
 	TASK_PROCESS_STICKS,
+	TASK_PROCESS_GUI,
 	TASK_END
 } Tasks;
 
-/**
-  * @brief  Initialize task data.
-  * @note   
-  * @param  None
-  * @retval None
-  */
 void task_init(void);
-
-/**
-  * @brief  Register a task function.
-  * @note   
-  * @param  task: ID of the task to register.
-  * @param  fn: Function pointer for the task ID.
-  * @retval None
-  */
 void task_register(Tasks task, void (*fn)(uint32_t));
-
-/**
-  * @brief  Schedule a task to run.
-  * @note
-  * @param  task: ID of the task to register.
-  * @param  data: Data to pass to the task function.
-  * @retval None
-  */
-void task_schedule(Tasks task, uint32_t data);
-
-/**
-  * @brief  Loop to process scheduled tasks.
-  * @note   Tasks are run round robin in numerical order.
-  * @param  None
-  * @retval None
-  */
+void task_schedule(Tasks task, uint32_t data, uint32_t time_ms);
 void task_process_all(void);
 
 #endif // _TASKS_H

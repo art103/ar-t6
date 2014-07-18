@@ -17,8 +17,6 @@
 #include "tasks.h"
 #include "keypad.h"
 
-extern volatile uint32_t system_ticks;
-
 /**
   * @brief  This function handles the SysTick.
   * @param  None
@@ -42,7 +40,7 @@ void EXTI15_10_IRQHandler(void)
 	if ((flags & KEYPAD_EXTI_LINES) != 0)
 	{
 		// Schedule the keys to be scanned.
-		task_schedule(TASK_PROCESS_KEYPAD, 0);
+		task_schedule(TASK_PROCESS_KEYPAD, 0, 0);
 		
 		// Clear the IRQ
 		EXTI->PR = KEYPAD_EXTI_LINES;
@@ -57,17 +55,17 @@ void EXTI15_10_IRQHandler(void)
 		{
 			// Falling edge
 			if ((gpio & (1 << 14)) == 0)
-				task_schedule(TASK_PROCESS_KEYPAD, 1);
+				task_schedule(TASK_PROCESS_KEYPAD, 1, 0);
 			else
-				task_schedule(TASK_PROCESS_KEYPAD, 2);
+				task_schedule(TASK_PROCESS_KEYPAD, 2, 0);
 		}
 		else
 		{
 			// Rising edge
 			if ((gpio & (1 << 14)) == 0)
-				task_schedule(TASK_PROCESS_KEYPAD, 2);
+				task_schedule(TASK_PROCESS_KEYPAD, 2, 0);
 			else
-				task_schedule(TASK_PROCESS_KEYPAD, 1);
+				task_schedule(TASK_PROCESS_KEYPAD, 1, 0);
 		}
 		
 		// Clear the IRQ
@@ -76,11 +74,12 @@ void EXTI15_10_IRQHandler(void)
 }
 
 /**
-  * @brief  This function handles the SysTick.
+  * @brief  This function handles the DMA end of transfer.
   * @param  None
   * @retval None
   */
 void DMA1_Channel1_IRQHandler(void)
 {
-	task_schedule(TASK_PROCESS_STICKS, 0);
+	task_schedule(TASK_PROCESS_STICKS, 0, 0);
+	DMA_ClearITPendingBit(DMA_IT_TC);
 }

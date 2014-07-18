@@ -65,7 +65,7 @@ int main(void)
 	// Initialize the keypad scanner (with IRQ wakeup).
 	keypad_init();
 
-	// Initialize the ADC
+	// Initialize the ADC / DMA
 	sticks_init();
 
 	/*

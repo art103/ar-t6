@@ -65,7 +65,6 @@ static uint8_t cursor_y = 0;
 static const unsigned char *font = font_medium;
 static uint16_t font_width = 255 * 5;
 
-
 /**
   * @brief  Send a command to the LCD.
   * @note	Switch the MPU interface to command mode and send
@@ -303,3 +302,52 @@ void lcd_write_string(char *s, uint8_t colour)
 	for (ptr = s; n > 0; ptr++, n--)
 		lcd_write_char(*ptr, colour);
 }
+
+/**
+  * @brief  Draw a message with line wrapping
+  * @note	Starts at the cursor and uses the x offset as a margin.
+  * @param  msg: ASCII message to write
+  * @param  colour: 0 - off, !0 - on
+  * @param  border: Draw a border around the margins (0: off)
+  * @retval None
+  */
+void lcd_draw_message(char *msg, uint8_t colour, uint8_t border)
+{
+	int width = (LCD_WIDTH - 2*cursor_x) / (char_width + 1);
+	int height = (LCD_HEIGHT - 2*cursor_y) / (char_height + 1);
+	int n_lines = 0;
+	char line_buffer[LCD_WIDTH / (char_width + 1)];
+	char *ptr = msg;
+	char *needle1;
+	char *needle2;
+
+	// Quick sanity check...
+	if (width * height < strlen(msg))
+		return;
+
+	// Iterate through the string to find wrap points.
+	while (strlen(ptr))
+	{
+		for (needle1 = ptr; needle2 != 0; needle2 = strstr(ptr, " "))
+		{
+			if (needle2 - ptr < width)
+				needle1 = needle2;
+			else
+				break;
+		}
+
+		// Draw the line.
+		memcpy(line_buffer, ptr, needle1 - ptr);
+		line_buffer[needle1 - ptr] = 0;
+		lcd_write_string(line_buffer, colour);
+		cursor_y += (char_height + 1);
+
+		if (*ptr != 0)
+		{
+			n_lines++;
+		}
+	}
+
+
+}
+

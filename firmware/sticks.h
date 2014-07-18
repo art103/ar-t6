@@ -16,20 +16,8 @@
 #ifndef _STICKS_H
 #define _STICKS_H
 
-/**
-  * @brief  Initialise the stick scanning.
-  * @note   Starts the ADC continuous sampling.
-  * @param  None
-  * @retval None
-  */
 void sticks_init(void);
-
-/**
-  * @brief  Process the stick data and drive updates through the system.
-  * @note   Called from the scheduler.
-  * @param  data: Not used.
-  * @retval None
-  */
 void sticks_process(uint32_t data);
+void sticks_calibrate(void);
 
 #endif // _STICKS_H
