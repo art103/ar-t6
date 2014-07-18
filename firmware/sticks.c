@@ -14,237 +14,85 @@
  */
 
 #include "stm32f10x.h"
-#include "keypad.h"
+#include "sticks.h"
 #include "tasks.h"
 
-#define ROW_MASK       (0x07 << 12)
-#define COL_MASK       (0x0F << 8)
-#define ROW(n)         (1 << (12 + n))
-#define COL(n)         (1 << (8 + n))
-// Row 0
-#define KEY_CH1_UP     (~COL(0) & COL_MASK)
-#define KEY_CH1_DN     (~COL(1) & COL_MASK)
-#define KEY_CH2_UP     (~COL(2) & COL_MASK)
-#define KEY_CH2_DN     (~COL(3) & COL_MASK)
-// Row 1
-#define KEY_CH3_UP     (~COL(0) & COL_MASK)
-#define KEY_CH3_DN     (~COL(1) & COL_MASK)
-#define KEY_CH4_UP     (~COL(2) & COL_MASK)
-#define KEY_CH4_DN     (~COL(3) & COL_MASK)
-// Row 2
-//#define KEY_           (~COL(0) & COL_MASK)
-#define KEY_SEL        (~COL(1) & COL_MASK)
-#define KEY_OK         (~COL(2) & COL_MASK)
-#define KEY_CANCEL     (~COL(3) & COL_MASK)
+static uint32_t adc_data[7];
 
 /**
-  * @brief  Initialise the keypad scanning pins.
-  * @note   Row used as output, Col as input.
+  * @brief  Initialise the stick scanning.
+  * @note   Starts the ADC continuous sampling.
   * @param  None
   * @retval None
   */
-void keypad_init(void)
+void sticks_init(void)
 {
-	GPIO_InitTypeDef gpioInit;
-	EXTI_InitTypeDef extiInit;
-	NVIC_InitTypeDef nvicInit;
-	
-	// Enable the GPIO block clocks and setup the pins.
-	RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOB | RCC_APB2Periph_AFIO, ENABLE);
+	ADC_InitTypeDef adcInit;
+	DMA_InitTypeDef dmaInit;
 
-	gpioInit.GPIO_Speed = GPIO_Speed_2MHz;
+	// Enable the ADC and DMA clocks
+	RCC_AHBPeriphClockCmd(RCC_APB2Periph_ADC1, ENABLE);
+	RCC_AHBPeriphClockCmd(RCC_AHBPeriph_DMA1, ENABLE);
 
-	// Configure the Column pins
-	gpioInit.GPIO_Pin = COL_MASK;
-	gpioInit.GPIO_Mode = GPIO_Mode_IN_FLOATING;
-	GPIO_Init(GPIOB, &gpioInit);
-	
-	// Configure the Row pins.
-	gpioInit.GPIO_Pin = ROW_MASK;
-	gpioInit.GPIO_Mode = GPIO_Mode_Out_OD;
-	GPIO_Init(GPIOB, &gpioInit);
+	// Calibrate the ADC
+	ADC_StartCalibration(ADC1);
+	while (ADC_GetCalibrationStatus(ADC1) != SET);
 
-	// Set the cols as Ext. Interrupt sources.
-    GPIO_EXTILineConfig(GPIOB, 8);
-    GPIO_EXTILineConfig(GPIOB, 9);
-    GPIO_EXTILineConfig(GPIOB, 10);
-    GPIO_EXTILineConfig(GPIOB, 11);
-    
-	// Set the rotary encoder as Ext. Interrupt source.
-    GPIO_EXTILineConfig(GPIOB, 15);
+	// Disable the ADC before configuring.
+	ADC_Cmd(ADC1, DISABLE);
+	ADC_DMACmd(ADC1, DISABLE);
 
-	// Configure keypad lines as falling edge IRQs
-    extiInit.EXTI_Mode = EXTI_Mode_Interrupt;
-    extiInit.EXTI_Trigger = EXTI_Trigger_Falling;  
-    extiInit.EXTI_LineCmd = ENABLE;
-    extiInit.EXTI_Line = KEYPAD_EXTI_LINES;
-    EXTI_Init(&extiInit);
+	// Setup the ADC init structure
+	ADC_StructInit(&adcInit);
+	adcInit.ADC_ContinuousConvMode = ENABLE;
+	adcInit.ADC_ScanConvMode = ENABLE;
+	adcInit.ADC_ExternalTrigConv = ADC_ExternalTrigConv_None;
+	adcInit.ADC_NbrOfChannel = 7;
 
-	// Configure rotary line as rising + falling edge IRQ
-    extiInit.EXTI_Trigger = EXTI_Trigger_Rising_Falling;  
-    extiInit.EXTI_Line = ROTARY_EXTI_LINES;
-    EXTI_Init(&extiInit);
+	// Setup the regular channel cycle
+	ADC_RegularChannelConfig(ADC1, ADC_Channel_0, 1, ADC_SampleTime_55Cycles5); // CH1
+	ADC_RegularChannelConfig(ADC1, ADC_Channel_1, 2, ADC_SampleTime_55Cycles5); // CH2
+	ADC_RegularChannelConfig(ADC1, ADC_Channel_2, 3, ADC_SampleTime_55Cycles5); // CH3
+	ADC_RegularChannelConfig(ADC1, ADC_Channel_3, 4, ADC_SampleTime_55Cycles5); // CH4
+	ADC_RegularChannelConfig(ADC1, ADC_Channel_4, 5, ADC_SampleTime_55Cycles5); // CH5 (POT)
+	ADC_RegularChannelConfig(ADC1, ADC_Channel_5, 6, ADC_SampleTime_55Cycles5); // CH6 (POT)
+	ADC_RegularChannelConfig(ADC1, ADC_Channel_6, 7, ADC_SampleTime_55Cycles5); // Battery
 
-    // Configure the Interrupt to the lowest priority
-    nvicInit.NVIC_IRQChannelPreemptionPriority = 0x0F;
-    nvicInit.NVIC_IRQChannelSubPriority = 0x0F;
-    nvicInit.NVIC_IRQChannelCmd = ENABLE;
+	// Enable the ADC and ADC-DMA peripherals
+	ADC_Cmd(ADC1, ENABLE);
+	ADC_DMACmd(ADC1, ENABLE);
 
-	// Enable the NVIC lines
-    nvicInit.NVIC_IRQChannel = EXTI9_5_IRQn;
-    NVIC_Init(&nvicInit); 
-    nvicInit.NVIC_IRQChannel = EXTI15_10_IRQn;
-    NVIC_Init(&nvicInit); 
+	// DMA Configuration
+	dmaInit.DMA_PeripheralBaseAddr = ADC1->DR;
+	dmaInit.DMA_MemoryBaseAddr = (uint32_t)adc_data;
+	dmaInit.DMA_DIR = DMA_DIR_PeripheralSRC;
+	dmaInit.DMA_BufferSize = 7;
+	dmaInit.DMA_PeripheralInc = DMA_PeripheralInc_Disable;
+	dmaInit.DMA_MemoryInc = DMA_MemoryInc_Enable;
+	dmaInit.DMA_PeripheralDataSize = DMA_PeripheralDataSize_Word;
+	dmaInit.DMA_MemoryDataSize = DMA_PeripheralDataSize_Word;
+	dmaInit.DMA_Mode = DMA_Mode_Normal;
+	dmaInit.DMA_Priority = DMA_Priority_High;
+	dmaInit.DMA_M2M = DMA_M2M_Disable;
 
-	task_register(TASK_PROCESS_KEYPAD, keypad_process);
+	// Configure and enable the DMA
+	DMA_Init(DMA1_Channel1, &dmaInit);
+	DMA_ITConfig(DMA1_Channel1, DMA_IT_TC, ENABLE);
+	DMA_Cmd(DMA1_Channel1, ENABLE);
+
+	// Set the ADC running
+	ADC_SoftwareStartConvCmd(ADC1, ENABLE);
+
+	task_register(TASK_PROCESS_STICKS, sticks_process);
 }
 
 /**
-  * @brief  Scan the keypad and return the active key.
-  * @note   Will only return the first key found if multiple keys pressed.
-  * @param  None
-  * @retval KEYPAD_KEY
-  *   Returns the active key
-  *     @arg KEY_xxx: The key that was pressed
-  *     @arg KEY_NONE: No key was pressed
-  */
-KEYPAD_KEY keypad_scan_keys(void)
-{
-	KEYPAD_KEY key = KEY_NONE;
-	bool found = FALSE;
-	uint8_t row;
-	uint16_t cols;
-	
-	for (row = 0; row < 3; ++row)
-	{
-		// Walk a '0' down the rows.
-		GPIO_SetBits(GPIOB, ROW_MASK);
-		GPIO_ResetBits(GPIOB, ROW(row));
-		
-		// Allow some time for the GPIO to settle.
-		delay_us(500);
-		
-		// The columns are pulled high externally. 
-		// Any '0' seen here is due to a switch connecting to our active '0' on a row.
-		cols = GPIO_ReadInputData(GPIOB);
-		if ((cols & COL_MASK) != COL_MASK)
-		{
-			// Only support one key pressed at a time.
-			found = TRUE;
-			break;
-		}
-	}
-
-	// Set the rows to all off.
-	GPIO_ResetBits(GPIOB, ROW_MASK);
-	
-	if (found)
-	{
-		cols = ~cols & COL_MASK;
-		
-		switch (row)
-		{
-			case 0:
-				if ((cols & COL(0)) != 0)
-					key = KEY_CH1_UP;
-				else if ((cols & COL(1)) != 0)
-					key = KEY_CH1_DN;
-				else if ((cols & COL(2)) != 0)
-					key = KEY_CH2_UP;
-				else if ((cols & COL(3)) != 0)
-					key = KEY_CH2_DN;
-			break;
-			
-			case 1:
-				if ((cols & COL(0)) != 0)
-					key = KEY_CH3_UP;
-				else if ((cols & COL(1)) != 0)
-					key = KEY_CH3_DN;
-				else if ((cols & COL(2)) != 0)
-					key = KEY_CH4_UP;
-				else if ((cols & COL(3)) != 0)
-					key = KEY_CH4_DN;
-			break;
-			
-			case 2:
-				if ((cols & COL(1)) != 0)
-					key = KEY_SEL;
-				else if ((cols & COL(2)) != 0)
-					key = KEY_OK;
-				else if ((cols & COL(3)) != 0)
-					key = KEY_CANCEL;
-			break;
-			
-			default:
-			break;
-		}
-	}
-	
-	return key;
-}
-
-/**
-  * @brief  Process keys and drive updates through the system.
+  * @brief  Process the stick data and drive updates through the system.
   * @note   Called from the scheduler.
-  * @param  data: EXTI lines that triggered the update.
+  * @param  data: Not used.
   * @retval None
   */
-void keypad_process(uint32_t data)
+void sticks_process(uint32_t data)
 {
-	KEYPAD_KEY key = keypad_scan_keys();
-	
-	// Data is used to send the rotary encoder data.
-	if (data != 0)
-	{
-		switch (data)
-		{
-			case 1:
-				key = KEY_LEFT;
-			break;
-			case 2:
-				key = KEY_RIGHT;
-			break;
-			default:
-			break;
-		}
-	}
-	
-	switch (key)
-	{
-		case KEY_CH1_UP:
-			// mixer_adjust_trim(1, 1);
-		break;
-		case KEY_CH1_DN:
-			// mixer_adjust_trim(1, -1);
-		break;
-		case KEY_CH2_UP:
-			// mixer_adjust_trim(2, 1);
-		break;
-		case KEY_CH2_DN:
-			// mixer_adjust_trim(2, -1);
-		break;
-		case KEY_CH3_UP:
-			// mixer_adjust_trim(3, 1);
-		break;
-		case KEY_CH3_DN:
-			// mixer_adjust_trim(3, -1);
-		break;
-		case KEY_CH4_UP:
-			// mixer_adjust_trim(4, 1);
-		break;
-		case KEY_CH4_DN:
-			// mixer_adjust_trim(4, -1);
-		break;
 
-		case KEY_OK:
-		case KEY_SEL:
-		case KEY_CANCEL:
-		case KEY_LEFT:
-		case KEY_RIGHT:
-			// gui_key_input(key);
-		break;
-		
-		default: 
-		break;
-	}
 }

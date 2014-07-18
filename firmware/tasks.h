@@ -24,6 +24,7 @@
 typedef enum
 {
 	TASK_PROCESS_KEYPAD,
+	TASK_PROCESS_STICKS,
 	TASK_END
 } Tasks;
 

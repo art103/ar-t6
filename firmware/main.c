@@ -16,6 +16,7 @@
 #include "stm32f10x.h"
 #include "tasks.h"
 #include "keypad.h"
+#include "sticks.h"
 #include "lcd.h"
 
 volatile uint32_t system_ticks = 0;
@@ -64,8 +65,30 @@ int main(void)
 	// Initialize the keypad scanner (with IRQ wakeup).
 	keypad_init();
 
+	// Initialize the ADC
+	sticks_init();
+
+	/*
+	 * The main loop will sit in low power mode waiting for an interrupt.
+	 *
+	 * The ADC is running in continuous scanning mode with DMA transfer of the results to memory.
+	 * An interrupt will fire when the full conversion scan has completed.
+	 * This will schedule the "PROCESS_STICKS" task.
+	 * The switches (SWA-SWD) will be polled at this point.
+	 *
+	 * Keys (trim, buttons and scroll wheel) are interrupt driven. "PROCESS_KEYS" will be scheduled
+	 * when any of them are pressed.
+	 *
+	 * PPM is driven by Timer0 in interrupt mode autonomously from pwm_data.
+	 *
+	 */
+
 	while (1)
 	{
+		// Process any tasks.
 		task_process_all();
+
+		// Wait for an interrupt
+		PWR_EnterSTANDBYMode();
 	}
 }

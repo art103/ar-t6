@@ -17,6 +17,9 @@
 #include "lcd.h"
 #include "logo.h"
 
+#include "lcd_font_medium.h"
+#include "lcd_font_large.h"
+
 #define LCD_PIN_MASK	(0x1FFF)
 
 #define LCD_DATA		(0xFF)		// D0-D7
@@ -50,10 +53,18 @@
 #define KS0713_STATIC_IND_MODE	(0xAC)	// 2-byte cmd
 //#define KS0713_POWER_SAVE		Display off, Entire display ON.
 
-
-
 static uint8_t contrast = 0x28;
 static uint8_t lcd_buffer[LCD_WIDTH * LCD_HEIGHT / 8];
+
+static uint8_t char_height = 7;
+static uint8_t char_width = 5;
+
+static uint8_t cursor_x = 0;
+static uint8_t cursor_y = 0;
+
+static const unsigned char *font = font_medium;
+static uint16_t font_width = 255 * 5;
+
 
 /**
   * @brief  Send a command to the LCD.
@@ -171,9 +182,9 @@ void lcd_init(void)
   * @param  on: Whether the backlight should be on or off.
   * @retval None
   */
-void lcd_backlight(bool on)
+void lcd_backlight(bool state)
 {
-	if (on)
+	if (state)
 		GPIO_SetBits(GPIOD, LCD_BACKLIGHT);
 	else
 		GPIO_ResetBits(GPIOD, LCD_BACKLIGHT);
@@ -199,41 +210,27 @@ void lcd_update(void)
 	}
 }
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-#include "lcd_font_medium.h"
-#include "lcd_font_large.h"
-
-static uint8_t char_height = 7;
-static uint8_t char_width = 5;
-
-static uint8_t cursor_x = 0;
-static uint8_t cursor_y = 0;
-
-static const unsigned char *font = font_medium;
-static uint16_t font_width = 255 * 5;
-
+/**
+  * @brief  Set / Clean a specific pixel.
+  * @note	Top left is (0,0)
+  * @param  x: horizontal pixel location
+  * @param  y: vertical pixel location
+  * @param  colour: 0 - off, !0 - on
+  * @retval None
+  */
 void lcd_set_pixel(uint8_t x, uint8_t y, uint8_t colour)
 {
   if (colour) lcd_buffer[x+(y/8)*LCD_WIDTH] |= (1 << (y%8));
   else lcd_buffer[x+ (y/8)*LCD_WIDTH] &= ~(1 << (y%8));
 }
 
+/**
+  * @brief  Set cursor position in pixels.
+  * @note	Top left is (0,0)
+  * @param  x: horizontal cursor location
+  * @param  y: vertical cusros location
+  * @retval None
+  */
 void lcd_set_cusor(uint8_t x, uint8_t y)
 {
     if ((y+char_height) >= LCD_HEIGHT) return;
@@ -243,6 +240,13 @@ void lcd_set_cusor(uint8_t x, uint8_t y)
 	cursor_y = y;
 }
 
+/**
+  * @brief  Write a character.
+  * @note	colour is used to invert the output (highlight mode)
+  * @param  c: ASCII character to write
+  * @param  colour: 0 - off, !0 - on
+  * @retval None
+  */
 void lcd_write_char(uint8_t c, uint8_t colour)
 {
 	uint8_t x, y;
@@ -284,6 +288,13 @@ void lcd_write_char(uint8_t c, uint8_t colour)
 	cursor_y += char_height + 1;
 }
 
+/**
+  * @brief  Write a string.
+  * @note	Iterate through a null terminated string.
+  * @param  s: ASCII string to write
+  * @param  colour: 0 - off, !0 - on
+  * @retval None
+  */
 void lcd_write_string(char *s, uint8_t colour)
 {
 	char *ptr = s;

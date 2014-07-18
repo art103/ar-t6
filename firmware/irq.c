@@ -20,6 +20,16 @@
 extern volatile uint32_t system_ticks;
 
 /**
+  * @brief  This function handles the SysTick.
+  * @param  None
+  * @retval None
+  */
+void SysTick_Handler(void)
+{
+	system_ticks++;
+}
+
+/**
   * @brief  ExtI IRQ handler
   * @note   Handles IRQ on GPIO lines 10-15.
   * @param  None
@@ -70,7 +80,7 @@ void EXTI15_10_IRQHandler(void)
   * @param  None
   * @retval None
   */
-void SysTick_Handler(void)
+void DMA1_Channel1_IRQHandler(void)
 {
-	system_ticks++;
+	task_schedule(TASK_PROCESS_STICKS, 0);
 }
