@@ -163,8 +163,6 @@ void lcd_init(void)
 
 	lcd_update();
 	lcd_backlight(TRUE);
-
-	while(1);
 }
 
 /**
@@ -180,6 +178,7 @@ void lcd_backlight(bool on)
 	else
 		GPIO_ResetBits(GPIOD, LCD_BACKLIGHT);
 }
+
 /**
   * @brief  Transfer frame buffer to LCD.
   * @note
@@ -200,3 +199,96 @@ void lcd_update(void)
 	}
 }
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+#include "lcd_font_medium.h"
+#include "lcd_font_large.h"
+
+static uint8_t char_height = 7;
+static uint8_t char_width = 5;
+
+static uint8_t cursor_x = 0;
+static uint8_t cursor_y = 0;
+
+static const unsigned char *font = font_medium;
+static uint16_t font_width = 255 * 5;
+
+void lcd_set_pixel(uint8_t x, uint8_t y, uint8_t colour)
+{
+  if (colour) lcd_buffer[x+(y/8)*LCD_WIDTH] |= (1 << (y%8));
+  else lcd_buffer[x+ (y/8)*LCD_WIDTH] &= ~(1 << (y%8));
+}
+
+void lcd_set_cusor(uint8_t x, uint8_t y)
+{
+    if ((y+char_height) >= LCD_HEIGHT) return;
+    if ((x+char_width) >= LCD_WIDTH) return;
+
+	cursor_x = x;
+	cursor_y = y;
+}
+
+void lcd_write_char(uint8_t c, uint8_t colour)
+{
+	uint8_t x, y;
+	uint8_t row = 0;
+	if ((cursor_y+char_height) >= LCD_HEIGHT) return;
+	else if ((cursor_x+char_width) >= LCD_WIDTH) return;
+
+	if (font == font_large)
+	{
+		if (c <= '9' && c >= '0')
+			c -= '0';
+		else if (c == ' ')
+			c = 13;
+		else if (c == '-')
+			c = 12;
+		else if (c == '+')
+			c = 11;
+		else return;
+	}
+
+	for (x=0; x<char_width; x++ ) {
+		row = 0;
+		for (y=0; y<char_height + 1; y++) {
+			uint8_t state;
+			uint8_t d = font[(c*char_width)+x+row*font_width];
+			if (d & (1 << y%8))
+				state = colour;
+			else
+				state = 1 - colour;
+			lcd_set_pixel(cursor_x+x, cursor_y+y, state);
+			if (y%8 == 7)
+				row++;
+		}
+	}
+	for (y=0; y<char_height+1; y++) lcd_set_pixel(cursor_x+char_width, cursor_y+y, 1-colour);
+
+	cursor_x += char_width + 1;
+	if (cursor_x >= LCD_WIDTH)
+	cursor_y += char_height + 1;
+}
+
+void lcd_write_string(char *s, uint8_t colour)
+{
+	char *ptr = s;
+	uint8_t n = strlen(s);
+
+	for (ptr = s; n > 0; ptr++, n--)
+		lcd_write_char(*ptr, colour);
+}

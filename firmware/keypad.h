@@ -15,7 +15,7 @@
  
 #include <stdint.h>
 
-#define KEYPAD_EXTI_LINES	(EXTI_Line8 | EXTI_Line9 | EXTI_Line10 | EXTI_Line11)
+#define KEYPAD_EXTI_LINES	(EXTI_Line12 | EXTI_Line13 | EXTI_Line14)
 #define ROTARY_EXTI_LINES	(EXTI_Line15)
 
 typedef enum
