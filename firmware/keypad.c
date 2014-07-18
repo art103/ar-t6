@@ -21,21 +21,6 @@
 #define COL_MASK       (0x0F << 8)
 #define ROW(n)         (1 << (12 + n))
 #define COL(n)         (1 << (8 + n))
-// Row 0
-#define KEY_CH1_UP     (~COL(0) & COL_MASK)
-#define KEY_CH1_DN     (~COL(1) & COL_MASK)
-#define KEY_CH2_UP     (~COL(2) & COL_MASK)
-#define KEY_CH2_DN     (~COL(3) & COL_MASK)
-// Row 1
-#define KEY_CH3_UP     (~COL(0) & COL_MASK)
-#define KEY_CH3_DN     (~COL(1) & COL_MASK)
-#define KEY_CH4_UP     (~COL(2) & COL_MASK)
-#define KEY_CH4_DN     (~COL(3) & COL_MASK)
-// Row 2
-//#define KEY_           (~COL(0) & COL_MASK)
-#define KEY_SEL        (~COL(1) & COL_MASK)
-#define KEY_OK         (~COL(2) & COL_MASK)
-#define KEY_CANCEL     (~COL(3) & COL_MASK)
 
 /**
   * @brief  Initialise the keypad scanning pins.
@@ -56,32 +41,37 @@ void keypad_init(void)
 
 	// Configure the Column pins
 	gpioInit.GPIO_Pin = COL_MASK;
-	gpioInit.GPIO_Mode = GPIO_Mode_IN_FLOATING;
+	gpioInit.GPIO_Mode = GPIO_Mode_Out_OD;
+	GPIO_ResetBits(GPIOB, COL_MASK);
 	GPIO_Init(GPIOB, &gpioInit);
 	
 	// Configure the Row pins.
 	gpioInit.GPIO_Pin = ROW_MASK;
-	gpioInit.GPIO_Mode = GPIO_Mode_Out_OD;
+	gpioInit.GPIO_Mode = GPIO_Mode_IPU;
 	GPIO_Init(GPIOB, &gpioInit);
 
 	// Set the cols as Ext. Interrupt sources.
-    GPIO_EXTILineConfig(GPIOB, 8);
-    GPIO_EXTILineConfig(GPIOB, 9);
-    GPIO_EXTILineConfig(GPIOB, 10);
-    GPIO_EXTILineConfig(GPIOB, 11);
+    GPIO_EXTILineConfig(GPIO_PortSourceGPIOB, 12);
+    GPIO_EXTILineConfig(GPIO_PortSourceGPIOB, 13);
+    GPIO_EXTILineConfig(GPIO_PortSourceGPIOB, 14);
     
+
+	gpioInit.GPIO_Pin = 1 << 15;
+	gpioInit.GPIO_Mode = GPIO_Mode_IN_FLOATING;
+	GPIO_Init(GPIOC, &gpioInit);
+
 	// Set the rotary encoder as Ext. Interrupt source.
-    GPIO_EXTILineConfig(GPIOB, 15);
+    GPIO_EXTILineConfig(GPIO_PortSourceGPIOC, 15);
 
 	// Configure keypad lines as falling edge IRQs
     extiInit.EXTI_Mode = EXTI_Mode_Interrupt;
-    extiInit.EXTI_Trigger = EXTI_Trigger_Falling;  
+    extiInit.EXTI_Trigger = EXTI_Trigger_Falling;
     extiInit.EXTI_LineCmd = ENABLE;
     extiInit.EXTI_Line = KEYPAD_EXTI_LINES;
     EXTI_Init(&extiInit);
 
 	// Configure rotary line as rising + falling edge IRQ
-    extiInit.EXTI_Trigger = EXTI_Trigger_Rising_Falling;  
+    extiInit.EXTI_Trigger = EXTI_Trigger_Rising_Falling;
     extiInit.EXTI_Line = ROTARY_EXTI_LINES;
     EXTI_Init(&extiInit);
 
@@ -89,12 +79,8 @@ void keypad_init(void)
     nvicInit.NVIC_IRQChannelPreemptionPriority = 0x0F;
     nvicInit.NVIC_IRQChannelSubPriority = 0x0F;
     nvicInit.NVIC_IRQChannelCmd = ENABLE;
-
-	// Enable the NVIC lines
-    nvicInit.NVIC_IRQChannel = EXTI9_5_IRQn;
-    NVIC_Init(&nvicInit); 
     nvicInit.NVIC_IRQChannel = EXTI15_10_IRQn;
-    NVIC_Init(&nvicInit); 
+    NVIC_Init(&nvicInit);
 
 	task_register(TASK_PROCESS_KEYPAD, keypad_process);
 }
@@ -112,22 +98,22 @@ KEYPAD_KEY keypad_scan_keys(void)
 {
 	KEYPAD_KEY key = KEY_NONE;
 	bool found = FALSE;
-	uint8_t row;
-	uint16_t cols;
+	uint16_t rows;
+	uint8_t col;
 	
-	for (row = 0; row < 3; ++row)
+	for (col = 0; col < 4; ++col)
 	{
-		// Walk a '0' down the rows.
-		GPIO_SetBits(GPIOB, ROW_MASK);
-		GPIO_ResetBits(GPIOB, ROW(row));
+		// Walk a '0' down the cols.
+		GPIO_SetBits(GPIOB, COL_MASK);
+		GPIO_ResetBits(GPIOB, COL(col));
 		
 		// Allow some time for the GPIO to settle.
-		delay_us(500);
+		delay_us(100);
 		
-		// The columns are pulled high externally. 
-		// Any '0' seen here is due to a switch connecting to our active '0' on a row.
-		cols = GPIO_ReadInputData(GPIOB);
-		if ((cols & COL_MASK) != COL_MASK)
+		// The rows are pulled high externally.
+		// Any '0' seen here is due to a switch connecting to our active '0' on a column.
+		rows = GPIO_ReadInputData(GPIOB);
+		if ((rows & ROW_MASK) != ROW_MASK)
 		{
 			// Only support one key pressed at a time.
 			found = TRUE;
@@ -135,51 +121,54 @@ KEYPAD_KEY keypad_scan_keys(void)
 		}
 	}
 
-	// Set the rows to all off.
-	GPIO_ResetBits(GPIOB, ROW_MASK);
-	
+	// Set the cols to all '0'.
+	GPIO_ResetBits(GPIOB, COL_MASK);
+
 	if (found)
 	{
-		cols = ~cols & COL_MASK;
-		
-		switch (row)
+		rows = ~rows & ROW_MASK;
+
+		switch (col)
 		{
 			case 0:
-				if ((cols & COL(0)) != 0)
+				if ((rows & ROW(0)) != 0)
 					key = KEY_CH1_UP;
-				else if ((cols & COL(1)) != 0)
-					key = KEY_CH1_DN;
-				else if ((cols & COL(2)) != 0)
-					key = KEY_CH2_UP;
-				else if ((cols & COL(3)) != 0)
-					key = KEY_CH2_DN;
+				else if ((rows & ROW(1)) != 0)
+					key = KEY_CH3_UP;
 			break;
 			
 			case 1:
-				if ((cols & COL(0)) != 0)
-					key = KEY_CH3_UP;
-				else if ((cols & COL(1)) != 0)
+				if ((rows & ROW(0)) != 0)
+					key = KEY_CH1_DN;
+				else if ((rows & ROW(1)) != 0)
 					key = KEY_CH3_DN;
-				else if ((cols & COL(2)) != 0)
-					key = KEY_CH4_UP;
-				else if ((cols & COL(3)) != 0)
-					key = KEY_CH4_DN;
+				else if ((rows & ROW(2)) != 0)
+					key = KEY_SEL;
 			break;
 			
 			case 2:
-				if ((cols & COL(1)) != 0)
-					key = KEY_SEL;
-				else if ((cols & COL(2)) != 0)
+				if ((rows & ROW(0)) != 0)
+					key = KEY_CH2_UP;
+				else if ((rows & ROW(1)) != 0)
+					key = KEY_CH4_UP;
+				else if ((rows & ROW(2)) != 0)
 					key = KEY_OK;
-				else if ((cols & COL(3)) != 0)
+			break;
+
+			case 3:
+				if ((rows & ROW(0)) != 0)
+					key = KEY_CH2_DN;
+				else if ((rows & ROW(1)) != 0)
+					key = KEY_CH4_DN;
+				else if ((rows & ROW(2)) != 0)
 					key = KEY_CANCEL;
 			break;
-			
+
 			default:
 			break;
 		}
 	}
-	
+
 	return key;
 }
 
@@ -199,10 +188,10 @@ void keypad_process(uint32_t data)
 		switch (data)
 		{
 			case 1:
-				key = KEY_LEFT;
+				key = KEY_RIGHT;
 			break;
 			case 2:
-				key = KEY_RIGHT;
+				key = KEY_LEFT;
 			break;
 			default:
 			break;

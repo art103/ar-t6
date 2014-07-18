@@ -18,6 +18,30 @@
 #include "keypad.h"
 #include "lcd.h"
 
+volatile uint32_t system_ticks = 0;
+
+/**
+  * @brief  Delay timer using the system tick timer
+  * @param  delay: delay in ms.
+  * @retval None
+  */
+void delay_ms(uint32_t delay)
+{
+	uint32_t start = system_ticks;
+	while (system_ticks <  start + delay);
+}
+
+/**
+  * @brief  Spin loop us delay routine
+  * @param  delay: delay in us.
+  * @retval None
+  */
+void delay_us(uint32_t delay)
+{
+	volatile uint32_t i;
+	for (i=0; i < delay * 3; ++i);
+}
+
 /**
   * @brief  Main Loop for non-IRQ based work
   * @note   Deals with init and non time critical work.
@@ -37,8 +61,6 @@ int main(void)
 	// Initialize the LCD and display logo.
 	lcd_init();
 
-	while(1);
-
 	// Initialize the keypad scanner (with IRQ wakeup).
 	keypad_init();
 
@@ -46,19 +68,4 @@ int main(void)
 	{
 		task_process_all();
 	}
-}
-
-uint32_t system_ticks = 0;
-
-void delay_ms(uint32_t delay)
-{
-	uint32_t start = system_ticks;
-	delay_us(delay * 1000);
-	//while (system_ticks == start);
-}
-
-void delay_us(uint32_t delay)
-{
-	volatile uint32_t i;
-	for (i=0; i < delay * 3; ++i);
 }

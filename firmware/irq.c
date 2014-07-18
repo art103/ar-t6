@@ -17,7 +17,7 @@
 #include "tasks.h"
 #include "keypad.h"
 
-extern uint32_t system_ticks;
+extern volatile uint32_t system_ticks;
 
 /**
   * @brief  ExtI IRQ handler
@@ -41,7 +41,7 @@ void EXTI15_10_IRQHandler(void)
 	if ((flags & ROTARY_EXTI_LINES) != 0)
 	{
 		// Read the encoder lines
-		uint16_t gpio = GPIO_ReadInputData(GPIOB);
+		uint16_t gpio = GPIO_ReadInputData(GPIOC);
 		
 		if ((gpio & (1 << 15)) == 0)
 		{
@@ -62,25 +62,6 @@ void EXTI15_10_IRQHandler(void)
 		
 		// Clear the IRQ
 		EXTI->PR = ROTARY_EXTI_LINES;
-	}
-}
-
-/**
-  * @brief  ExtI IRQ handler
-  * @note   Handles IRQ on GPIO lines 5-9.
-  * @param  None
-  * @retval None
-  */
-void EXTI9_5_IRQHandler(void)
-{
-	uint32_t flags = EXTI->PR;
-	if ((flags & KEYPAD_EXTI_LINES) != 0)
-	{
-		// Schedule the keys to be scanned.
-		task_schedule(TASK_PROCESS_KEYPAD, 0);
-		
-		// Clear the IRQ
-		EXTI->PR = KEYPAD_EXTI_LINES;
 	}
 }
 
