@@ -12,7 +12,9 @@
  *
  * Author: Richard Taylor (richard@artaylor.co.uk)
  */
- 
+#ifndef _TASKS_H
+#define _TASKS_H
+
  /* 
   * Module to provide very simple round robin task scheduler.
   */
@@ -58,3 +60,5 @@ void task_schedule(Tasks task, uint32_t data);
   * @retval None
   */
 void task_process_all(void);
+
+#endif // _TASKS_H

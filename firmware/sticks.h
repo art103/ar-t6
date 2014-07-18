@@ -13,8 +13,8 @@
  * Author: Richard Taylor (richard@artaylor.co.uk)
  */
 
-#ifndef _KEYPAD_H
-#define _KEYPAD_H
+#ifndef _STICKS_H
+#define _STICKS_H
 
 #include <stdint.h>
 
@@ -66,5 +66,4 @@ KEYPAD_KEY keypad_scan(void);
   */
 void keypad_process(uint32_t data);
 
-#endif // _KEYPAD_H
-
+#endif // _STICKS_H
