@@ -38,12 +38,12 @@ int main(void)
 	// Initialize the task loop.
 	task_init();
 
+	// Initialize the keypad scanner (with IRQ wakeup).
+	keypad_init();
+
 	// Initialize the LCD and display logo.
 	lcd_init();
 	gui_init();
-
-	// Initialize the keypad scanner (with IRQ wakeup).
-	keypad_init();
 
 	// Initialize the ADC / DMA
 	sticks_init();

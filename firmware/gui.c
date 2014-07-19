@@ -16,7 +16,29 @@
 #include "stm32f10x.h"
 #include "tasks.h"
 #include "lcd.h"
+#include "sticks.h"
 #include "gui.h"
+
+// Message Popup
+#define MSG_X	6
+#define MSG_Y	16
+#define MSG_H	32
+
+// Stick boxes
+#define BOX_W	24
+#define BOX_H	24
+#define BOX_Y	35
+#define BOX_L_X	30
+#define BOX_R_X	72
+// POT bars
+#define POT_W	2
+#define POT_Y	(BOX_Y + BOX_H)
+#define POT_L_X 59
+#define POT_R_X 65
+// Switch Labels
+#define SW_Y	(BOX_Y + 6)
+#define SW_L_X	(BOX_L_X - 20)
+#define SW_R_X	(BOX_R_X + BOX_W + 4)
 
 typedef enum
 {
@@ -26,11 +48,11 @@ typedef enum
 	UPDATE_KEYPRESS
 } UPDATE_TYPE;
 
-static GUI_LAYOUT new_layout = GUI_LAYOUT_NONE;
+static volatile GUI_LAYOUT new_layout = GUI_LAYOUT_NONE;
 static GUI_LAYOUT current_layout = GUI_LAYOUT_SPLASH;
-static GUI_MSG new_msg = GUI_MSG_NONE;
+static volatile GUI_MSG new_msg = GUI_MSG_NONE;
 static GUI_MSG current_msg = GUI_MSG_NONE;
-static KEYPAD_KEY key_press = KEY_NONE;
+static volatile KEYPAD_KEY key_press = KEY_NONE;
 static uint32_t gui_timeout = 0;
 
 static const char *msg[GUI_MSG_MAX] = {
@@ -40,6 +62,9 @@ static const char *msg[GUI_MSG_MAX] = {
 		"OK",
 		"Operation Cancelled."
 };
+
+static void gui_show_sticks(void);
+static void gui_show_battery(int x, int y);
 
 
 /**
@@ -51,6 +76,7 @@ static const char *msg[GUI_MSG_MAX] = {
 void gui_init(void)
 {
 	task_register(TASK_PROCESS_GUI, gui_process);
+	gui_set_layout(GUI_LAYOUT_SPLASH);
 }
 
 /**
@@ -61,19 +87,46 @@ void gui_init(void)
   */
 void gui_process(uint32_t data)
 {
+	bool full = FALSE;
+
+	if (gui_timeout != 0)
+	{
+		new_layout = current_layout;
+		gui_timeout = 0;
+	}
+
 	if (new_layout)
 	{
 		current_layout = new_layout;
 		// Clear the screen.
 		lcd_draw_rect(0, 0, LCD_WIDTH - 1, LCD_HEIGHT - 1, 0, RECT_FILL);
+		lcd_set_cursor(0, 0);
+
+		full = TRUE;
+		new_layout = GUI_LAYOUT_NONE;
 	}
 
-	if (gui_timeout != 0)
+	if (new_msg)
 	{
-		new_layout = current_layout;
-		// Clear the screen.
-		lcd_draw_rect(0, 0, LCD_WIDTH - 1, LCD_HEIGHT - 1, 0, RECT_FILL);
+		current_msg = new_msg;
+
+		// Draw the background.
+		lcd_draw_rect(MSG_X, MSG_Y, LCD_WIDTH - MSG_X, MSG_Y + MSG_H, 0, RECT_FILL);
+		lcd_draw_rect(MSG_X, MSG_Y, LCD_WIDTH - MSG_X, MSG_Y + MSG_H, 1, RECT_NONE);
+		lcd_draw_rect(MSG_X + 2, MSG_Y + 2, LCD_WIDTH - MSG_X - 2, MSG_Y + MSG_H - 2, 1, RECT_NONE);
+		// Draw the message
+		lcd_set_cursor(MSG_X + 4, MSG_Y + 4);
+		lcd_draw_message(msg[new_msg], 1);
+
+		new_msg = GUI_MSG_NONE;
+
+		lcd_update();
+
+		return;
 	}
+
+	if (key_press != KEY_NONE)
+		data = UPDATE_KEYPRESS;
 
 	switch (current_layout)
 	{
@@ -82,96 +135,85 @@ void gui_process(uint32_t data)
 		break;
 
 		case GUI_LAYOUT_SPLASH:
-			if (new_layout)
+			if (full)
 			{
-				// Draw the whole splash screen.
+				// Draw the main screen.
+				lcd_write_string("SPLASH", 0);
 			}
 		break;
 
 		case GUI_LAYOUT_MAIN:
-			#define BOX_W	24
-			#define BOX_H	24
-
-			#define BOX_Y	35
-			#define BOX_L_X	30
-			#define BOX_R_X	72
-
-			#define POT_W	2
-			#define POT_Y	(BOX_Y + BOX_H)
-			#define POT_L_X 59
-			#define POT_R_X 65
-
-			#define SW_Y	(BOX_Y + 6)
-			#define SW_L_X	(BOX_L_X - 20)
-			#define SW_R_X	(BOX_R_X + BOX_W + 4)
-
-			if (new_layout)
+			if (full)
 			{
 				// Draw the main screen.
-
-				// Stick Boxes
-				lcd_draw_rect(BOX_L_X, BOX_Y, BOX_L_X + BOX_W, BOX_Y + BOX_H, 1, RECT_ROUNDED);
-				lcd_draw_rect(BOX_R_X, BOX_Y, BOX_R_X + BOX_W, BOX_Y + BOX_H, 1, RECT_ROUNDED);
+				lcd_write_string("MAIN", 0);
 			}
+
 			switch (data)
 			{
 				case UPDATE_STICKS:
 				{
-					int x, y;
-					float *pFloat;
-					sticks_get(&pFloat);
-
-					// Stick boxes
-					lcd_draw_rect(BOX_L_X, BOX_Y, BOX_L_X + BOX_W, BOX_Y + BOX_H, 0, RECT_FILL);
-					lcd_draw_rect(BOX_R_X, BOX_Y, BOX_R_X + BOX_W, BOX_Y + BOX_H, 0, RECT_FILL);
-					lcd_draw_rect(BOX_L_X, BOX_Y, BOX_L_X + BOX_W, BOX_Y + BOX_H, 1, RECT_ROUNDED);
-					lcd_draw_rect(BOX_R_X, BOX_Y, BOX_R_X + BOX_W, BOX_Y + BOX_H, 1, RECT_ROUNDED);
-
-					// Centre point
-					lcd_draw_rect(BOX_L_X + BOX_W / 2 - 1, BOX_Y + BOX_H / 2 - 1, BOX_L_X + BOX_W / 2 + 1, BOX_Y + BOX_H / 2 + 1, 1, RECT_ROUNDED);
-					lcd_draw_rect(BOX_R_X + BOX_W / 2 - 1, BOX_Y + BOX_H / 2 - 1, BOX_R_X + BOX_W / 2 + 1, BOX_Y + BOX_H / 2 + 1, 1, RECT_ROUNDED);
-
-					// Stick position (Right)
-					x = BOX_W / 2 + (BOX_W-2) * pFloat[0] / 200;
-					y = BOX_W / 2 + (BOX_W-2) * -pFloat[1] / 200;
-					lcd_draw_rect(BOX_R_X + x - 2, BOX_Y + y - 2, BOX_R_X + x + 2, BOX_Y + y + 2, 1, RECT_ROUNDED);
-
-					// Stick position (Left)
-					x = BOX_W / 2 + (BOX_W-2) * pFloat[3] / 200;
-					y = BOX_W / 2 + (BOX_W-2) * -pFloat[2] / 200;
-					lcd_draw_rect(BOX_L_X + x - 2, BOX_Y + y - 2, BOX_L_X + x + 2, BOX_Y + y + 2, 1, RECT_ROUNDED);
-
-					// VRB
-					x = BOX_H * (100 + pFloat[5]) / 200;
-					lcd_draw_rect(POT_L_X, POT_Y - BOX_H, POT_L_X + POT_W, POT_Y, 0, RECT_FILL);
-					lcd_draw_rect(POT_L_X, POT_Y - x, POT_L_X + POT_W, POT_Y, 1, RECT_FILL);
-
-					// VRA
-					x = BOX_H * (100 + pFloat[4]) / 200;
-					lcd_draw_rect(POT_R_X, POT_Y - BOX_H, POT_R_X + POT_W, POT_Y, 0, RECT_FILL);
-					lcd_draw_rect(POT_R_X, POT_Y - x, POT_R_X + POT_W, POT_Y, 1, RECT_FILL);
-
-					x = keypad_get_switches();
-					lcd_set_cursor(SW_L_X, SW_Y);
-					lcd_write_string("SWB", (x&SWITCH_SWB)?1:0);
-					lcd_set_cursor(SW_L_X, SW_Y + 8);
-					lcd_write_string("SWD", (x&SWITCH_SWD)?1:0);
-					lcd_set_cursor(SW_R_X, SW_Y);
-					lcd_write_string("SWA", (x&SWITCH_SWA)?1:0);
-					lcd_set_cursor(SW_R_X, SW_Y + 8);
-					lcd_write_string("SWC", (x&SWITCH_SWC)?1:0);
+					gui_show_sticks();
+					gui_show_battery(83, 0);
 				}
 				break;
 
-				case UPDATE_MSG:
+				case UPDATE_KEYPRESS:
+					if (key_press == KEY_RIGHT)
+						gui_set_layout(GUI_LAYOUT_MAIN2);
+					else if (key_press == KEY_LEFT)
+						gui_set_layout(GUI_LAYOUT_MAIN3);
 				break;
 			}
 		break;
 
 		case GUI_LAYOUT_MAIN2:
+			if (full)
+			{
+				// Draw the main screen.
+				lcd_write_string("MAIN2", 0);
+			}
+			switch (data)
+			{
+				case UPDATE_STICKS:
+				{
+					//gui_show_sticks();
+					//gui_show_battery(83, 0);
+				}
+				break;
+
+				case UPDATE_KEYPRESS:
+					if (key_press == KEY_RIGHT)
+						gui_set_layout(GUI_LAYOUT_MAIN3);
+					else if (key_press == KEY_LEFT)
+						gui_set_layout(GUI_LAYOUT_MAIN);
+				break;
+			}
 		break;
 
 		case GUI_LAYOUT_MAIN3:
+			if (full)
+			{
+				// Draw the main screen.
+				lcd_write_string("MAIN3", 0);
+			}
+
+			switch (data)
+			{
+				case UPDATE_STICKS:
+				{
+					//gui_show_sticks();
+					//gui_show_battery(83, 0);
+				}
+				break;
+
+				case UPDATE_KEYPRESS:
+					if (key_press == KEY_RIGHT)
+						gui_set_layout(GUI_LAYOUT_MAIN);
+					else if (key_press == KEY_LEFT)
+						gui_set_layout(GUI_LAYOUT_MAIN2);
+				break;
+			}
 		break;
 
 		case GUI_LAYOUT_SYSTEM_MENU:
@@ -181,39 +223,20 @@ void gui_process(uint32_t data)
 		break;
 
 		case GUI_LAYOUT_STICK_CALIBRATION:
-			if (new_layout)
+			if (full)
 			{
 				// Draw the whole screen.
-				lcd_set_cursor(0, 56);
 				lcd_write_string("CALIBRATION", 0);
 			}
 			switch (data)
 			{
 				case UPDATE_STICKS:
 				break;
-
-				case UPDATE_MSG:
-				break;
 			}
 		break;
 	}
 
-	if (new_msg)
-	{
-		current_msg = new_msg;
-
-		// Draw the background.
-		lcd_draw_rect(6, 4, LCD_WIDTH - 6, LCD_HEIGHT - 22, 0, RECT_FILL);
-		lcd_draw_rect(6, 4, LCD_WIDTH - 6, LCD_HEIGHT - 22, 1, RECT_NONE);
-		lcd_draw_rect(8, 6, LCD_WIDTH - 8, LCD_HEIGHT - 24, 1, RECT_NONE);
-		// Draw the message
-		lcd_set_cursor(10, 12);
-		lcd_draw_message(msg[new_msg], 1);
-
-	}
-
-	new_layout = GUI_LAYOUT_NONE;
-	new_msg = GUI_MSG_NONE;
+	key_press = KEY_NONE;
 
 	lcd_update();
 
@@ -286,4 +309,77 @@ void gui_set_message(GUI_MSG msg, uint16_t timeout)
 	gui_timeout = timeout;
 
 	task_schedule(TASK_PROCESS_GUI, UPDATE_MSG, 0);
+}
+
+
+static void gui_show_sticks(void)
+{
+	int x, y;
+	float *pFloat;
+	sticks_get(&pFloat);
+
+	// Stick boxes
+	lcd_draw_rect(BOX_L_X, BOX_Y, BOX_L_X + BOX_W, BOX_Y + BOX_H, 0, RECT_FILL);
+	lcd_draw_rect(BOX_R_X, BOX_Y, BOX_R_X + BOX_W, BOX_Y + BOX_H, 0, RECT_FILL);
+	lcd_draw_rect(BOX_L_X, BOX_Y, BOX_L_X + BOX_W, BOX_Y + BOX_H, 1, RECT_ROUNDED);
+	lcd_draw_rect(BOX_R_X, BOX_Y, BOX_R_X + BOX_W, BOX_Y + BOX_H, 1, RECT_ROUNDED);
+
+	// Centre point
+	lcd_draw_rect(BOX_L_X + BOX_W / 2 - 1, BOX_Y + BOX_H / 2 - 1, BOX_L_X + BOX_W / 2 + 1, BOX_Y + BOX_H / 2 + 1, 1, RECT_ROUNDED);
+	lcd_draw_rect(BOX_R_X + BOX_W / 2 - 1, BOX_Y + BOX_H / 2 - 1, BOX_R_X + BOX_W / 2 + 1, BOX_Y + BOX_H / 2 + 1, 1, RECT_ROUNDED);
+
+	// Stick position (Right)
+	x = BOX_W / 2 + (BOX_W-2) * pFloat[0] / 200;
+	y = BOX_W / 2 + (BOX_W-2) * -pFloat[1] / 200;
+	lcd_draw_rect(BOX_R_X + x - 2, BOX_Y + y - 2, BOX_R_X + x + 2, BOX_Y + y + 2, 1, RECT_ROUNDED);
+
+	// Stick position (Left)
+	x = BOX_W / 2 + (BOX_W-3) * pFloat[3] / 200;
+	y = BOX_W / 2 + (BOX_W-3) * -pFloat[2] / 200;
+	lcd_draw_rect(BOX_L_X + x - 2, BOX_Y + y - 2, BOX_L_X + x + 2, BOX_Y + y + 2, 1, RECT_ROUNDED);
+
+	// VRB
+	x = BOX_H * (100 + pFloat[5]) / 200;
+	lcd_draw_rect(POT_L_X, POT_Y - BOX_H, POT_L_X + POT_W, POT_Y, 0, RECT_FILL);
+	lcd_draw_rect(POT_L_X, POT_Y - x, POT_L_X + POT_W, POT_Y, 1, RECT_FILL);
+
+	// VRA
+	x = BOX_H * (100 + pFloat[4]) / 200;
+	lcd_draw_rect(POT_R_X, POT_Y - BOX_H, POT_R_X + POT_W, POT_Y, 0, RECT_FILL);
+	lcd_draw_rect(POT_R_X, POT_Y - x, POT_R_X + POT_W, POT_Y, 1, RECT_FILL);
+
+	// Switches
+	x = keypad_get_switches();
+	lcd_set_cursor(SW_L_X, SW_Y);
+	lcd_write_string("SWB", (x&SWITCH_SWB)?1:0);
+	lcd_set_cursor(SW_L_X, SW_Y + 8);
+	lcd_write_string("SWD", (x&SWITCH_SWD)?1:0);
+	lcd_set_cursor(SW_R_X, SW_Y);
+	lcd_write_string("SWA", (x&SWITCH_SWA)?1:0);
+	lcd_set_cursor(SW_R_X, SW_Y + 8);
+	lcd_write_string("SWC", (x&SWITCH_SWC)?1:0);
+}
+
+#define BATT_MIN	99
+#define BATT_MAX	126
+
+static void gui_show_battery(int x, int y)
+{
+	float *pFloat;
+	int batt;
+	int level;
+	sticks_get(&pFloat);
+	batt = ((100 + pFloat[6]) / 2) * 129 / 100;
+
+	level = 12 * (batt - BATT_MIN) / (BATT_MAX - BATT_MIN);
+	// Icon
+	lcd_draw_rect(x, y+1, x+12, y+6, 1, RECT_ROUNDED);
+	lcd_draw_rect(x+12, y+2, x+14, y+5, 1, RECT_ROUNDED);
+
+	lcd_draw_rect(x, y+2, x+level, y+5, 1, RECT_FILL);
+
+	// Voltage
+	lcd_set_cursor(x + 15, y);
+	lcd_write_int(batt, 1, INT_DIV10);
+	lcd_write_string("v", 1);
 }

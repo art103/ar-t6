@@ -21,6 +21,7 @@
 #include "gui.h"
 
 #define NUM_ADC_CHANNELS	7
+#define NUM_TO_CALIBRATE	4
 
 typedef struct _adc_cal
 {
@@ -44,7 +45,7 @@ static ADC_CAL cal_data[NUM_ADC_CHANNELS] = {
 		{0, 4096, 2048},
 		{0, 4096, 2048},
 		{0, 4096, 2048},
-		{0, 4096, 2048},
+		{0, 3100, 1550},
 };
 static float analog[NUM_ADC_CHANNELS];
 
@@ -156,17 +157,19 @@ void sticks_process(uint32_t data)
 			else
 			{
 				// Set the stick centres.
-				for (i=0; i<4; ++i)
+				for (i=0; i<NUM_TO_CALIBRATE; ++i)
 				{
 					cal_data[i].centre = adc_data[i];
 				}
 
+				/*
 				// Set the POT centres.
 				cal_data[4].centre = cal_data[4].min + ((cal_data[4].max - cal_data[4].min) / 2);
 				cal_data[5].centre = cal_data[5].min + ((cal_data[5].max - cal_data[5].min) / 2);
 
 				// VBatt has no centre.
 				cal_data[6].centre = 0;
+				*/
 
 				// ToDo: Write the calibration data into EEPROM.
 				// eeprom_set_data(EEPROM_ADC_CAL, cal_data);
@@ -188,19 +191,11 @@ void sticks_process(uint32_t data)
 		else if (cal_state == CAL_LIMITS)
 		{
 			// Set the limits on all but VBatt.
-			for (i=0; i<6; ++i)
+			for (i=0; i<NUM_TO_CALIBRATE; ++i)
 			{
 				if (adc_data[i] < cal_data[i].min) cal_data[i].min = adc_data[i];
 				if (adc_data[i] > cal_data[i].max) cal_data[i].max = adc_data[i];
-
-				lcd_set_cursor(5, 8*i);
-				lcd_write_int(cal_data[i].min, 1, 0);
-				lcd_set_cursor(40, 8*i);
-				lcd_write_int(cal_data[i].max, 1, 0);
-				lcd_set_cursor(75, 8*i);
-				lcd_write_int(adc_data[i], 1, 0);
 			}
-
 		}
 	}
 
@@ -209,7 +204,10 @@ void sticks_process(uint32_t data)
 	{
 		int32_t range = cal_data[i].max - cal_data[i].min;
 		float tmp = (int32_t)adc_data[i] - (int32_t)cal_data[i].centre;
-		analog[i] = 200.0 * tmp / range;
+		tmp = 200.0 * tmp / range;
+		if (tmp > 100) tmp = 100;
+		if (tmp < -100) tmp = -100;
+		analog[i] = tmp;
 	}
 
 	gui_update_sticks();
@@ -232,7 +230,7 @@ void sticks_calibrate(void)
 
 	cal_state = CAL_LIMITS;
 
-	for (i=0; i<6; ++i)
+	for (i=0; i<NUM_TO_CALIBRATE; ++i)
 	{
 		cal_data[i].min = -1;
 		cal_data[i].max = 0;

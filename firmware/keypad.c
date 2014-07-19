@@ -16,6 +16,7 @@
 #include "stm32f10x.h"
 #include "keypad.h"
 #include "tasks.h"
+#include "gui.h"
 
 #define ROW_MASK       (0x07 << 12)
 #define COL_MASK       (0x0F << 8)
@@ -141,45 +142,7 @@ static void keypad_process(uint32_t data)
 	if (key != 0)
 	{
 		keys_pressed |= key;
-
-		switch (key)
-		{
-			case KEY_CH1_UP:
-				// mixer_adjust_trim(1, 1);
-			break;
-			case KEY_CH1_DN:
-				// mixer_adjust_trim(1, -1);
-			break;
-			case KEY_CH2_UP:
-				// mixer_adjust_trim(2, 1);
-			break;
-			case KEY_CH2_DN:
-				// mixer_adjust_trim(2, -1);
-			break;
-			case KEY_CH3_UP:
-				// mixer_adjust_trim(3, 1);
-			break;
-			case KEY_CH3_DN:
-				// mixer_adjust_trim(3, -1);
-			break;
-			case KEY_CH4_UP:
-				// mixer_adjust_trim(4, 1);
-			break;
-			case KEY_CH4_DN:
-				// mixer_adjust_trim(4, -1);
-			break;
-
-			case KEY_OK:
-			case KEY_SEL:
-			case KEY_CANCEL:
-			case KEY_LEFT:
-			case KEY_RIGHT:
-				// gui_key_input(key);
-			break;
-
-			default:
-			break;
-		}
+		gui_input_key(key);
 	}
 }
 

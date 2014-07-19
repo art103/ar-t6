@@ -27,8 +27,12 @@ typedef enum {
 typedef enum {
 	RECT_NONE = 0x00,
 	RECT_ROUNDED = 0x01,
-	RECT_FILL = 0x02
-} LCD_RECT_FLAGS;
+	RECT_FILL = 0x02,
+
+	INT_SIGN = 0x04,
+	INT_DIV10 = 0x08,
+
+} LCD_FLAGS;
 
 void lcd_init(void);
 void lcd_backlight(bool state);
@@ -39,7 +43,7 @@ void lcd_set_cursor(uint8_t x, uint8_t y);
 void lcd_set_char_size(LCD_CHAR_SIZE s);
 void lcd_write_char(uint8_t c, uint8_t colour);
 void lcd_write_string(char *s, uint8_t colour);
-void lcd_write_int(int32_t val, uint8_t colour, bool show_sign);
+void lcd_write_int(int32_t val, uint8_t colour, uint8_t flags);
 void lcd_write_float(float val, uint8_t colour, bool show_sign);
 void lcd_draw_line(uint8_t x1, uint8_t y1, uint8_t x2, uint8_t y2, uint8_t colour);
 void lcd_draw_rect(uint8_t x1, uint8_t y1, uint8_t x2, uint8_t y2, uint8_t colour, uint8_t flags);

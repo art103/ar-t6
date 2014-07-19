@@ -359,9 +359,10 @@ static int16_t u;
   * @note
   * @param  val: Signed integer (-99999 to 99999)
   * @param  colour: 0 - off, !0 - on
+  * @param  flags: LCD_FLAGS
   * @retval None
   */
-void lcd_write_int(int32_t val, uint8_t colour, bool show_sign)
+void lcd_write_int(int32_t val, uint8_t colour, uint8_t flags)
 {
 	if (val < 0) u = -val;
 	else u = val;
@@ -375,23 +376,22 @@ void lcd_write_int(int32_t val, uint8_t colour, bool show_sign)
 	u -= t * 10;
 
 	if (val < 0) lcd_write_char('-', colour);
-	if (show_sign)
-	{
-		if (val >= 0) lcd_write_char('+', colour);
-	}
+	//if (val >= 0) lcd_write_char('+', colour);
 
 	if (tth > 0)
 		lcd_write_char(tth + '0', colour);
+
 	if (tth > 0 || th > 0)
 		lcd_write_char(th + '0', colour);
 
 	if (tth > 0 || th > 0 || h > 0)
 		lcd_write_char(h + '0', colour);
-	else if (!show_sign)
-		lcd_write_char(' ', colour);
 
-	if (tth > 0 || th > 0 || h > 0 || t > 0 || !show_sign)
+	if (tth > 0 || th > 0 || h > 0 || t > 0)
 		lcd_write_char(t + '0', colour);
+	if (flags & INT_DIV10)
+		lcd_write_char('.', colour);
+
 	lcd_write_char(u + '0', colour);
 }
 
