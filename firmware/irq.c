@@ -17,6 +17,7 @@
 #include "tasks.h"
 #include "keypad.h"
 #include "sticks.h"
+#include "mixer.h"
 #include "art6.h"
 
 /**
@@ -82,18 +83,21 @@ void EXTI15_10_IRQHandler(void)
   */
 void DMA1_Channel1_IRQHandler(void)
 {
-	static int32_t tmp;
-	static int i;
-	// Scale channels to -1024 to +1024.
-	for (i=0; i<NUM_INPUT_CHANNELS; ++i)
+	int32_t tmp;
+	int i;
+	// Scale channels to -STICK_LIMIT to +STICK_LIMIT.
+	for (i=0; i<STICK_INPUT_CHANNELS; ++i)
 	{
 		tmp = adc_data[i];
 		tmp -= cal_data[i].centre;
-		tmp *= 2048;
+		tmp *= 2*STICK_LIMIT;
 		tmp /= cal_data[i].max - cal_data[i].min;
-		g_chans512[i] = tmp;
+		stick_data[i] = tmp;
 	}
 
-	task_schedule(TASK_PROCESS_STICKS, 0, 100);
+	// Run the mixer.
+	mixer_update();
+
+	task_schedule(TASK_PROCESS_STICKS, 0, 40);
 	DMA_ClearITPendingBit(DMA_IT_TC);
 }

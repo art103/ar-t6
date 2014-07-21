@@ -111,8 +111,8 @@ PACK(typedef struct t_EEGeneral {
     uint8_t   frskyinternalalarm:1;
     uint8_t   spare_filter ;		// No longer needed, left for eepe compatibility for now
     uint8_t   lightAutoOff;
-    uint8_t   templateSetup;  //RETA order according to chout_ar array
-    int8_t    PPM_Multiplier;
+    uint8_t   templateSetup;  		//RETA order according to chout_ar array
+    int8_t    PPM_Multiplier;		// Used to increase PPM-IN resolution in x0.1 steps: (10+n)/10.
     uint8_t   unused1;
     uint8_t   unused2:4;
     uint8_t   hideNameOnSplash:1;
@@ -346,7 +346,7 @@ PACK(typedef struct t_ModelData {
     uint8_t   swashType:3;
     uint8_t   swashCollectiveSource;
     uint8_t   swashRingValue;
-    int8_t    ppmFrameLength;    //0=22.5  (10msec-30msec) 0.5msec increments
+    int8_t    ppmFrameLength;    		//0=22.5  (10msec-30msec) 0.5msec increments
     MixData   mixData[MAX_MIXERS];
     LimitData limitData[NUM_CHNOUT];
     ExpoData  expoData[4];

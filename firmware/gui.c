@@ -17,6 +17,7 @@
 #include "tasks.h"
 #include "lcd.h"
 #include "sticks.h"
+#include "mixer.h"
 #include "gui.h"
 
 // Message Popup
@@ -65,7 +66,7 @@ static const char *msg[GUI_MSG_MAX] = {
 
 static void gui_show_sticks(void);
 static void gui_show_battery(int x, int y);
-
+static void gui_draw_trim(int x, int y, bool h_v, int value);
 
 /**
   * @brief  Initialise the GUI.
@@ -76,7 +77,7 @@ static void gui_show_battery(int x, int y);
 void gui_init(void)
 {
 	task_register(TASK_PROCESS_GUI, gui_process);
-	gui_set_layout(GUI_LAYOUT_SPLASH);
+	gui_navigate(GUI_LAYOUT_SPLASH);
 }
 
 /**
@@ -112,8 +113,8 @@ void gui_process(uint32_t data)
 
 		// Draw the background.
 		lcd_draw_rect(MSG_X, MSG_Y, LCD_WIDTH - MSG_X, MSG_Y + MSG_H, 0, RECT_FILL);
-		lcd_draw_rect(MSG_X, MSG_Y, LCD_WIDTH - MSG_X, MSG_Y + MSG_H, 1, RECT_NONE);
-		lcd_draw_rect(MSG_X + 2, MSG_Y + 2, LCD_WIDTH - MSG_X - 2, MSG_Y + MSG_H - 2, 1, RECT_NONE);
+		lcd_draw_rect(MSG_X, MSG_Y, LCD_WIDTH - MSG_X, MSG_Y + MSG_H, 1, FLAGS_NONE);
+		lcd_draw_rect(MSG_X + 2, MSG_Y + 2, LCD_WIDTH - MSG_X - 2, MSG_Y + MSG_H - 2, 1, FLAGS_NONE);
 		// Draw the message
 		lcd_set_cursor(MSG_X + 4, MSG_Y + 4);
 		lcd_draw_message(msg[new_msg], 1);
@@ -121,6 +122,9 @@ void gui_process(uint32_t data)
 		new_msg = GUI_MSG_NONE;
 
 		lcd_update();
+
+		// Make sure we re-draw the GUI.
+		new_layout = current_layout;
 
 		return;
 	}
@@ -138,7 +142,7 @@ void gui_process(uint32_t data)
 			if (full)
 			{
 				// Draw the main screen.
-				lcd_write_string("SPLASH", 0);
+				lcd_write_string("SPLASH", LCD_OP_CLR, FLAGS_NONE);
 			}
 		break;
 
@@ -146,7 +150,7 @@ void gui_process(uint32_t data)
 			if (full)
 			{
 				// Draw the main screen.
-				lcd_write_string("MAIN", 0);
+				lcd_write_string("MAIN", LCD_OP_CLR, FLAGS_NONE);
 			}
 
 			switch (data)
@@ -160,9 +164,9 @@ void gui_process(uint32_t data)
 
 				case UPDATE_KEYPRESS:
 					if (key_press == KEY_RIGHT)
-						gui_set_layout(GUI_LAYOUT_MAIN2);
+						gui_navigate(GUI_LAYOUT_MAIN2);
 					else if (key_press == KEY_LEFT)
-						gui_set_layout(GUI_LAYOUT_MAIN3);
+						gui_navigate(GUI_LAYOUT_MAIN3);
 				break;
 			}
 		break;
@@ -171,7 +175,7 @@ void gui_process(uint32_t data)
 			if (full)
 			{
 				// Draw the main screen.
-				lcd_write_string("MAIN2", 0);
+				lcd_write_string("MAIN2", LCD_OP_CLR, FLAGS_NONE);
 			}
 			switch (data)
 			{
@@ -184,9 +188,17 @@ void gui_process(uint32_t data)
 
 				case UPDATE_KEYPRESS:
 					if (key_press == KEY_RIGHT)
-						gui_set_layout(GUI_LAYOUT_MAIN3);
+						gui_navigate(GUI_LAYOUT_MAIN3);
 					else if (key_press == KEY_LEFT)
-						gui_set_layout(GUI_LAYOUT_MAIN);
+						gui_navigate(GUI_LAYOUT_MAIN);
+					if (key_press >= KEY_CH1_UP && key_press <= KEY_CH4_DN)
+					{
+						// Update the trim bars.
+						gui_draw_trim(0, 5, FALSE, mixer_get_trim(STICK_L_V));
+						gui_draw_trim(15, 57, TRUE, mixer_get_trim(STICK_L_H));
+						gui_draw_trim(121, 5, FALSE, mixer_get_trim(STICK_R_V));
+						gui_draw_trim(58, 57, TRUE, mixer_get_trim(STICK_R_H));
+					}
 				break;
 			}
 		break;
@@ -195,7 +207,7 @@ void gui_process(uint32_t data)
 			if (full)
 			{
 				// Draw the main screen.
-				lcd_write_string("MAIN3", 0);
+				lcd_write_string("MAIN3", LCD_OP_CLR, FLAGS_NONE);
 			}
 
 			switch (data)
@@ -209,9 +221,9 @@ void gui_process(uint32_t data)
 
 				case UPDATE_KEYPRESS:
 					if (key_press == KEY_RIGHT)
-						gui_set_layout(GUI_LAYOUT_MAIN);
+						gui_navigate(GUI_LAYOUT_MAIN);
 					else if (key_press == KEY_LEFT)
-						gui_set_layout(GUI_LAYOUT_MAIN2);
+						gui_navigate(GUI_LAYOUT_MAIN2);
 				break;
 			}
 		break;
@@ -226,7 +238,7 @@ void gui_process(uint32_t data)
 			if (full)
 			{
 				// Draw the whole screen.
-				lcd_write_string("CALIBRATION", 0);
+				lcd_write_string("CALIBRATION", LCD_OP_CLR, FLAGS_NONE);
 			}
 			switch (data)
 			{
@@ -253,10 +265,12 @@ void gui_process(uint32_t data)
   */
 void gui_update_sticks(void)
 {
+	if (gui_timeout != 0)
+		return;
+
 	switch (current_layout)
 	{
 		case GUI_LAYOUT_MAIN:
-		case GUI_LAYOUT_STICK_CALIBRATION:
 			// Don't go crazy on the updates. limit to 25fps.
 			task_schedule(TASK_PROCESS_GUI, UPDATE_STICKS, 40);
 		break;
@@ -285,12 +299,22 @@ void gui_input_key(KEYPAD_KEY key)
 }
 
 /**
+  * @brief  Pop one level of the UI stack
+  * @note
+  * @param  None.
+  * @retval None
+  */
+void gui_back(void)
+{
+}
+
+/**
   * @brief  Set the GUI to a specific layout.
   * @note
   * @param  layout: The requested layout.
   * @retval None
   */
-void gui_set_layout(GUI_LAYOUT layout)
+void gui_navigate(GUI_LAYOUT layout)
 {
 	new_layout = layout;
 	task_schedule(TASK_PROCESS_GUI, UPDATE_NEW_LAYOUT, 0);
@@ -303,7 +327,7 @@ void gui_set_layout(GUI_LAYOUT layout)
   * @param  timeout: The number of ms to display the message. 0 for no timeout.
   * @retval None
   */
-void gui_set_message(GUI_MSG msg, uint16_t timeout)
+void gui_popup(GUI_MSG msg, uint16_t timeout)
 {
 	new_msg = msg;
 	gui_timeout = timeout;
@@ -312,11 +336,15 @@ void gui_set_message(GUI_MSG msg, uint16_t timeout)
 }
 
 
+/**
+  * @brief  Display The stick position in two squares.
+  * @note	Also shows POT bars and switch states.
+  * @param  None.
+  * @retval None.
+  */
 static void gui_show_sticks(void)
 {
 	int x, y;
-	float *pFloat;
-	sticks_get(&pFloat);
 
 	// Stick boxes
 	lcd_draw_rect(BOX_L_X, BOX_Y, BOX_L_X + BOX_W, BOX_Y + BOX_H, 0, RECT_FILL);
@@ -329,57 +357,103 @@ static void gui_show_sticks(void)
 	lcd_draw_rect(BOX_R_X + BOX_W / 2 - 1, BOX_Y + BOX_H / 2 - 1, BOX_R_X + BOX_W / 2 + 1, BOX_Y + BOX_H / 2 + 1, 1, RECT_ROUNDED);
 
 	// Stick position (Right)
-	x = BOX_W / 2 + (BOX_W-2) * pFloat[0] / 200;
-	y = BOX_W / 2 + (BOX_W-2) * -pFloat[1] / 200;
+	x = BOX_W / 2 + (BOX_W-2) * sticks_get_percent(STICK_R_H) / 100;
+	y = BOX_W / 2 + (BOX_W-2) * -sticks_get_percent(STICK_R_V) / 100;
 	lcd_draw_rect(BOX_R_X + x - 2, BOX_Y + y - 2, BOX_R_X + x + 2, BOX_Y + y + 2, 1, RECT_ROUNDED);
 
 	// Stick position (Left)
-	x = BOX_W / 2 + (BOX_W-3) * pFloat[3] / 200;
-	y = BOX_W / 2 + (BOX_W-3) * -pFloat[2] / 200;
+	x = BOX_W / 2 + (BOX_W-3) * sticks_get_percent(STICK_L_H) / 100;
+	y = BOX_W / 2 + (BOX_W-3) * -sticks_get_percent(STICK_L_V) / 100;
 	lcd_draw_rect(BOX_L_X + x - 2, BOX_Y + y - 2, BOX_L_X + x + 2, BOX_Y + y + 2, 1, RECT_ROUNDED);
 
 	// VRB
-	x = BOX_H * (100 + pFloat[5]) / 200;
+	x = BOX_H * sticks_get_percent(STICK_VRB) / 100;
 	lcd_draw_rect(POT_L_X, POT_Y - BOX_H, POT_L_X + POT_W, POT_Y, 0, RECT_FILL);
 	lcd_draw_rect(POT_L_X, POT_Y - x, POT_L_X + POT_W, POT_Y, 1, RECT_FILL);
 
 	// VRA
-	x = BOX_H * (100 + pFloat[4]) / 200;
+	x = BOX_H * sticks_get_percent(STICK_VRA) / 100;
 	lcd_draw_rect(POT_R_X, POT_Y - BOX_H, POT_R_X + POT_W, POT_Y, 0, RECT_FILL);
 	lcd_draw_rect(POT_R_X, POT_Y - x, POT_R_X + POT_W, POT_Y, 1, RECT_FILL);
 
 	// Switches
 	x = keypad_get_switches();
 	lcd_set_cursor(SW_L_X, SW_Y);
-	lcd_write_string("SWB", (x&SWITCH_SWB)?1:0);
+	lcd_write_string("SWB", (x&SWITCH_SWB)?LCD_OP_SET:LCD_OP_CLR, FLAGS_NONE);
 	lcd_set_cursor(SW_L_X, SW_Y + 8);
-	lcd_write_string("SWD", (x&SWITCH_SWD)?1:0);
+	lcd_write_string("SWD", (x&SWITCH_SWD)?LCD_OP_SET:LCD_OP_CLR, FLAGS_NONE);
 	lcd_set_cursor(SW_R_X, SW_Y);
-	lcd_write_string("SWA", (x&SWITCH_SWA)?1:0);
+	lcd_write_string("SWA", (x&SWITCH_SWA)?LCD_OP_SET:LCD_OP_CLR, FLAGS_NONE);
 	lcd_set_cursor(SW_R_X, SW_Y + 8);
-	lcd_write_string("SWC", (x&SWITCH_SWC)?1:0);
+	lcd_write_string("SWC", (x&SWITCH_SWC)?LCD_OP_SET:LCD_OP_CLR, FLAGS_NONE);
 }
 
-#define BATT_MIN	99
-#define BATT_MAX	126
+#define BATT_MIN	99	//NiMh: 88
+#define BATT_MAX	126	//NiMh: 104
 
+/**
+  * @brief  Display a battery icon and text with the current level
+  * @note
+  * @param  x,y: TL location for the information.
+  * @retval None.
+  */
 static void gui_show_battery(int x, int y)
 {
-	float *pFloat;
 	int batt;
 	int level;
-	sticks_get(&pFloat);
-	batt = ((100 + pFloat[6]) / 2) * 129 / 100;
 
+	batt = sticks_get_percent(STICK_BAT) * 129 / 100;
 	level = 12 * (batt - BATT_MIN) / (BATT_MAX - BATT_MIN);
-	// Icon
+	level = (level > 12)?12:level;
+
+	// Battery Icon
+	lcd_draw_rect(x, y+2, x+12, y+5, 0, RECT_FILL);
 	lcd_draw_rect(x, y+1, x+12, y+6, 1, RECT_ROUNDED);
 	lcd_draw_rect(x+12, y+2, x+14, y+5, 1, RECT_ROUNDED);
-
 	lcd_draw_rect(x, y+2, x+level, y+5, 1, RECT_FILL);
 
 	// Voltage
 	lcd_set_cursor(x + 15, y);
 	lcd_write_int(batt, 1, INT_DIV10);
-	lcd_write_string("v", 1);
+	lcd_write_string("v", LCD_OP_SET, FLAGS_NONE);
+}
+
+/**
+  * @brief  Display a trim bar with the supplied value
+  * @note
+  * @param  x, y: The TL position of the bar on screen.
+  * @param  h_v: Whether the trim is horizontal (TRUE) or vertical (FALSE)
+  * @param  value: The value of the trim (location of the rectangle) from -100 to +100.
+  * @retval None
+  */
+static void gui_draw_trim(int x, int y, bool h_v, int value)
+{
+	int w, h, v;
+	w = (h_v)?54:6;
+	h = (h_v)?6:54;
+	v = 54 * value / (2 * MIXER_TRIM_LIMIT);
+
+	// Draw the line and centre dot.
+	lcd_draw_rect(x, y, x+w, y+h, LCD_OP_CLR, RECT_FILL);
+	lcd_draw_rect(x + w/2 - 1, y + h/2 - 1, x + w/2 + 1, y + h/2 + 1, LCD_OP_SET, RECT_FILL);
+
+	// Draw the value box
+	if (h_v)
+	{
+		lcd_draw_rect(v + x + w/2 - 3,
+					  y + h/2 - 3,
+					  v + x + w/2 + 3,
+					  y + h/2 + 3, LCD_OP_XOR, RECT_ROUNDED);
+	}
+	else
+	{
+		lcd_draw_rect(x + w/2 - 3,
+					  v + y + h/2 - 3,
+					  x + w/2 + 3,
+					  v + y + h/2 + 3, LCD_OP_XOR, RECT_ROUNDED);
+	}
+
+
+
+
 }

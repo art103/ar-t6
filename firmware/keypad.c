@@ -15,6 +15,7 @@
 
 #include "stm32f10x.h"
 #include "keypad.h"
+#include "mixer.h"
 #include "tasks.h"
 #include "gui.h"
 
@@ -142,6 +143,12 @@ static void keypad_process(uint32_t data)
 	if (key != 0)
 	{
 		keys_pressed |= key;
+
+		// Update the trim if needed.
+		if (key >= KEY_CH1_UP && key <= KEY_CH4_DN)
+			mixer_input_trim(key);
+
+		// Send the key to the UI.
 		gui_input_key(key);
 	}
 }

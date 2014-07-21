@@ -3,7 +3,6 @@
  *
  * Based on er9x: Erez Raviv <erezraviv@gmail.com>
  * Based on th9x -> http://code.google.com/p/th9x/
- * Original Author not known.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -16,10 +15,18 @@
  *
  */
 
-#ifndef PULSES_H
-#define PULSES_H
+#ifndef _MIXER_H
+#define _MIXER_H
 
-void pulses_init(void);
-void pulses_setup(void);
+#include "sticks.h"
+#include "keypad.h"
 
-#endif // PULSES_H
+#define MIXER_TRIM_LIMIT	100
+
+void mixer_init(void);
+void mixer_update(void);
+
+void mixer_input_trim(KEYPAD_KEY key);
+int16_t mixer_get_trim(STICK stick);
+
+#endif // _MIXER_H

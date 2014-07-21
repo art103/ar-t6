@@ -21,7 +21,6 @@
 #include "logo.h"
 
 #include "lcd_font_medium.h"
-#include "lcd_font_large.h"
 
 #define LCD_PIN_MASK	(0x1FFF)
 
@@ -56,14 +55,14 @@
 static uint8_t contrast = 0x28;
 static uint8_t lcd_buffer[LCD_WIDTH * LCD_HEIGHT / 8];
 
-static uint8_t char_height = 7;
-static uint8_t char_width = 5;
+#define CHAR_HEIGHT				7
+#define CHAR_WIDTH				5
+#define FONT_STRIDE				(255 * 5)
 
 static uint8_t cursor_x = 0;
 static uint8_t cursor_y = 0;
 
 static const unsigned char *font = font_medium;
-static uint16_t font_width = 255 * 5;
 
 /**
   * @brief  Send a command to the LCD.
@@ -231,13 +230,23 @@ void lcd_update(void)
   * @note	Top left is (0,0)
   * @param  x: horizontal pixel location
   * @param  y: vertical pixel location
-  * @param  colour: 0 - off, !0 - on
+  * @param  operation: 0 - off, 1 - on, 2 - xor
   * @retval None
   */
-void lcd_set_pixel(uint8_t x, uint8_t y, uint8_t colour)
+void lcd_set_pixel(uint8_t x, uint8_t y, LCD_OP op)
 {
-  if (colour) lcd_buffer[x+(y/8)*LCD_WIDTH] |= (1 << (y%8));
-  else lcd_buffer[x+ (y/8)*LCD_WIDTH] &= ~(1 << (y%8));
+	switch (op)
+	{
+	case LCD_OP_CLR:
+		lcd_buffer[x+ (y/8)*LCD_WIDTH] &= ~(1 << (y%8));
+		break;
+	case LCD_OP_SET:
+		lcd_buffer[x+(y/8)*LCD_WIDTH] |= (1 << (y%8));
+		break;
+	case LCD_OP_XOR:
+		lcd_buffer[x+ (y/8)*LCD_WIDTH] ^= (1 << (y%8));
+		break;
+	}
 }
 
 /**
@@ -249,101 +258,84 @@ void lcd_set_pixel(uint8_t x, uint8_t y, uint8_t colour)
   */
 void lcd_set_cursor(uint8_t x, uint8_t y)
 {
-    if ((y+char_height) >= LCD_HEIGHT) return;
-    if ((x+char_width) >= LCD_WIDTH) return;
+    if ((y+CHAR_HEIGHT) >= LCD_HEIGHT) return;
+    if ((x+CHAR_WIDTH) >= LCD_WIDTH) return;
 
 	cursor_x = x;
 	cursor_y = y;
 }
 
 /**
-  * @brief  Set the character size (and select the font).
-  * @note
-  * @param  s: Size enum
-  * @retval None
-  */
-void lcd_set_char_size(LCD_CHAR_SIZE s)
-{
-	switch (s)
-	{
-		case LCD_CHAR_SIZE_SMALL:
-			char_height = 7;
-			char_width = 5;
-			font_width = 255 * char_width;
-			font = font_medium;
-		break;
-
-		case LCD_CHAR_SIZE_MEDIUM:
-			char_height = 15;
-			char_width = 11;
-			font = font_large;
-			font_width = 14 * char_width;
-		break;
-	}
-}
-
-/**
   * @brief  Write a character.
-  * @note	colour is used to invert the output (highlight mode)
+  * @note
   * @param  c: ASCII character to write
-  * @param  colour: 0 - off, !0 - on
+  * @param  op: LCD_OP
+  * @param  flags: LCD_FLAGS (CHAR_*)
   * @retval None
   */
-void lcd_write_char(uint8_t c, uint8_t colour)
+void lcd_write_char(uint8_t c, LCD_OP op, LCD_FLAGS flags)
 {
 	uint8_t x, y;
+	uint8_t height = CHAR_HEIGHT;
+	uint8_t width = CHAR_WIDTH;
 	uint8_t row = 0;
-	if ((cursor_y+char_height) >= LCD_HEIGHT) return;
-	else if ((cursor_x+char_width) >= LCD_WIDTH) return;
 
-	if (font == font_large)
+	switch (flags)
 	{
-		if (c <= '9' && c >= '0')
-			c -= '0';
-		else if (c == ' ')
-			c = 13;
-		else if (c == '-')
-			c = 12;
-		else if (c == '+')
-			c = 11;
-		else return;
+	default:
+		break;
+	case CHAR_2X:
+		height *=2;
+		width *=2;
+		break;
+	case CHAR_4X:
+		height *=4;
+		width *=4;
+		break;
 	}
 
-	for (x=0; x<char_width; x++ ) {
+	if ((cursor_y+height) >= LCD_HEIGHT) return;
+	else if ((cursor_x+width) >= LCD_WIDTH) return;
+
+	for (x=0; x<width; x++ )
+	{
 		row = 0;
-		for (y=0; y<char_height + 1; y++) {
-			uint8_t state;
-			uint8_t d = font[(c*char_width)+x+row*font_width];
+		for (y=0; y<height + 1; y++)
+		{
+			LCD_OP op;
+			uint8_t d;
+			d = font[ (c*CHAR_WIDTH) + x + row*FONT_STRIDE ];
 			if (d & (1 << y%8))
-				state = colour;
+				op = LCD_OP_SET;
 			else
-				state = 1 - colour;
-			lcd_set_pixel(cursor_x+x, cursor_y+y, state);
+				op = LCD_OP_CLR;
+			lcd_set_pixel(cursor_x+x, cursor_y+y, op);
 			if (y%8 == 7)
 				row++;
 		}
 	}
-	for (y=0; y<char_height+1; y++) lcd_set_pixel(cursor_x+char_width, cursor_y+y, 1-colour);
+	for (y=0; y<height+1; y++) lcd_set_pixel(cursor_x+width, cursor_y+y, LCD_OP_CLR);
 
-	cursor_x += char_width + 1;
+	cursor_x += width + 1;
 	if (cursor_x >= LCD_WIDTH)
-	cursor_y += char_height + 1;
+	cursor_y += height + 1;
 }
 
 /**
   * @brief  Write a string.
   * @note	Iterate through a null terminated string.
   * @param  s: ASCII string to write
-  * @param  colour: 0 - off, !0 - on
+  * @param  op: LCD_OP
+  * @param  flags: LCD_FLAGS (CHAR_*)
   * @retval None
   */
-void lcd_write_string(char *s, uint8_t colour)
+void lcd_write_string(char *s, LCD_OP op, LCD_FLAGS flags)
 {
 	char *ptr = s;
 	uint8_t n = strlen(s);
 
 	for (ptr = s; n > 0; ptr++, n--)
-		lcd_write_char(*ptr, colour);
+		lcd_write_char(*ptr, op, flags);
 }
 
 
@@ -358,11 +350,11 @@ static int16_t u;
   * @brief  Write an int (up to 5 digits)
   * @note
   * @param  val: Signed integer (-99999 to 99999)
-  * @param  colour: 0 - off, !0 - on
+  * @param  op: LCD_OP
   * @param  flags: LCD_FLAGS
   * @retval None
   */
-void lcd_write_int(int32_t val, uint8_t colour, uint8_t flags)
+void lcd_write_int(int32_t val, LCD_OP op, uint8_t flags)
 {
 	if (val < 0) u = -val;
 	else u = val;
@@ -375,35 +367,24 @@ void lcd_write_int(int32_t val, uint8_t colour, uint8_t flags)
 	t = u / 10;
 	u -= t * 10;
 
-	if (val < 0) lcd_write_char('-', colour);
-	//if (val >= 0) lcd_write_char('+', colour);
+	if (val < 0) lcd_write_char('-', op, flags);
+	//if (val >= 0) lcd_write_char('+', op);
 
 	if (tth > 0)
-		lcd_write_char(tth + '0', colour);
+		lcd_write_char(tth + '0', op, flags);
 
 	if (tth > 0 || th > 0)
-		lcd_write_char(th + '0', colour);
+		lcd_write_char(th + '0', op, flags);
 
 	if (tth > 0 || th > 0 || h > 0)
-		lcd_write_char(h + '0', colour);
+		lcd_write_char(h + '0', op, flags);
 
 	if (tth > 0 || th > 0 || h > 0 || t > 0)
-		lcd_write_char(t + '0', colour);
+		lcd_write_char(t + '0', op, flags);
 	if (flags & INT_DIV10)
-		lcd_write_char('.', colour);
+		lcd_write_char('.', op, flags);
 
-	lcd_write_char(u + '0', colour);
-}
-
-/**
-  * @brief  Write a float (up to 5 digits)
-  * @note
-  * @param  value: float (-99999 to 99999)
-  * @param  colour: 0 - off, !0 - on
-  * @retval None
-  */
-void lcd_write_float(float val, uint8_t colour, bool show_sign)
-{
+	lcd_write_char(u + '0', op, flags);
 }
 
 /**
@@ -413,10 +394,10 @@ void lcd_write_float(float val, uint8_t colour, bool show_sign)
   * @param  y1: First pixel (y)
   * @param  x2: Second pixel (x)
   * @param  y2: Second pixel (y)
-  * @param  colour: 0 - off, !0 - on
+  * @param  op: LCD_OP
   * @retval None
   */
-void lcd_draw_line(uint8_t x1, uint8_t y1, uint8_t x2, uint8_t y2, uint8_t colour)
+void lcd_draw_line(uint8_t x1, uint8_t y1, uint8_t x2, uint8_t y2, LCD_OP op)
 {
 	uint8_t x = x1, y = y1;
 	uint8_t max_steps;
@@ -443,7 +424,7 @@ void lcd_draw_line(uint8_t x1, uint8_t y1, uint8_t x2, uint8_t y2, uint8_t colou
 			if (ysteps > 0 && step % ysteps == 0)
 				y++;
 		}
-		lcd_set_pixel(x, y, colour);
+		lcd_set_pixel(x, y, op);
 	}
 }
 
@@ -452,11 +433,11 @@ void lcd_draw_line(uint8_t x1, uint8_t y1, uint8_t x2, uint8_t y2, uint8_t colou
   * @note	Top left is (0,0)
   * @param  x1,y1: 1st corner
   * @param  x2,y2: 2nd corner
-  * @param  colour: 0 - off, !0 - on
+  * @param  op: LCD_OP
   * @param  fill: Fill?
   * @retval None
   */
-void lcd_draw_rect(uint8_t x1, uint8_t y1, uint8_t x2, uint8_t y2, uint8_t colour, uint8_t flags)
+void lcd_draw_rect(uint8_t x1, uint8_t y1, uint8_t x2, uint8_t y2, LCD_OP op, uint8_t flags)
 {
 	uint8_t x, y;
 
@@ -476,12 +457,12 @@ void lcd_draw_rect(uint8_t x1, uint8_t y1, uint8_t x2, uint8_t y2, uint8_t colou
 						   (x == x1 && y == y2) ||
 						   (x == x2 && y == y2) ))
 					{
-						lcd_set_pixel(x, y, colour);
+						lcd_set_pixel(x, y, op);
 					}
 
 				}
 				else
-					lcd_set_pixel(x, y, colour);
+					lcd_set_pixel(x, y, op);
 			}
 		}
 	}
@@ -491,12 +472,12 @@ void lcd_draw_rect(uint8_t x1, uint8_t y1, uint8_t x2, uint8_t y2, uint8_t colou
   * @brief  Draw a message with line wrapping
   * @note	Starts at the cursor and uses the x offset as a margin.
   * @param  msg: ASCII message to write
-  * @param  colour: 0 - off, !0 - on
+  * @param  op: LCD_OP
   * @retval None
   */
-void lcd_draw_message(const char *msg, uint8_t colour)
+void lcd_draw_message(const char *msg, LCD_OP op)
 {
-	int width = (LCD_WIDTH - 2*cursor_x) / (char_width + 1);
+	int width = (LCD_WIDTH - 2*cursor_x) / (CHAR_WIDTH + 1);
 	char line_buffer[LCD_WIDTH / 6];
 	int nchars;
 	const char *ptr = msg;
@@ -537,9 +518,9 @@ void lcd_draw_message(const char *msg, uint8_t colour)
 			nchars--;
 		memcpy(line_buffer, ptr, nchars);
 		line_buffer[nchars] = 0;
-		cursor_x = x + (width - nchars) * (char_width+1) / 2;
-		lcd_write_string(line_buffer, colour);
-		cursor_y += (char_height + 1);
+		cursor_x = x + (width - nchars) * (CHAR_WIDTH + 1) / 2;
+		lcd_write_string(line_buffer, op, FLAGS_NONE);
+		cursor_y += (CHAR_WIDTH + 1);
 
 		ptr = needle1;
 	}

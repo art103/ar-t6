@@ -16,9 +16,23 @@
 #ifndef _STICKS_H
 #define _STICKS_H
 
-#define NUM_ADC_CHANNELS	7
-#define NUM_INPUT_CHANNELS	6
-#define NUM_TO_CALIBRATE	4
+#define STICK_ADC_CHANNELS		7
+#define STICK_INPUT_CHANNELS	6
+#define STICKS_TO_CALIBRATE		4
+#define STICKS_TO_TRIM			4
+
+#define STICK_LIMIT				1024
+
+typedef enum
+{
+	STICK_R_H = 0,
+	STICK_R_V,
+	STICK_L_V,
+	STICK_L_H,
+	STICK_VRA,
+	STICK_VRB,
+	STICK_BAT
+} STICK;
 
 typedef struct _adc_cal
 {
@@ -34,13 +48,14 @@ typedef enum
 	CAL_CENTER
 } CAL_STATE;
 
-extern volatile uint32_t adc_data[NUM_ADC_CHANNELS];
-extern ADC_CAL cal_data[NUM_ADC_CHANNELS];
-extern float analog[NUM_ADC_CHANNELS];
+extern volatile uint32_t adc_data[STICK_ADC_CHANNELS];
+extern ADC_CAL cal_data[STICK_ADC_CHANNELS];
+extern int16_t stick_data[STICK_ADC_CHANNELS];
 
 void sticks_init(void);
 void sticks_process(uint32_t data);
 void sticks_calibrate(void);
-int sticks_get(float **data);
+int16_t sticks_get(STICK chan);
+int16_t sticks_get_percent(STICK chan);
 
 #endif // _STICKS_H

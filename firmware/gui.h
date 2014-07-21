@@ -43,9 +43,12 @@ typedef enum
 
 void gui_init(void);
 void gui_process(uint32_t data);
+
 void gui_update_sticks(void);
 void gui_input_key(KEYPAD_KEY key);
-void gui_set_layout(GUI_LAYOUT layout);
-void gui_set_message(GUI_MSG msg, uint16_t timeout);
+
+void gui_back(void);
+void gui_navigate(GUI_LAYOUT layout);
+void gui_popup(GUI_MSG msg, uint16_t timeout);
 
 #endif // _GUI_H

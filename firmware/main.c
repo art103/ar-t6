@@ -21,6 +21,7 @@
 #include "gui.h"
 #include "myeeprom.h"
 #include "pulses.h"
+#include "mixer.h"
 
 EEGeneral  g_eeGeneral;
 ModelData  g_model;
@@ -35,7 +36,6 @@ uint8_t SlaveMode;		// Trainer Slave
   */
 int main(void)
 {
-	uint8_t tick;
 	// PLL and stack setup has aready been done.
 
 	// 1ms System tick
@@ -55,8 +55,13 @@ int main(void)
 	// Initialize the ADC / DMA
 	sticks_init();
 
-	// Only do this when we're really happy that the model won't explode!
-	startPulses();
+	// Block here until all switches are set correctly.
+	//check_switches();
+
+	mixer_init();
+
+	// Start the radio output.
+	pulses_init();
 
 	/*
 	 * The main loop will sit in low power mode waiting for an interrupt.
@@ -75,14 +80,16 @@ int main(void)
 
 	while (1)
 	{
-		// Process any tasks.
-		task_process_all();
-
 		/*
+		static uint8_t tick;
 		lcd_set_cursor(0, 48);
 		lcd_write_int(tick++, 1, 0);
 		lcd_update();
 		*/
+
+		// Process any tasks.
+		task_process_all();
+
 
 		// Wait for an interrupt
 		//PWR_EnterSTANDBYMode();

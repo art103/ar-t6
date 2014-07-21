@@ -21,8 +21,8 @@
 #include "gui.h"
 #include "art6.h"
 
-volatile uint32_t adc_data[NUM_ADC_CHANNELS];
-ADC_CAL cal_data[NUM_ADC_CHANNELS] = {
+volatile uint32_t adc_data[STICK_ADC_CHANNELS];
+ADC_CAL cal_data[STICK_ADC_CHANNELS] = {
 		{0, 4096, 2048},
 		{0, 4096, 2048},
 		{0, 4096, 2048},
@@ -31,7 +31,7 @@ ADC_CAL cal_data[NUM_ADC_CHANNELS] = {
 		{0, 4096, 2048},
 		{0, 3100, 1550},
 };
-float analog[NUM_ADC_CHANNELS];
+int16_t stick_data[STICK_ADC_CHANNELS];
 
 static CAL_STATE cal_state = CAL_OFF;
 
@@ -65,11 +65,11 @@ void sticks_init(void)
 	adcInit.ADC_ContinuousConvMode = ENABLE;
 	adcInit.ADC_ScanConvMode = ENABLE;
 	adcInit.ADC_ExternalTrigConv = ADC_ExternalTrigConv_None;
-	adcInit.ADC_NbrOfChannel = NUM_ADC_CHANNELS;
+	adcInit.ADC_NbrOfChannel = STICK_ADC_CHANNELS;
 	ADC_Init(ADC1, &adcInit);
 
 	// Setup the regular channel cycle
-	for (i=0; i<NUM_ADC_CHANNELS; ++i)
+	for (i=0; i<STICK_ADC_CHANNELS; ++i)
 	{
 		ADC_RegularChannelConfig(ADC1, ADC_Channel_0 + i, i + 1, ADC_SampleTime_239Cycles5);
 	}
@@ -97,7 +97,7 @@ void sticks_init(void)
 	dmaInit.DMA_PeripheralBaseAddr = (uint32_t)&ADC1->DR;
 	dmaInit.DMA_MemoryBaseAddr = (uint32_t)&adc_data[0];
 	dmaInit.DMA_DIR = DMA_DIR_PeripheralSRC;
-	dmaInit.DMA_BufferSize = NUM_ADC_CHANNELS;
+	dmaInit.DMA_BufferSize = STICK_ADC_CHANNELS;
 	dmaInit.DMA_PeripheralInc = DMA_PeripheralInc_Disable;
 	dmaInit.DMA_MemoryInc = DMA_MemoryInc_Enable;
 	dmaInit.DMA_PeripheralDataSize = DMA_PeripheralDataSize_Word;
@@ -116,7 +116,7 @@ void sticks_init(void)
 	// ToDo: Read the calibration data out of EEPROM.
 	// if (eeprom_get_data(EEPROM_ADC_CAL, cal_data) != 0)
 	//sticks_calibrate();
-	gui_set_layout(GUI_LAYOUT_MAIN);
+	gui_navigate(GUI_LAYOUT_MAIN);
 }
 
 /**
@@ -136,12 +136,12 @@ void sticks_process(uint32_t data)
 			if (cal_state == CAL_LIMITS)
 			{
 				cal_state = CAL_CENTER;
-				gui_set_message(GUI_MSG_CAL_CENTRE, 0);
+				gui_popup(GUI_MSG_CAL_CENTRE, 0);
 			}
 			else
 			{
 				// Set the stick centres.
-				for (i=0; i<NUM_TO_CALIBRATE; ++i)
+				for (i=0; i<STICKS_TO_CALIBRATE; ++i)
 				{
 					cal_data[i].centre = adc_data[i];
 				}
@@ -159,38 +159,27 @@ void sticks_process(uint32_t data)
 				// eeprom_set_data(EEPROM_ADC_CAL, cal_data);
 
 				cal_state = CAL_OFF;
-				gui_set_layout(GUI_LAYOUT_MAIN);
-				gui_set_message(GUI_MSG_OK, 500);
+				gui_back();
+				gui_popup(GUI_MSG_OK, 500);
 			}
 		}
 		else if (keypad_get_pressed(KEY_CANCEL))
 		{
 			// Abort the calibration and restore data from EEPROM.
 			cal_state = CAL_OFF;
-			// eeprom_get_data(EEPROM_ADC_CAL, cal_data);
+			// ToDo: eeprom_get_data(EEPROM_ADC_CAL, cal_data);
 
-			gui_set_layout(GUI_LAYOUT_MAIN);
-			gui_set_message(GUI_MSG_CANCELLED, 500);
+			gui_back();
+			gui_popup(GUI_MSG_CANCELLED, 500);
 		}
 		else if (cal_state == CAL_LIMITS)
 		{
-			// Set the limits on all but VBatt.
-			for (i=0; i<NUM_TO_CALIBRATE; ++i)
+			for (i=0; i<STICKS_TO_CALIBRATE; ++i)
 			{
 				if (adc_data[i] < cal_data[i].min) cal_data[i].min = adc_data[i];
 				if (adc_data[i] > cal_data[i].max) cal_data[i].max = adc_data[i];
 			}
 		}
-	}
-
-	// Scale channels to -100.0 to +100.0.
-	for (i=0; i<NUM_ADC_CHANNELS; ++i)
-	{
-		float tmp = (int32_t)adc_data[i] - (int32_t)cal_data[i].centre;
-		tmp = tmp * 200 / (cal_data[i].max - cal_data[i].min);
-		if (tmp > 100) tmp = 100;
-		if (tmp < -100) tmp = -100;
-		analog[i] = tmp;
 	}
 
 	gui_update_sticks();
@@ -213,7 +202,7 @@ void sticks_calibrate(void)
 
 	cal_state = CAL_LIMITS;
 
-	for (i=0; i<NUM_TO_CALIBRATE; ++i)
+	for (i=0; i<STICKS_TO_CALIBRATE; ++i)
 	{
 		cal_data[i].min = -1;
 		cal_data[i].max = 0;
@@ -224,19 +213,28 @@ void sticks_calibrate(void)
 	keypad_get_pressed(KEY_SEL);
 	keypad_get_pressed(KEY_CANCEL);
 
-	gui_set_layout(GUI_LAYOUT_STICK_CALIBRATION);
-	gui_set_message(GUI_MSG_CAL_MOVE_EXTENTS, 0);
+	gui_navigate(GUI_LAYOUT_STICK_CALIBRATION);
+	gui_popup(GUI_MSG_CAL_MOVE_EXTENTS, 0);
 }
 
 /**
   * @brief  Get the stick data.
   * @note
-  * @param  data: ** to hold data structure
-  * @retval int: Number of data fields.
+  * @param  channel: The stick channel to return
+  * @retval int16_t Channel Value
   */
-int sticks_get(float **data)
+int16_t sticks_get(STICK channel)
 {
-	*data = analog;
-	return NUM_ADC_CHANNELS;
+	return stick_data[channel];
 }
 
+/**
+  * @brief  Get the stick data scaled to 0-100.
+  * @note
+  * @param  channel: The stick channel to return
+  * @retval Channel Value (%)
+  */
+int16_t sticks_get_percent(STICK channel)
+{
+	return 100 * (STICK_LIMIT + stick_data[channel]) / (2*STICK_LIMIT);
+}

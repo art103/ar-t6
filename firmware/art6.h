@@ -14,8 +14,8 @@
  * GNU General Public License for more details.
  *
  */
-#ifndef art6_h
-#define art6_h
+#ifndef _ART6_H
+#define _ART6_H
 
 
 #include <string.h>
@@ -247,8 +247,8 @@ extern uint8_t SlaveMode;
 //#define EVT_ENTRY_UP            (0xfe - _MSK_KEY_REPT)
 //#define EVT_KEY_MASK             0x0f
 //
-#define HEART_TIMER2Mhz 1;
-#define HEART_TIMER10ms 2;
+#define HEART_TIMER_PULSES 1;
+#define HEART_TIMER_10ms 2;
 //
 //#define TMRMODE_NONE     0
 //#define TMRMODE_ABS      1
@@ -258,44 +258,18 @@ extern uint8_t SlaveMode;
 //
 
 #define PROTO_PPM        0
-#define PROTO_PXX        1
-#define PROTO_DSM2       2
-#define PROTO_PPM16	   3
-#define PROTO_PPMSIM     4		// Always make this the last protocol
-#define PROT_MAX         4
+#define PROTO_PPM16	   	 1
+#define PROTO_PPMSIM     2		// Always make this the last protocol
+#define PROT_MAX         2
 
-//#define PROT_STR "\006PPM   PXX   DSM2  PPM16 PPMSIM"
-////#define PROT_STR_LEN     6
-//#define DSM2_STR "\011LP4/LP5  DSM2only DSM2/DSMX"
-////#define DSM2_STR_LEN     9
-//#define LPXDSM2          0
-//#define DSM2only         1
-//#define DSM2_DSMX        2
-//
-//#define PXX_BIND					 0x01
-//#define PXX_SEND_FAILSAFE  0x10
-//#define PXX_RANGE_CHECK		 0x20
-//
-//#define PXX_PROTO_X16			 0
-//#define PXX_PROTO_D8			 1
-//#define PXX_PROTO_LR12		 2
-//
-//#define PXX_AMERICA				 0
-//#define PXX_JAPAN					 1
-//#define PXX_EUROPE				 2
-//
+#define PROT_STR "\006PPM   PPM16 PPMSIM"
 //
 //#define TRIM_EXTENDED_MAX	500
 //
-//extern uint8_t pxxFlag;
 //extern uint8_t stickMoved;
-//
 //uint16_t stickMoveValue( void ) ;
 //
-//#define NUM_VOL_LEVELS	8
-//
 //typedef void (*MenuFuncP)(uint8_t event);
-////typedef void (*getADCp)();
 //
 ///// stoppt alle events von dieser taste bis eine kurze Zeit abgelaufen ist
 //void pauseEvents(uint8_t enuk);
@@ -663,9 +637,9 @@ extern uint8_t SlaveMode;
 ////extern uint8_t            g_beepVal[5];
 ////extern const PROGMEM char modi12x3[];
 //extern union p2mhz_t pulses2MHz ;
-//extern int16_t            g_ppmIns[8];
-//extern uint8_t ppmInValid ;
-extern volatile int16_t            g_chans512[NUM_CHNOUT];
+extern volatile int16_t            g_ppmIns[8];
+extern volatile uint8_t ppmInValid;
+extern volatile int16_t            g_chans[NUM_CHNOUT];
 //extern volatile uint8_t   tick10ms;
 //
 //extern int16_t BandGap ; // VccV ;
@@ -821,20 +795,6 @@ extern volatile int16_t            g_chans512[NUM_CHNOUT];
 //
 //extern uint8_t CurrentPhase ;
 //
-//struct t_rotary
-//{
-//	uint8_t RotPosition ;
-//	uint8_t RotCount ;
-//	uint8_t TrotCount ;		// TeZ version
-//	uint8_t LastTrotCount ;		// TeZ version
-//	uint8_t RotEncoder ;
-//	int8_t LastRotaryValue ;
-//	int8_t RotaryControl ;
-//	uint8_t TezRotary ;
-//	int8_t Rotary_diff ;
-//} ;
-//
-//extern struct t_rotary Rotary ;
 
 struct t_latency
 {
