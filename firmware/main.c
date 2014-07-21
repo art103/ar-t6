@@ -19,6 +19,13 @@
 #include "sticks.h"
 #include "lcd.h"
 #include "gui.h"
+#include "myeeprom.h"
+#include "pulses.h"
+
+EEGeneral  g_eeGeneral;
+ModelData  g_model;
+uint8_t SlaveMode;		// Trainer Slave
+
 
 /**
   * @brief  Main Loop for non-IRQ based work
@@ -47,6 +54,9 @@ int main(void)
 
 	// Initialize the ADC / DMA
 	sticks_init();
+
+	// Only do this when we're really happy that the model won't explode!
+	startPulses();
 
 	/*
 	 * The main loop will sit in low power mode waiting for an interrupt.

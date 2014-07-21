@@ -16,6 +16,8 @@
 #include "stm32f10x.h"
 #include "tasks.h"
 #include "keypad.h"
+#include "sticks.h"
+#include "art6.h"
 
 /**
   * @brief  This function handles the SysTick.
@@ -80,6 +82,18 @@ void EXTI15_10_IRQHandler(void)
   */
 void DMA1_Channel1_IRQHandler(void)
 {
+	static int32_t tmp;
+	static int i;
+	// Scale channels to -1024 to +1024.
+	for (i=0; i<NUM_INPUT_CHANNELS; ++i)
+	{
+		tmp = adc_data[i];
+		tmp -= cal_data[i].centre;
+		tmp *= 2048;
+		tmp /= cal_data[i].max - cal_data[i].min;
+		g_chans512[i] = tmp;
+	}
+
 	task_schedule(TASK_PROCESS_STICKS, 0, 100);
 	DMA_ClearITPendingBit(DMA_IT_TC);
 }

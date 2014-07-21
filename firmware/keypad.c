@@ -159,7 +159,7 @@ void keypad_init(void)
 	NVIC_InitTypeDef nvicInit;
 
 	// Enable the GPIO block clocks and setup the pins.
-	RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOB | RCC_APB2Periph_GPIOB | RCC_APB2Periph_AFIO, ENABLE);
+	RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOB | RCC_APB2Periph_GPIOC | RCC_APB2Periph_AFIO, ENABLE);
 
 	gpioInit.GPIO_Speed = GPIO_Speed_2MHz;
 

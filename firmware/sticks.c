@@ -19,26 +19,10 @@
 #include "tasks.h"
 #include "lcd.h"
 #include "gui.h"
+#include "art6.h"
 
-#define NUM_ADC_CHANNELS	7
-#define NUM_TO_CALIBRATE	4
-
-typedef struct _adc_cal
-{
-	uint32_t min;
-	uint32_t max;
-	uint32_t centre;
-} ADC_CAL;
-
-typedef enum
-{
-	CAL_OFF,
-	CAL_LIMITS,
-	CAL_CENTER
-} CAL_STATE;
-
-static volatile uint32_t adc_data[NUM_ADC_CHANNELS];
-static ADC_CAL cal_data[NUM_ADC_CHANNELS] = {
+volatile uint32_t adc_data[NUM_ADC_CHANNELS];
+ADC_CAL cal_data[NUM_ADC_CHANNELS] = {
 		{0, 4096, 2048},
 		{0, 4096, 2048},
 		{0, 4096, 2048},
@@ -47,7 +31,7 @@ static ADC_CAL cal_data[NUM_ADC_CHANNELS] = {
 		{0, 4096, 2048},
 		{0, 3100, 1550},
 };
-static float analog[NUM_ADC_CHANNELS];
+float analog[NUM_ADC_CHANNELS];
 
 static CAL_STATE cal_state = CAL_OFF;
 
@@ -202,9 +186,8 @@ void sticks_process(uint32_t data)
 	// Scale channels to -100.0 to +100.0.
 	for (i=0; i<NUM_ADC_CHANNELS; ++i)
 	{
-		int32_t range = cal_data[i].max - cal_data[i].min;
 		float tmp = (int32_t)adc_data[i] - (int32_t)cal_data[i].centre;
-		tmp = 200.0 * tmp / range;
+		tmp = tmp * 200 / (cal_data[i].max - cal_data[i].min);
 		if (tmp > 100) tmp = 100;
 		if (tmp < -100) tmp = -100;
 		analog[i] = tmp;
