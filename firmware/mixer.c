@@ -49,6 +49,7 @@ void mixer_init(void)
   */
 void mixer_update(void)
 {
+#if 1
 	int i;
 
 	// Input data is in stick_data[].
@@ -68,6 +69,17 @@ void mixer_update(void)
 	{
 		g_chans[i] = stick_data[i];
 	}
+#else
+	g_chans[0] = 0;
+	g_chans[1] = 0;
+	g_chans[2] = 0;
+	g_chans[3] = 0;
+	g_chans[4] = 500;
+	g_chans[5] = -500;
+	g_chans[6] = 0;
+	g_chans[7] = 0;
+#endif
+
 }
 
 /**

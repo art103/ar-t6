@@ -260,3 +260,49 @@ uint8_t keypad_get_switches(void)
 
 	return switches;
 }
+
+/**
+  * @brief  ExtI IRQ handler
+  * @note   Handles IRQ on GPIO lines 10-15.
+  * @param  None
+  * @retval None
+  */
+void EXTI15_10_IRQHandler(void)
+{
+	uint32_t flags = EXTI->PR;
+
+	if ((flags & KEYPAD_EXTI_LINES) != 0)
+	{
+		// Schedule the keys to be scanned.
+		task_schedule(TASK_PROCESS_KEYPAD, 0, 0);
+
+		// Clear the IRQ
+		EXTI->PR = KEYPAD_EXTI_LINES;
+	}
+
+	if ((flags & ROTARY_EXTI_LINES) != 0)
+	{
+		// Read the encoder lines
+		uint16_t gpio = GPIO_ReadInputData(GPIOC);
+
+		if ((gpio & (1 << 15)) == 0)
+		{
+			// Falling edge
+			if ((gpio & (1 << 14)) == 0)
+				task_schedule(TASK_PROCESS_KEYPAD, 1, 0);
+			else
+				task_schedule(TASK_PROCESS_KEYPAD, 2, 0);
+		}
+		else
+		{
+			// Rising edge
+			if ((gpio & (1 << 14)) == 0)
+				task_schedule(TASK_PROCESS_KEYPAD, 2, 0);
+			else
+				task_schedule(TASK_PROCESS_KEYPAD, 1, 0);
+		}
+
+		// Clear the IRQ
+		EXTI->PR = ROTARY_EXTI_LINES;
+	}
+}

@@ -151,6 +151,12 @@ void gui_process(uint32_t data)
 			{
 				// Draw the main screen.
 				lcd_write_string("MAIN", LCD_OP_CLR, FLAGS_NONE);
+
+				// Update the trim bars.
+				gui_draw_trim(0, 8, FALSE, mixer_get_trim(STICK_L_V));
+				gui_draw_trim(11, 57, TRUE, mixer_get_trim(STICK_L_H));
+				gui_draw_trim(121, 8, FALSE, mixer_get_trim(STICK_R_V));
+				gui_draw_trim(67, 57, TRUE, mixer_get_trim(STICK_R_H));
 			}
 
 			switch (data)
@@ -191,7 +197,7 @@ void gui_process(uint32_t data)
 						gui_navigate(GUI_LAYOUT_MAIN3);
 					else if (key_press == KEY_LEFT)
 						gui_navigate(GUI_LAYOUT_MAIN);
-					if (key_press >= KEY_CH1_UP && key_press <= KEY_CH4_DN)
+					else if (key_press >= KEY_CH1_UP && key_press <= KEY_CH4_DN)
 					{
 						// Update the trim bars.
 						gui_draw_trim(0, 5, FALSE, mixer_get_trim(STICK_L_V));
@@ -357,13 +363,13 @@ static void gui_show_sticks(void)
 	lcd_draw_rect(BOX_R_X + BOX_W / 2 - 1, BOX_Y + BOX_H / 2 - 1, BOX_R_X + BOX_W / 2 + 1, BOX_Y + BOX_H / 2 + 1, 1, RECT_ROUNDED);
 
 	// Stick position (Right)
-	x = BOX_W / 2 + (BOX_W-2) * sticks_get_percent(STICK_R_H) / 100;
-	y = BOX_W / 2 + (BOX_W-2) * -sticks_get_percent(STICK_R_V) / 100;
+	x = (BOX_W-3) * sticks_get_percent(STICK_R_H) / 100;
+	y = BOX_W - (BOX_W-3) * sticks_get_percent(STICK_R_V) / 100;
 	lcd_draw_rect(BOX_R_X + x - 2, BOX_Y + y - 2, BOX_R_X + x + 2, BOX_Y + y + 2, 1, RECT_ROUNDED);
 
 	// Stick position (Left)
-	x = BOX_W / 2 + (BOX_W-3) * sticks_get_percent(STICK_L_H) / 100;
-	y = BOX_W / 2 + (BOX_W-3) * -sticks_get_percent(STICK_L_V) / 100;
+	x = (BOX_W-3) * sticks_get_percent(STICK_L_H) / 100;
+	y = BOX_W - (BOX_W-3) * sticks_get_percent(STICK_L_V) / 100;
 	lcd_draw_rect(BOX_L_X + x - 2, BOX_Y + y - 2, BOX_L_X + x + 2, BOX_Y + y + 2, 1, RECT_ROUNDED);
 
 	// VRB
@@ -429,9 +435,9 @@ static void gui_show_battery(int x, int y)
 static void gui_draw_trim(int x, int y, bool h_v, int value)
 {
 	int w, h, v;
-	w = (h_v)?54:6;
-	h = (h_v)?6:54;
-	v = 54 * value / (2 * MIXER_TRIM_LIMIT);
+	w = (h_v)?48:6;
+	h = (h_v)?6:48;
+	v = 48 * value / (2 * MIXER_TRIM_LIMIT);
 
 	// Draw the line and centre dot.
 	lcd_draw_rect(x, y, x+w, y+h, LCD_OP_CLR, RECT_FILL);
@@ -440,6 +446,7 @@ static void gui_draw_trim(int x, int y, bool h_v, int value)
 	// Draw the value box
 	if (h_v)
 	{
+		lcd_draw_line(x, y + h/2, x + w, y + h/2, LCD_OP_SET);
 		lcd_draw_rect(v + x + w/2 - 3,
 					  y + h/2 - 3,
 					  v + x + w/2 + 3,
@@ -447,6 +454,7 @@ static void gui_draw_trim(int x, int y, bool h_v, int value)
 	}
 	else
 	{
+		lcd_draw_rect(x + w/2, y, x + w/2, y + h, LCD_OP_SET, RECT_FILL);
 		lcd_draw_rect(x + w/2 - 3,
 					  v + y + h/2 - 3,
 					  x + w/2 + 3,

@@ -87,8 +87,8 @@ void sticks_init(void)
 	ADC_SoftwareStartConvCmd(ADC1, ENABLE);
 
 	nvicInit.NVIC_IRQChannel = DMA1_Channel1_IRQn;
-    nvicInit.NVIC_IRQChannelSubPriority = 0;
-    nvicInit.NVIC_IRQChannelPreemptionPriority = 0;
+    nvicInit.NVIC_IRQChannelSubPriority = 1;
+    nvicInit.NVIC_IRQChannelPreemptionPriority = 1;
     nvicInit.NVIC_IRQChannelCmd = ENABLE;
     NVIC_Init(&nvicInit);
 
@@ -237,4 +237,33 @@ int16_t sticks_get(STICK channel)
 int16_t sticks_get_percent(STICK channel)
 {
 	return 100 * (STICK_LIMIT + stick_data[channel]) / (2*STICK_LIMIT);
+}
+
+
+/**
+  * @brief  This function handles the DMA end of transfer.
+  * @param  None
+  * @retval None
+  */
+void DMA1_Channel1_IRQHandler(void)
+{
+	int32_t tmp;
+	int i;
+
+	DMA_ClearITPendingBit(DMA_IT_TC);
+
+	// Scale channels to -STICK_LIMIT to +STICK_LIMIT.
+	for (i=0; i<STICK_INPUT_CHANNELS; ++i)
+	{
+		tmp = adc_data[i];
+		tmp -= cal_data[i].centre;
+		tmp *= 2*STICK_LIMIT;
+		tmp /= cal_data[i].max - cal_data[i].min;
+		stick_data[i] = tmp;
+	}
+
+	// Run the mixer.
+	mixer_update();
+
+	task_schedule(TASK_PROCESS_STICKS, 0, 40);
 }

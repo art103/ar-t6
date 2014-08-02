@@ -27,6 +27,15 @@ EEGeneral  g_eeGeneral;
 ModelData  g_model;
 uint8_t SlaveMode;		// Trainer Slave
 
+/**
+  * @brief  This function handles the SysTick.
+  * @param  None
+  * @retval None
+  */
+void SysTick_Handler(void)
+{
+	system_ticks++;
+}
 
 /**
   * @brief  Main Loop for non-IRQ based work

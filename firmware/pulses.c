@@ -32,8 +32,8 @@
 
 // All timings in us
 #define PPM_CENTER 			1500
-#define PPM_STOP_LEN		(g_model.ppmDelay * 50 + 300)
-#define PPM_MAX_FRAME_LEN	30000
+#define PPM_STOP_LEN		(300 + g_model.ppmDelay * 50)
+#define PPM_MAX_FRAME_LEN	60000
 #define PPM_MIN_GAP_LEN		9000
 
 // Exported globals
@@ -41,7 +41,7 @@ volatile struct t_latency g_latency ;
 volatile int16_t g_chans[NUM_CHNOUT];
 
 // Private globals
-static volatile union p1mhz_t
+static union p1mhz_t
 {
     uint16_t pword[PULSES_WORD_SIZE] ;   //72
     uint8_t pbyte[PULSES_BYTE_SIZE] ;   //144
@@ -99,7 +99,7 @@ void pulses_init(void)
 	TIM_ICStructInit(&timIcInit);
 
 	// 1MHz time base
-	timInit.TIM_Prescaler = 12;
+	timInit.TIM_Prescaler = 23;
 	TIM_TimeBaseInit(TIM2, &timInit);
 	TIM_TimeBaseInit(TIM3, &timInit);
 
@@ -114,9 +114,9 @@ void pulses_init(void)
 	TIM_ITConfig(TIM2, TIM_FLAG_CC1, ENABLE);
 	TIM_ITConfig(TIM3, TIM_FLAG_CC1, ENABLE);
 
-    // Configure the Interrupt to the highest priority
-    nvicInit.NVIC_IRQChannelPreemptionPriority = 1;
-    nvicInit.NVIC_IRQChannelSubPriority = 1;
+    // Configure the Interrupt priority to just below the DMA.
+    nvicInit.NVIC_IRQChannelPreemptionPriority = 0;
+    nvicInit.NVIC_IRQChannelSubPriority = 0;
     nvicInit.NVIC_IRQChannelCmd = ENABLE;
     nvicInit.NVIC_IRQChannel = TIM2_IRQn;
     NVIC_Init(&nvicInit);
@@ -130,11 +130,13 @@ void pulses_init(void)
 	g_eeGeneral.enablePpmsim = FALSE;
 	SlaveMode = FALSE;
 	g_model.ppmStart = 0;
-	g_model.extendedLimits = FALSE;
-	g_model.ppmFrameLength = 0;
-	g_model.ppmDelay = 0;
-	g_model.ppmNCH = 0;
+	g_model.extendedLimits = TRUE;
+	g_model.ppmFrameLength = 8;
+	g_model.ppmDelay = 6;
+	g_model.ppmNCH = 8;
 	g_model.pulsePol = 0;
+
+	pulses_setup();
 }
 
 /**
@@ -225,12 +227,12 @@ void pulses_setup_ppm( uint8_t proto )
 	int16_t PPM_range;
 	uint8_t startChan = g_model.ppmStart;
 	uint8_t i;
-	uint16_t position = 0; // Running total so we can avoid resetting the timer count and avoid jitter.
+	int16_t position = 0; // Running total so we can avoid resetting the timer count and avoid jitter.
 	  
 	// Total frame length = 22500usec
 	// each pulse is 0.5..2.5ms long including a 300us stop tail
-	volatile uint16_t *ptr = (proto == PROTO_PPM) ? pulses_1us.pword : &pulses_1us.pword[PULSES_WORD_SIZE/2] ;
-	uint8_t p = ( ( proto == PROTO_PPM16) ? 16 : 8 ) + g_model.ppmNCH ; // Channels
+	uint16_t *ptr = (proto == PROTO_PPM) ? pulses_1us.pword : &pulses_1us.pword[PULSES_WORD_SIZE/2] ;
+	uint8_t p = g_model.ppmNCH ; // Channels
 	int32_t gap = 22500 + g_model.ppmFrameLength * 1000; // Minimum Framelen = 22.5 ms
 
 	p += startChan;
@@ -241,21 +243,21 @@ void pulses_setup_ppm( uint8_t proto )
 		*ptr++ = position;
 	}
 
-	PPM_range = g_model.extendedLimits ? 1000 : 700;   // range of 0.5 - 2.5ms or  0.8 - 2.2ms
+	PPM_range = g_model.extendedLimits ? 800 : 500;   // range of 0.7 - 2.3ms or  0.8 - 2.2ms
 	for (i = (proto == PROTO_PPM16) ? p-8 : startChan; i < p; i++)
 	{
 		// Get the channel and limit the range.
-		int32_t v = g_chans[i] * 3;	// -1024 - 1024
+		int32_t v = g_chans[i];	// -1024 - 1024
 		if (v > PPM_range) v = PPM_range;
 		if (v < -PPM_range) v = -PPM_range;
-		v += PPM_CENTER - PPM_STOP_LEN;
+		v += PPM_CENTER;
 		
 		// Channel
 		gap -= v;
 		position += v;
 		*ptr++ = position;
 
-		// Stop
+		// end-of-channel
 		gap -= PPM_STOP_LEN;
 		position += PPM_STOP_LEN;
 		*ptr++ = position;
@@ -271,8 +273,8 @@ void pulses_setup_ppm( uint8_t proto )
 	if (proto == PROTO_PPM)
 	{
 		// Stop
-		//total += q;
-		//*ptr++ = total;
+		position += PPM_STOP_LEN;
+		*ptr++ = position;
 	}
 
 	*ptr = 0;
@@ -329,10 +331,12 @@ void pulses_set_trainer_port_capture()
 void TIM2_IRQHandler(void)
 {
     static uint8_t   pulsePol;
-    static volatile uint16_t *pulsePtr = pulses_1us.pword;
+    static uint16_t *pulsePtr = pulses_1us.pword;
 
     // For measuring the latency.
     uint16_t dt = TIM_GetCounter(TIM2);
+
+    TIM_ClearITPendingBit(TIM2, TIM_FLAG_CC1);
 
     // Toggle the output bit.
     if(pulsePol)
@@ -349,9 +353,6 @@ void TIM2_IRQHandler(void)
         	GPIO_ResetBits(GPIOA, PPM_IN);
         pulsePol = 1;
     }
-
-    // Set the compare value for the next pulse.
-    TIM_SetCompare1(TIM2, *pulsePtr);
 
     // Store the min / max latency.
 	if ( (uint8_t)dt > g_latency.g_tmr1Latency_max) g_latency.g_tmr1Latency_max = dt ;    // max has leap, therefore vary in length
@@ -373,18 +374,20 @@ void TIM2_IRQHandler(void)
         if ( (g_model.protocol == PROTO_PPM) || (g_model.protocol == PROTO_PPM16) )
         {
             // Reset and start the timer.
+	        TIM_ClearITPendingBit(TIM2, TIM_FLAG_CC1);
 	        TIM_SetCounter(TIM2, 0);
-	        TIM_SetCompare1(TIM2, 0);
+	        TIM_SetCompare1(TIM2, PPM_STOP_LEN);
             TIM_Cmd(TIM2, ENABLE);
         }
     }
     else
     {
+        // Set the compare value for the next pulse.
+        TIM_SetCompare1(TIM2, *pulsePtr);
     	pulsePtr++;
     }
 
     heartbeat |= HEART_TIMER_PULSES;
-    TIM_ClearITPendingBit(TIM2, TIM_FLAG_CC1);
 }
 
 /**
