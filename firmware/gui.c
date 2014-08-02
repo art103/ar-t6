@@ -19,6 +19,7 @@
 #include "sticks.h"
 #include "mixer.h"
 #include "gui.h"
+#include "art6.h"
 
 // Message Popup
 #define MSG_X	6
@@ -26,10 +27,10 @@
 #define MSG_H	32
 
 // Stick boxes
-#define BOX_W	24
-#define BOX_H	24
-#define BOX_Y	35
-#define BOX_L_X	30
+#define BOX_W	22
+#define BOX_H	22
+#define BOX_Y	34
+#define BOX_L_X	32
 #define BOX_R_X	72
 // POT bars
 #define POT_W	2
@@ -48,7 +49,7 @@ static GUI_MSG current_msg = GUI_MSG_NONE;
 static volatile KEYPAD_KEY key_press = KEY_NONE;
 static uint32_t gui_timeout = 0;
 
-static volatile update_type = 0;
+static volatile uint8_t update_type = 0;
 
 static const char *msg[GUI_MSG_MAX] = {
 		"",
@@ -60,7 +61,9 @@ static const char *msg[GUI_MSG_MAX] = {
 
 static void gui_show_sticks(void);
 static void gui_show_battery(int x, int y);
+static void gui_update_trim(void);
 static void gui_draw_trim(int x, int y, bool h_v, int value);
+static void gui_draw_slider(int x, int y, int w, int h, int value);
 
 /**
   * @brief  Initialise the GUI.
@@ -95,6 +98,11 @@ void gui_process(uint32_t data)
 		current_layout = new_layout;
 		// Clear the screen.
 		lcd_draw_rect(0, 0, LCD_WIDTH - 1, LCD_HEIGHT - 1, 0, RECT_FILL);
+		// Trim
+		gui_update_trim();
+		// Battery
+		gui_show_battery(83, 0);
+		// Reset cursor
 		lcd_set_cursor(0, 0);
 
 		full = TRUE;
@@ -123,6 +131,22 @@ void gui_process(uint32_t data)
 		return;
 	}
 
+	// Global information
+	if (!full && current_layout >= GUI_LAYOUT_MAIN && current_layout <= GUI_LAYOUT_MAIN3)
+	{
+		// Trim
+		if ((key_press & TRIM_KEYS) != 0)
+		{
+			gui_update_trim();
+		}
+
+		// Keep the battery icon updated
+		if ((update_type & UPDATE_STICKS) != 0)
+		{
+			gui_show_battery(83, 0);
+		}
+	}
+
 	switch (current_layout)
 	{
 		case GUI_LAYOUT_NONE:
@@ -130,24 +154,12 @@ void gui_process(uint32_t data)
 		break;
 
 		case GUI_LAYOUT_SPLASH:
-			if (full)
-			{
-				// Draw the main screen.
-				lcd_write_string("SPLASH", LCD_OP_CLR, FLAGS_NONE);
-			}
 		break;
 
 		case GUI_LAYOUT_MAIN:
-			if (full)
-			{
-				// Draw the main screen.
-				lcd_write_string("MAIN", LCD_OP_CLR, FLAGS_NONE);
-			}
-
 			if ((update_type & UPDATE_STICKS) != 0)
 			{
 				gui_show_sticks();
-				gui_show_battery(83, 0);
 			}
 
 			if ((update_type & UPDATE_KEYPRESS) != 0)
@@ -160,22 +172,21 @@ void gui_process(uint32_t data)
 		break;
 
 		case GUI_LAYOUT_MAIN2:
-			if (full)
-			{
-				// Draw the main screen.
-				lcd_write_string("MAIN2", LCD_OP_CLR, FLAGS_NONE);
-
-				// Update the trim bars.
-				gui_draw_trim(0, 8, FALSE, mixer_get_trim(STICK_L_V));
-				gui_draw_trim(11, 57, TRUE, mixer_get_trim(STICK_L_H));
-				gui_draw_trim(121, 8, FALSE, mixer_get_trim(STICK_R_V));
-				gui_draw_trim(67, 57, TRUE, mixer_get_trim(STICK_R_H));
-			}
-
 			if ((update_type & UPDATE_STICKS) != 0)
 			{
-				//gui_show_sticks();
-				gui_show_battery(83, 0);
+				const int top = 40;
+
+				// Left 4 sliders
+				gui_draw_slider(11, top, 	  48, 3, 50 + g_chans[0] / (2 * STICK_LIMIT / 100));
+				gui_draw_slider(11, top + 4,  48, 3, 50 + g_chans[1] / (2 * STICK_LIMIT / 100));
+				gui_draw_slider(11, top + 8,  48, 3, 50 + g_chans[2] / (2 * STICK_LIMIT / 100));
+				gui_draw_slider(11, top + 12, 48, 3, 50 + g_chans[3] / (2 * STICK_LIMIT / 100));
+
+				// Right 4 sliders
+				gui_draw_slider(67, top, 	  48, 3, 50 + g_chans[4] / (2 * STICK_LIMIT / 100));
+				gui_draw_slider(67, top + 4,  48, 3, 50 + g_chans[5] / (2 * STICK_LIMIT / 100));
+				gui_draw_slider(67, top + 8,  48, 3, 50 + g_chans[6] / (2 * STICK_LIMIT / 100));
+				gui_draw_slider(67, top + 12, 48, 3, 50 + g_chans[7] / (2 * STICK_LIMIT / 100));
 			}
 
 			if ((update_type & UPDATE_KEYPRESS) != 0)
@@ -184,37 +195,10 @@ void gui_process(uint32_t data)
 					gui_navigate(GUI_LAYOUT_MAIN3);
 				else if (key_press == KEY_LEFT)
 					gui_navigate(GUI_LAYOUT_MAIN);
-				else if ((key_press & TRIM_KEYS) != 0)
-				{
-					// Update the trim bars.
-					gui_draw_trim(0, 8, FALSE, mixer_get_trim(STICK_L_V));
-					gui_draw_trim(11, 57, TRUE, mixer_get_trim(STICK_L_H));
-					gui_draw_trim(121, 8, FALSE, mixer_get_trim(STICK_R_V));
-					gui_draw_trim(67, 57, TRUE, mixer_get_trim(STICK_R_H));
-				}
-				if (key_press != 0)
-				{
-					lcd_set_cursor(0, 0);
-					lcd_write_string("        ", LCD_OP_SET, FLAGS_NONE);
-					lcd_set_cursor(0, 0);
-					lcd_write_int(key_press, LCD_OP_SET, FLAGS_NONE);
-				}
 			}
 		break;
 
 		case GUI_LAYOUT_MAIN3:
-			if (full)
-			{
-				// Draw the main screen.
-				lcd_write_string("MAIN3", LCD_OP_CLR, FLAGS_NONE);
-			}
-
-			if ((update_type & UPDATE_STICKS) != 0)
-			{
-				//gui_show_sticks();
-				//gui_show_battery(83, 0);
-			}
-
 			if ((update_type & UPDATE_KEYPRESS) != 0)
 			{
 				if (key_press == KEY_RIGHT)
@@ -396,6 +380,22 @@ static void gui_show_battery(int x, int y)
 	lcd_write_string("v", LCD_OP_SET, FLAGS_NONE);
 }
 
+
+/**
+  * @brief  Update all 4 trim bars.
+  * @note
+  * @param  None
+  * @retval None
+  */
+static void gui_update_trim(void)
+{
+	// Update the trim bars.
+	gui_draw_trim(0, 8, FALSE, mixer_get_trim(STICK_L_V));
+	gui_draw_trim(11, 57, TRUE, mixer_get_trim(STICK_L_H));
+	gui_draw_trim(121, 8, FALSE, mixer_get_trim(STICK_R_V));
+	gui_draw_trim(67, 57, TRUE, mixer_get_trim(STICK_R_H));
+}
+
 /**
   * @brief  Display a trim bar with the supplied value
   * @note
@@ -418,8 +418,8 @@ static void gui_draw_trim(int x, int y, bool h_v, int value)
 		lcd_draw_rect(x - 3, y, x+w + 3, y+h, LCD_OP_CLR, RECT_FILL);
 		// Draw the centre dot and ends.
 		lcd_draw_rect(x + w/2 - 1, y + h/2 - 1, x + w/2 + 1, y + h/2 + 1, LCD_OP_SET, RECT_FILL);
-		lcd_draw_rect(x, y + h/2 - 1, x, y + h/2 + 1, LCD_OP_SET, RECT_FILL);
-		lcd_draw_rect(x + w, y + h/2 - 1, x + w, y + h/2 + 1, LCD_OP_SET, RECT_FILL);
+		lcd_draw_line(x, y + h/2 - 1, x, y + h/2 + 1, LCD_OP_SET);
+		lcd_draw_line(x + w, y + h/2 - 1, x + w, y + h/2 + 1, LCD_OP_SET);
 		// Main line
 		lcd_draw_line(x, y + h/2, x + w, y + h/2, LCD_OP_SET);
 		// Value Box
@@ -434,8 +434,8 @@ static void gui_draw_trim(int x, int y, bool h_v, int value)
 		lcd_draw_rect(x, y - 3, x+w, y+h + 3, LCD_OP_CLR, RECT_FILL);
 		// Draw the centre dot and ends.
 		lcd_draw_rect(x + w/2 - 1, y + h/2 - 1, x + w/2 + 1, y + h/2 + 1, LCD_OP_SET, RECT_FILL);
-		lcd_draw_rect(x + w/2 - 1, y, x + w/2 + 1, y, LCD_OP_SET, RECT_FILL);
-		lcd_draw_rect(x + w/2 - 1, y + h, x + w/2 + 1, y + h, LCD_OP_SET, RECT_FILL);
+		lcd_draw_line(x + w/2 - 1, y, x + w/2 + 1, y, LCD_OP_SET);
+		lcd_draw_line(x + w/2 - 1, y + h, x + w/2 + 1, y + h, LCD_OP_SET);
 		// Main line
 		lcd_draw_rect(x + w/2, y, x + w/2, y + h, LCD_OP_SET, RECT_FILL);
 		// Value Box
@@ -444,8 +444,46 @@ static void gui_draw_trim(int x, int y, bool h_v, int value)
 					  x + w/2 + 3,
 					  -v + y + h/2 + 3, LCD_OP_XOR, RECT_ROUNDED);
 	}
-
-
-
-
 }
+
+/**
+  * @brief  Display a slider bar with the supplied parameters
+  * @note
+  * @param  x, y: The TL position of the bar on screen.
+  * @param  w, h: The size of the bar.
+  * @param  value: The value of the slider from 0 to 100.
+  * @retval None
+  */
+static void gui_draw_slider(int x, int y, int w, int h, int value)
+{
+	int i, v, d;
+
+	// Value scaling
+	v = (w * value / 100) - (w/2);
+	// Division spacing
+	d = w / 20;
+
+	// Clear the background
+	lcd_draw_rect(x, y, x+w, y+h, LCD_OP_CLR, RECT_FILL);
+
+	// Draw the dashed line
+	for (i=0; i<w; i += d)
+	{
+		lcd_set_pixel(x + i, y + h/2, LCD_OP_SET);
+	}
+
+	// Draw the bar
+	if (v > 0)
+		lcd_draw_rect(x + w/2, y, x + w/2 + v, y + h - 1, LCD_OP_XOR, RECT_FILL);
+	else
+		lcd_draw_rect(x + w/2 + v, y, x + w/2, y + h - 1, LCD_OP_XOR, RECT_FILL);
+
+	// Draw the ends and middle
+	lcd_draw_line(x, y, x, y+h-1, LCD_OP_SET);
+	lcd_draw_line(x+w/2, y, x+w/2, y+h-1, LCD_OP_SET);
+	lcd_draw_line(x+w, y, x+w, y+h-1, LCD_OP_SET);
+}
+
+
+
+
