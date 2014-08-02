@@ -93,17 +93,31 @@ void mixer_input_trim(KEYPAD_KEY key)
 	switch (key)
 	{
 	case KEY_CH1_UP:
+		if (trim_data[0] < MIXER_TRIM_LIMIT) trim_data[0] += trim_increment;
+		break;
 	case KEY_CH2_UP:
+		if (trim_data[1] < MIXER_TRIM_LIMIT) trim_data[1] += trim_increment;
+		break;
 	case KEY_CH3_UP:
+		if (trim_data[2] < MIXER_TRIM_LIMIT) trim_data[2] += trim_increment;
+		break;
 	case KEY_CH4_UP:
-		if (trim_data[(key - KEY_CH1_UP) / 2] < MIXER_TRIM_LIMIT) trim_data[(key - KEY_CH1_UP) / 2] += trim_increment;
+		if (trim_data[3] < MIXER_TRIM_LIMIT) trim_data[3] += trim_increment;
 		break;
+
 	case KEY_CH1_DN:
-	case KEY_CH2_DN:
-	case KEY_CH3_DN:
-	case KEY_CH4_DN:
-		if (trim_data[(key - KEY_CH1_DN) / 2] > -MIXER_TRIM_LIMIT) trim_data[(key - KEY_CH1_DN) / 2] -= trim_increment;
+		if (trim_data[0] > -MIXER_TRIM_LIMIT) trim_data[0] -= trim_increment;
 		break;
+	case KEY_CH2_DN:
+		if (trim_data[1] > -MIXER_TRIM_LIMIT) trim_data[1] -= trim_increment;
+		break;
+	case KEY_CH3_DN:
+		if (trim_data[2] > -MIXER_TRIM_LIMIT) trim_data[2] -= trim_increment;
+		break;
+	case KEY_CH4_DN:
+		if (trim_data[3] > -MIXER_TRIM_LIMIT) trim_data[3] -= trim_increment;
+		break;
+
 	default:
 		break;
 	}

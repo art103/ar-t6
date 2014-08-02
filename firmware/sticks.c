@@ -19,6 +19,7 @@
 #include "tasks.h"
 #include "lcd.h"
 #include "gui.h"
+#include "mixer.h"
 #include "art6.h"
 
 volatile uint32_t adc_data[STICK_ADC_CHANNELS];
@@ -62,7 +63,7 @@ void sticks_init(void)
 
 	// Setup the ADC init structure
 	ADC_StructInit(&adcInit);
-	adcInit.ADC_ContinuousConvMode = ENABLE;
+	adcInit.ADC_ContinuousConvMode = DISABLE;
 	adcInit.ADC_ScanConvMode = ENABLE;
 	adcInit.ADC_ExternalTrigConv = ADC_ExternalTrigConv_None;
 	adcInit.ADC_NbrOfChannel = STICK_ADC_CHANNELS;
@@ -120,7 +121,7 @@ void sticks_init(void)
 }
 
 /**
-  * @brief  Process the stick data and drive updates through the system.
+  * @brief  Process the stick data and drive updates through the GUI.
   * @note   Called from the scheduler.
   * @param  data: Not used.
   * @retval None
@@ -182,12 +183,10 @@ void sticks_process(uint32_t data)
 		}
 	}
 
-	gui_update_sticks();
+	gui_update(UPDATE_STICKS);
 
-	if (cal_state == CAL_OFF)
-	{
-		// ToDo: mixer_input_sticks(analog);
-	}
+	// Schedule another update.
+	ADC_SoftwareStartConvCmd(ADC1, ENABLE);
 }
 
 /**
@@ -253,7 +252,7 @@ void DMA1_Channel1_IRQHandler(void)
 	DMA_ClearITPendingBit(DMA_IT_TC);
 
 	// Scale channels to -STICK_LIMIT to +STICK_LIMIT.
-	for (i=0; i<STICK_INPUT_CHANNELS; ++i)
+	for (i=0; i<STICK_ADC_CHANNELS; ++i)
 	{
 		tmp = adc_data[i];
 		tmp -= cal_data[i].centre;
@@ -265,5 +264,5 @@ void DMA1_Channel1_IRQHandler(void)
 	// Run the mixer.
 	mixer_update();
 
-	task_schedule(TASK_PROCESS_STICKS, 0, 40);
+	task_schedule(TASK_PROCESS_STICKS, 0, 20);
 }

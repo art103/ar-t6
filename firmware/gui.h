@@ -41,10 +41,20 @@ typedef enum
 	GUI_MSG_MAX,
 } GUI_MSG;
 
+typedef enum
+{
+	UPDATE_NEW_LAYOUT = 0x00,
+	UPDATE_MSG = 0x01,
+	UPDATE_STICKS = 0x02,
+	UPDATE_TRIM = 0x04,
+	UPDATE_KEYPRESS = 0x08
+} UPDATE_TYPE;
+
+
 void gui_init(void);
 void gui_process(uint32_t data);
 
-void gui_update_sticks(void);
+void gui_update(UPDATE_TYPE type);
 void gui_input_key(KEYPAD_KEY key);
 
 void gui_back(void);
