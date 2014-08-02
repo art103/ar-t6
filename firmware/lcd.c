@@ -276,22 +276,25 @@ void lcd_set_cursor(uint8_t x, uint8_t y)
 void lcd_write_char(uint8_t c, LCD_OP op, LCD_FLAGS flags)
 {
 	uint8_t x, y;
+	uint8_t x1, y1, divX = 1, divY = 1;
 	uint8_t height = CHAR_HEIGHT;
 	uint8_t width = CHAR_WIDTH;
 	uint8_t row = 0;
+	LCD_OP op_set = (op==LCD_OP_SET)?LCD_OP_SET:LCD_OP_CLR;
+	LCD_OP op_clr = (op==LCD_OP_SET)?LCD_OP_CLR:LCD_OP_SET;
 
-	switch (flags)
+	if ((flags & CHAR_2X) != 0)
 	{
-	default:
-		break;
-	case CHAR_2X:
+		height *= 2;
+		width *= 1;
+		divY = 2;
+	}
+	else if ((flags & CHAR_4X) != 0)
+	{
 		height *=2;
 		width *=2;
-		break;
-	case CHAR_4X:
-		height *=4;
-		width *=4;
-		break;
+		divX = 2;
+		divY = 2;
 	}
 
 	if ((cursor_y+height) >= LCD_HEIGHT) return;
@@ -302,21 +305,37 @@ void lcd_write_char(uint8_t c, LCD_OP op, LCD_FLAGS flags)
 		row = 0;
 		for (y=0; y<height + 1; y++)
 		{
-			LCD_OP op;
 			uint8_t d;
-			d = font[ (c*CHAR_WIDTH) + x + row*FONT_STRIDE ];
-			if (d & (1 << y%8))
-				op = LCD_OP_SET;
+			x1 = x / divX;
+			y1 = y / divY;
+			d = font[ (c*CHAR_WIDTH) + x1 + row*FONT_STRIDE ];
+			if (op != LCD_OP_XOR)
+			{
+				if (d & (1 << y1%8))
+					lcd_set_pixel(cursor_x+x, cursor_y+y, op_set);
+				else
+					lcd_set_pixel(cursor_x+x, cursor_y+y, op_clr);
+
+			}
 			else
-				op = LCD_OP_CLR;
-			lcd_set_pixel(cursor_x+x, cursor_y+y, op);
-			if (y%8 == 7)
+			{
+				if (d & (1 << y1%8))
+					lcd_set_pixel(cursor_x+x, cursor_y+y, LCD_OP_XOR);
+			}
+
+			if (y1%8 == 7)
 				row++;
 		}
+
+		if ((flags & CHAR_CONDENSED) != 0 && x%CHAR_WIDTH==1)
+			cursor_x--;
 	}
 	for (y=0; y<height+1; y++) lcd_set_pixel(cursor_x+width, cursor_y+y, LCD_OP_CLR);
 
 	cursor_x += width + 1;
+	if ((flags & CHAR_CONDENSED) != 0)
+		cursor_x--;
+
 	if (cursor_x >= LCD_WIDTH)
 	cursor_y += height + 1;
 }
@@ -354,7 +373,7 @@ static int16_t u;
   * @param  flags: LCD_FLAGS
   * @retval None
   */
-void lcd_write_int(int32_t val, LCD_OP op, uint8_t flags)
+void lcd_write_int(int32_t val, LCD_OP op, uint16_t flags)
 {
 	if (val < 0) u = -val;
 	else u = val;
@@ -379,7 +398,7 @@ void lcd_write_int(int32_t val, LCD_OP op, uint8_t flags)
 	if (tth > 0 || th > 0 || h > 0)
 		lcd_write_char(h + '0', op, flags);
 
-	if (tth > 0 || th > 0 || h > 0 || t > 0)
+	if (tth > 0 || th > 0 || h > 0 || t > 0 || (flags & INT_DIV10) || (flags & INT_PAD10))
 		lcd_write_char(t + '0', op, flags);
 	if (flags & INT_DIV10)
 		lcd_write_char('.', op, flags);
@@ -437,7 +456,7 @@ void lcd_draw_line(uint8_t x1, uint8_t y1, uint8_t x2, uint8_t y2, LCD_OP op)
   * @param  fill: Fill?
   * @retval None
   */
-void lcd_draw_rect(uint8_t x1, uint8_t y1, uint8_t x2, uint8_t y2, LCD_OP op, uint8_t flags)
+void lcd_draw_rect(uint8_t x1, uint8_t y1, uint8_t x2, uint8_t y2, LCD_OP op, uint16_t flags)
 {
 	uint8_t x, y;
 

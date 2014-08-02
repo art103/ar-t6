@@ -19,6 +19,7 @@
 #include "sticks.h"
 #include "mixer.h"
 #include "gui.h"
+#include "myeeprom.h"
 #include "art6.h"
 
 // Message Popup
@@ -61,6 +62,7 @@ static const char *msg[GUI_MSG_MAX] = {
 
 static void gui_show_sticks(void);
 static void gui_show_battery(int x, int y);
+static void gui_show_timer(int x, int y);
 static void gui_update_trim(void);
 static void gui_draw_trim(int x, int y, bool h_v, int value);
 static void gui_draw_slider(int x, int y, int w, int h, int value);
@@ -93,17 +95,26 @@ void gui_process(uint32_t data)
 		gui_timeout = 0;
 	}
 
+	// Draw infrequently updated information.
 	if (new_layout)
 	{
 		current_layout = new_layout;
+
 		// Clear the screen.
 		lcd_draw_rect(0, 0, LCD_WIDTH - 1, LCD_HEIGHT - 1, 0, RECT_FILL);
+
 		// Trim
 		gui_update_trim();
-		// Battery
+
+		// Update Battery icon
 		gui_show_battery(83, 0);
-		// Reset cursor
-		lcd_set_cursor(0, 0);
+
+		// Update the timer
+		gui_show_timer(39, 17);
+
+		// Model Name
+		lcd_set_cursor(8, 0);
+		lcd_write_string(g_model.name, LCD_OP_SET, CHAR_2X);
 
 		full = TRUE;
 		new_layout = GUI_LAYOUT_NONE;
@@ -132,7 +143,7 @@ void gui_process(uint32_t data)
 	}
 
 	// Global information
-	if (!full && current_layout >= GUI_LAYOUT_MAIN && current_layout <= GUI_LAYOUT_MAIN3)
+	if (!full && current_layout >= GUI_LAYOUT_MAIN1 && current_layout <= GUI_LAYOUT_MAIN4)
 	{
 		// Trim
 		if ((key_press & TRIM_KEYS) != 0)
@@ -140,10 +151,16 @@ void gui_process(uint32_t data)
 			gui_update_trim();
 		}
 
-		// Keep the battery icon updated
+		// Update the battery level
 		if ((update_type & UPDATE_STICKS) != 0)
 		{
 			gui_show_battery(83, 0);
+		}
+
+		// Update the timer
+		if ((update_type & UPDATE_TIMER) != 0)
+		{
+			gui_show_timer(39, 17);
 		}
 	}
 
@@ -156,7 +173,7 @@ void gui_process(uint32_t data)
 		case GUI_LAYOUT_SPLASH:
 		break;
 
-		case GUI_LAYOUT_MAIN:
+		case GUI_LAYOUT_MAIN1:
 			if ((update_type & UPDATE_STICKS) != 0)
 			{
 				gui_show_sticks();
@@ -167,7 +184,7 @@ void gui_process(uint32_t data)
 				if (key_press == KEY_RIGHT)
 					gui_navigate(GUI_LAYOUT_MAIN2);
 				else if (key_press == KEY_LEFT)
-					gui_navigate(GUI_LAYOUT_MAIN3);
+					gui_navigate(GUI_LAYOUT_MAIN4);
 			}
 		break;
 
@@ -194,17 +211,66 @@ void gui_process(uint32_t data)
 				if (key_press == KEY_RIGHT)
 					gui_navigate(GUI_LAYOUT_MAIN3);
 				else if (key_press == KEY_LEFT)
-					gui_navigate(GUI_LAYOUT_MAIN);
+					gui_navigate(GUI_LAYOUT_MAIN1);
 			}
 		break;
 
 		case GUI_LAYOUT_MAIN3:
+		{
+			int top = 40;
+			int left = 12;
+			const int spacing = 28;
+
+			lcd_draw_rect(left, top, left + spacing * 4 - 4, top + 16, LCD_OP_CLR, RECT_FILL);
+
+			lcd_set_cursor(left, top);
+			left += spacing;
+			lcd_write_int(1000 * g_chans[0] / STICK_LIMIT, LCD_OP_SET, INT_DIV10 | CHAR_CONDENSED);
+			lcd_set_cursor(left, top);
+			left += spacing;
+			lcd_write_int(1000 * g_chans[1] / STICK_LIMIT, LCD_OP_SET, INT_DIV10 | CHAR_CONDENSED);
+			lcd_set_cursor(left, top);
+			left += spacing;
+			lcd_write_int(1000 * g_chans[2] / STICK_LIMIT, LCD_OP_SET, INT_DIV10 | CHAR_CONDENSED);
+			lcd_set_cursor(left, top);
+			left += spacing;
+			lcd_write_int(1000 * g_chans[3] / STICK_LIMIT, LCD_OP_SET, INT_DIV10 | CHAR_CONDENSED);
+
+			top += 8;
+			left = 12;
+			lcd_set_cursor(left, top);
+			left += spacing;
+			lcd_write_int(1000 * g_chans[4] / STICK_LIMIT, LCD_OP_SET, INT_DIV10 | CHAR_CONDENSED);
+			lcd_set_cursor(left, top);
+			left += spacing;
+			lcd_write_int(1000 * g_chans[5] / STICK_LIMIT, LCD_OP_SET, INT_DIV10 | CHAR_CONDENSED);
+			lcd_set_cursor(left, top);
+			left += spacing;
+			lcd_write_int(1000 * g_chans[6] / STICK_LIMIT, LCD_OP_SET, INT_DIV10 | CHAR_CONDENSED);
+			lcd_set_cursor(left, top);
+			left += spacing;
+			lcd_write_int(1000 * g_chans[7] / STICK_LIMIT, LCD_OP_SET, INT_DIV10 | CHAR_CONDENSED);
+
 			if ((update_type & UPDATE_KEYPRESS) != 0)
 			{
 				if (key_press == KEY_RIGHT)
-					gui_navigate(GUI_LAYOUT_MAIN);
+					gui_navigate(GUI_LAYOUT_MAIN4);
 				else if (key_press == KEY_LEFT)
 					gui_navigate(GUI_LAYOUT_MAIN2);
+			}
+		}
+		break;
+
+		case GUI_LAYOUT_MAIN4:
+			lcd_set_cursor(37, 40);
+			lcd_write_string("00:00", LCD_OP_SET, CHAR_4X);
+
+			if ((update_type & UPDATE_KEYPRESS) != 0)
+			{
+				if (key_press == KEY_RIGHT)
+					gui_navigate(GUI_LAYOUT_MAIN1);
+				else if (key_press == KEY_LEFT)
+					gui_navigate(GUI_LAYOUT_MAIN3);
 			}
 		break;
 
@@ -368,8 +434,10 @@ static void gui_show_battery(int x, int y)
 	level = 12 * (batt - BATT_MIN) / (BATT_MAX - BATT_MIN);
 	level = (level > 12)?12:level;
 
+	// Background
+	lcd_draw_rect(x-1, y, x+15, y+7, 0, RECT_FILL);
+
 	// Battery Icon
-	lcd_draw_rect(x, y+2, x+12, y+5, 0, RECT_FILL);
 	lcd_draw_rect(x, y+1, x+12, y+6, 1, RECT_ROUNDED);
 	lcd_draw_rect(x+12, y+2, x+14, y+5, 1, RECT_ROUNDED);
 	lcd_draw_rect(x, y+2, x+level, y+5, 1, RECT_FILL);
@@ -380,6 +448,20 @@ static void gui_show_battery(int x, int y)
 	lcd_write_string("v", LCD_OP_SET, FLAGS_NONE);
 }
 
+/**
+  * @brief  Display the current timer value.
+  * @note
+  * @param  x, y: Position on screen (starting cursor)
+  * @retval None
+  */
+static void gui_show_timer(int x, int y)
+{
+	// Timer
+	lcd_set_cursor(x, y);
+	lcd_write_int(g_model.tmrVal / 60, LCD_OP_SET, INT_PAD10 | CHAR_4X);
+	lcd_write_string(":", LCD_OP_SET, INT_PAD10 | CHAR_2X);
+	lcd_write_int(g_model.tmrVal % 60, LCD_OP_SET, INT_PAD10 | CHAR_4X);
+}
 
 /**
   * @brief  Update all 4 trim bars.
@@ -483,7 +565,4 @@ static void gui_draw_slider(int x, int y, int w, int h, int value)
 	lcd_draw_line(x+w/2, y, x+w/2, y+h-1, LCD_OP_SET);
 	lcd_draw_line(x+w, y, x+w, y+h-1, LCD_OP_SET);
 }
-
-
-
 

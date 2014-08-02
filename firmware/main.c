@@ -66,6 +66,8 @@ int main(void)
 
 	// Block here until all switches are set correctly.
 	//check_switches();
+	strncpy(g_model.name, "SK450 Quad", 10);
+	g_model.tmrVal = 360;
 
 	mixer_init();
 
