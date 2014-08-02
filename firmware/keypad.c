@@ -18,6 +18,7 @@
 #include "mixer.h"
 #include "tasks.h"
 #include "gui.h"
+#include "sound.h"
 
 #define ROW_MASK       (0x07 << 12)
 #define COL_MASK       (0x0F << 8)
@@ -143,6 +144,8 @@ static void keypad_process(uint32_t data)
 	if (key != 0)
 	{
 		keys_pressed |= key;
+
+		sound_play_tone(500, 10);
 
 		// Update the trim if needed.
 		if (key >= KEY_CH1_UP && key <= KEY_CH4_DN)

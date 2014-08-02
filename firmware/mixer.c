@@ -24,6 +24,7 @@
 #include "pulses.h"
 #include "sticks.h"
 #include "mixer.h"
+#include "sound.h"
 
 static int16_t trim_increment;
 static int16_t trim_data[STICKS_TO_TRIM];
@@ -37,7 +38,7 @@ static int16_t trim_data[STICKS_TO_TRIM];
 void mixer_init(void)
 {
 	// Coarse trim
-	trim_increment = 20;
+	trim_increment = 10;
 }
 
 /**
@@ -90,37 +91,53 @@ void mixer_update(void)
   */
 void mixer_input_trim(KEYPAD_KEY key)
 {
+	uint8_t channel = 0;
+	int8_t increment = 0;
+	uint8_t endstop = 0;
+
 	switch (key)
 	{
 	case KEY_CH1_UP:
-		if (trim_data[0] < MIXER_TRIM_LIMIT) trim_data[0] += trim_increment;
-		break;
+		channel = 0; increment = 1;	break;
 	case KEY_CH2_UP:
-		if (trim_data[1] < MIXER_TRIM_LIMIT) trim_data[1] += trim_increment;
-		break;
+		channel = 1; increment = 1;	break;
 	case KEY_CH3_UP:
-		if (trim_data[2] < MIXER_TRIM_LIMIT) trim_data[2] += trim_increment;
-		break;
+		channel = 2; increment = 1;	break;
 	case KEY_CH4_UP:
-		if (trim_data[3] < MIXER_TRIM_LIMIT) trim_data[3] += trim_increment;
-		break;
+		channel = 3; increment = 1;	break;
 
 	case KEY_CH1_DN:
-		if (trim_data[0] > -MIXER_TRIM_LIMIT) trim_data[0] -= trim_increment;
-		break;
+		channel = 0; increment = -1; break;
 	case KEY_CH2_DN:
-		if (trim_data[1] > -MIXER_TRIM_LIMIT) trim_data[1] -= trim_increment;
-		break;
+		channel = 1; increment = -1; break;
 	case KEY_CH3_DN:
-		if (trim_data[2] > -MIXER_TRIM_LIMIT) trim_data[2] -= trim_increment;
-		break;
+		channel = 2; increment = -1; break;
 	case KEY_CH4_DN:
-		if (trim_data[3] > -MIXER_TRIM_LIMIT) trim_data[3] -= trim_increment;
-		break;
+		channel = 3; increment = -1; break;
 
 	default:
 		break;
 	}
+
+	if (increment > 0)
+	{
+		if (trim_data[channel] < MIXER_TRIM_LIMIT)
+			trim_data[channel] += trim_increment;
+		else
+			endstop = 1;
+	}
+	else
+	{
+		if (trim_data[channel] > -MIXER_TRIM_LIMIT)
+			trim_data[channel] -= trim_increment;
+		else
+			endstop = 1;
+	}
+
+	if (trim_data[channel] == 0)
+		endstop = 1;
+
+	sound_play_tone(500 + 250*trim_data[channel]/MIXER_TRIM_LIMIT, (endstop != 0)?200:50 );
 }
 
 /**

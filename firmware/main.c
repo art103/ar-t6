@@ -64,6 +64,10 @@ int main(void)
 	// Initialize the ADC / DMA
 	sticks_init();
 
+	// Initialize the buzzer
+	sound_init();
+
+
 	// Block here until all switches are set correctly.
 	//check_switches();
 	strncpy(g_model.name, "SK450 Quad", 10);
