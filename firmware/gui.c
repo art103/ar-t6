@@ -18,6 +18,7 @@
 #include "lcd.h"
 #include "sticks.h"
 #include "mixer.h"
+#include "pulses.h"
 #include "gui.h"
 #include "myeeprom.h"
 #include "art6.h"
@@ -48,7 +49,7 @@ static GUI_LAYOUT current_layout = GUI_LAYOUT_SPLASH;
 static volatile GUI_MSG new_msg = GUI_MSG_NONE;
 static GUI_MSG current_msg = GUI_MSG_NONE;
 static volatile KEYPAD_KEY key_press = KEY_NONE;
-static uint32_t gui_timeout = 0;
+static volatile uint32_t gui_timeout = 0;
 
 static volatile uint8_t update_type = 0;
 
@@ -57,15 +58,17 @@ static const char *msg[GUI_MSG_MAX] = {
 		"Please move analog controls to their extents.",
 		"Please centre the sticks.",
 		"OK",
-		"Operation Cancelled."
+		"Operation Cancelled.",
+		"OK:Save Cancel:Abort"
 };
 
 static void gui_show_sticks(void);
+static void gui_show_switches(void);
 static void gui_show_battery(int x, int y);
 static void gui_show_timer(int x, int y);
 static void gui_update_trim(void);
 static void gui_draw_trim(int x, int y, bool h_v, int value);
-static void gui_draw_slider(int x, int y, int w, int h, int value);
+static void gui_draw_slider(int x, int y, int w, int h, int range, int value);
 
 /**
   * @brief  Initialise the GUI.
@@ -89,10 +92,19 @@ void gui_process(uint32_t data)
 {
 	bool full = FALSE;
 
-	if (gui_timeout != 0)
+	if (current_msg)
 	{
-		new_layout = current_layout;
-		gui_timeout = 0;
+		if (gui_timeout != 0 && system_ticks >= gui_timeout)
+		{
+			gui_timeout = 0;
+			current_msg = 0;
+			new_layout = current_layout;
+		}
+		else
+		{
+			task_schedule(TASK_PROCESS_GUI, UPDATE_MSG, 40);
+			return;
+		}
 	}
 
 	// Draw infrequently updated information.
@@ -102,19 +114,23 @@ void gui_process(uint32_t data)
 
 		// Clear the screen.
 		lcd_draw_rect(0, 0, LCD_WIDTH - 1, LCD_HEIGHT - 1, 0, RECT_FILL);
+		lcd_set_cursor(0, 0);
 
-		// Trim
-		gui_update_trim();
+		if (current_layout >= GUI_LAYOUT_MAIN1 && current_layout <= GUI_LAYOUT_MAIN4)
+		{
+			// Trim
+			gui_update_trim();
 
-		// Update Battery icon
-		gui_show_battery(83, 0);
+			// Update Battery icon
+			gui_show_battery(83, 0);
 
-		// Update the timer
-		gui_show_timer(39, 17);
+			// Update the timer
+			gui_show_timer(39, 17);
 
-		// Model Name
-		lcd_set_cursor(8, 0);
-		lcd_write_string(g_model.name, LCD_OP_SET, CHAR_2X);
+			// Model Name
+			lcd_set_cursor(8, 0);
+			lcd_write_string(g_model.name, LCD_OP_SET, CHAR_2X);
+		}
 
 		full = TRUE;
 		new_layout = GUI_LAYOUT_NONE;
@@ -135,9 +151,6 @@ void gui_process(uint32_t data)
 		new_msg = GUI_MSG_NONE;
 
 		lcd_update();
-
-		// Make sure we re-draw the GUI.
-		new_layout = current_layout;
 
 		return;
 	}
@@ -177,13 +190,14 @@ void gui_process(uint32_t data)
 			if ((update_type & UPDATE_STICKS) != 0)
 			{
 				gui_show_sticks();
+				gui_show_switches();
 			}
 
 			if ((update_type & UPDATE_KEYPRESS) != 0)
 			{
-				if (key_press == KEY_RIGHT)
+				if (key_press & KEY_RIGHT)
 					gui_navigate(GUI_LAYOUT_MAIN2);
-				else if (key_press == KEY_LEFT)
+				else if (key_press & KEY_LEFT)
 					gui_navigate(GUI_LAYOUT_MAIN4);
 			}
 		break;
@@ -192,25 +206,27 @@ void gui_process(uint32_t data)
 			if ((update_type & UPDATE_STICKS) != 0)
 			{
 				const int top = 40;
+				int scale = (g_model.extendedLimits == TRUE)?PPM_LIMIT_EXTENDED:PPM_LIMIT_NORMAL;
+
 
 				// Left 4 sliders
-				gui_draw_slider(11, top, 	  48, 3, 50 + g_chans[0] / (2 * STICK_LIMIT / 100));
-				gui_draw_slider(11, top + 4,  48, 3, 50 + g_chans[1] / (2 * STICK_LIMIT / 100));
-				gui_draw_slider(11, top + 8,  48, 3, 50 + g_chans[2] / (2 * STICK_LIMIT / 100));
-				gui_draw_slider(11, top + 12, 48, 3, 50 + g_chans[3] / (2 * STICK_LIMIT / 100));
+				gui_draw_slider(11, top, 	  48, 3, 2*scale, scale + g_chans[0]);
+				gui_draw_slider(11, top + 4,  48, 3, 2*scale, scale + g_chans[1]);
+				gui_draw_slider(11, top + 8,  48, 3, 2*scale, scale + g_chans[2]);
+				gui_draw_slider(11, top + 12, 48, 3, 2*scale, scale + g_chans[3]);
 
 				// Right 4 sliders
-				gui_draw_slider(67, top, 	  48, 3, 50 + g_chans[4] / (2 * STICK_LIMIT / 100));
-				gui_draw_slider(67, top + 4,  48, 3, 50 + g_chans[5] / (2 * STICK_LIMIT / 100));
-				gui_draw_slider(67, top + 8,  48, 3, 50 + g_chans[6] / (2 * STICK_LIMIT / 100));
-				gui_draw_slider(67, top + 12, 48, 3, 50 + g_chans[7] / (2 * STICK_LIMIT / 100));
+				gui_draw_slider(67, top, 	  48, 3, 2*scale, scale + g_chans[4]);
+				gui_draw_slider(67, top + 4,  48, 3, 2*scale, scale + g_chans[5]);
+				gui_draw_slider(67, top + 8,  48, 3, 2*scale, scale + g_chans[6]);
+				gui_draw_slider(67, top + 12, 48, 3, 2*scale, scale + g_chans[7]);
 			}
 
 			if ((update_type & UPDATE_KEYPRESS) != 0)
 			{
-				if (key_press == KEY_RIGHT)
+				if (key_press & KEY_RIGHT)
 					gui_navigate(GUI_LAYOUT_MAIN3);
-				else if (key_press == KEY_LEFT)
+				else if (key_press & KEY_LEFT)
 					gui_navigate(GUI_LAYOUT_MAIN1);
 			}
 		break;
@@ -253,9 +269,9 @@ void gui_process(uint32_t data)
 
 			if ((update_type & UPDATE_KEYPRESS) != 0)
 			{
-				if (key_press == KEY_RIGHT)
+				if (key_press & KEY_RIGHT)
 					gui_navigate(GUI_LAYOUT_MAIN4);
-				else if (key_press == KEY_LEFT)
+				else if (key_press & KEY_LEFT)
 					gui_navigate(GUI_LAYOUT_MAIN2);
 			}
 		}
@@ -267,9 +283,9 @@ void gui_process(uint32_t data)
 
 			if ((update_type & UPDATE_KEYPRESS) != 0)
 			{
-				if (key_press == KEY_RIGHT)
+				if (key_press & KEY_RIGHT)
 					gui_navigate(GUI_LAYOUT_MAIN1);
-				else if (key_press == KEY_LEFT)
+				else if (key_press & KEY_LEFT)
 					gui_navigate(GUI_LAYOUT_MAIN3);
 			}
 		break;
@@ -281,20 +297,60 @@ void gui_process(uint32_t data)
 		break;
 
 		case GUI_LAYOUT_STICK_CALIBRATION:
+		{
+			static CAL_STATE state;
 			if (full)
 			{
 				// Draw the whole screen.
-				lcd_write_string("CALIBRATION", LCD_OP_CLR, FLAGS_NONE);
+				state = CAL_LIMITS;
+				sticks_calibrate(state);
+				lcd_set_cursor(5, 8);
+				lcd_draw_message(msg[GUI_MSG_CAL_MOVE_EXTENTS], LCD_OP_SET);
 			}
+
+			if ((update_type & UPDATE_STICKS) != 0)
+			{
+				gui_show_sticks();
+			}
+
+			if ((update_type & UPDATE_KEYPRESS) != 0)
+			{
+				lcd_set_cursor(5, 8);
+				if ((key_press & KEY_SEL) || (key_press & KEY_OK))
+				{
+					lcd_draw_rect(5, 8, 123, BOX_Y-1, LCD_OP_CLR, RECT_FILL);
+					if (state == CAL_LIMITS)
+					{
+						state = CAL_CENTER;
+						sticks_calibrate(CAL_CENTER);
+						lcd_draw_message(msg[GUI_MSG_CAL_CENTRE], LCD_OP_SET);
+					}
+					else if (state == CAL_CENTER)
+					{
+						state = CAL_OFF;
+						sticks_calibrate(CAL_OFF);
+						lcd_draw_message(msg[GUI_MSG_OK_CANCEL], LCD_OP_SET);
+					}
+					else
+					{
+						// ToDo: Write the calibration data into EEPROM.
+						// eeprom_set_data(EEPROM_ADC_CAL, cal_data);
+						gui_navigate(GUI_LAYOUT_MAIN1);
+					}
+				}
+				else if (key_press & KEY_CANCEL)
+				{
+					// ToDo: eeprom_get_data(EEPROM_ADC_CAL, cal_data);
+					gui_navigate(GUI_LAYOUT_MAIN1);
+				}
+			}
+		}
 		break;
 	}
 
 	key_press = KEY_NONE;
 
 	lcd_update();
-
-	if (gui_timeout != 0)
-		task_schedule(TASK_PROCESS_GUI, UPDATE_MSG, gui_timeout);
 }
 
 /**
@@ -355,10 +411,14 @@ void gui_navigate(GUI_LAYOUT layout)
   * @param  timeout: The number of ms to display the message. 0 for no timeout.
   * @retval None
   */
-void gui_popup(GUI_MSG msg, uint16_t timeout)
+void gui_popup(GUI_MSG msg, int16_t timeout)
 {
 	new_msg = msg;
-	gui_timeout = timeout;
+	current_msg = 0;
+	if (timeout == 0)
+		gui_timeout = 0;
+	else
+		gui_timeout = system_ticks + timeout;
 
 	task_schedule(TASK_PROCESS_GUI, UPDATE_MSG, 0);
 }
@@ -366,7 +426,7 @@ void gui_popup(GUI_MSG msg, uint16_t timeout)
 
 /**
   * @brief  Display The stick position in two squares.
-  * @note	Also shows POT bars and switch states.
+  * @note	Also shows POT bars.
   * @param  None.
   * @retval None.
   */
@@ -385,13 +445,13 @@ static void gui_show_sticks(void)
 	lcd_draw_rect(BOX_R_X + BOX_W / 2 - 1, BOX_Y + BOX_H / 2 - 1, BOX_R_X + BOX_W / 2 + 1, BOX_Y + BOX_H / 2 + 1, 1, RECT_ROUNDED);
 
 	// Stick position (Right)
-	x = (BOX_W-3) * sticks_get_percent(STICK_R_H) / 100;
-	y = BOX_W - (BOX_W-3) * sticks_get_percent(STICK_R_V) / 100;
+	x = 2 + (BOX_W-4) * sticks_get_percent(STICK_R_H) / 100;
+	y = BOX_H - 2 - (BOX_H-4) * sticks_get_percent(STICK_R_V) / 100;
 	lcd_draw_rect(BOX_R_X + x - 2, BOX_Y + y - 2, BOX_R_X + x + 2, BOX_Y + y + 2, 1, RECT_ROUNDED);
 
 	// Stick position (Left)
-	x = (BOX_W-3) * sticks_get_percent(STICK_L_H) / 100;
-	y = BOX_W - (BOX_W-3) * sticks_get_percent(STICK_L_V) / 100;
+	x = 2 + (BOX_W-4) * sticks_get_percent(STICK_L_H) / 100;
+	y = BOX_H - 2 - (BOX_H-4) * sticks_get_percent(STICK_L_V) / 100;
 	lcd_draw_rect(BOX_L_X + x - 2, BOX_Y + y - 2, BOX_L_X + x + 2, BOX_Y + y + 2, 1, RECT_ROUNDED);
 
 	// VRB
@@ -403,6 +463,17 @@ static void gui_show_sticks(void)
 	x = BOX_H * sticks_get_percent(STICK_VRA) / 100;
 	lcd_draw_rect(POT_R_X, POT_Y - BOX_H, POT_R_X + POT_W, POT_Y, 0, RECT_FILL);
 	lcd_draw_rect(POT_R_X, POT_Y - x, POT_R_X + POT_W, POT_Y, 1, RECT_FILL);
+}
+
+/**
+  * @brief  Display the  switch states.
+  * @note
+  * @param  None.
+  * @retval None.
+  */
+static void gui_show_switches(void)
+{
+	int x;
 
 	// Switches
 	x = keypad_get_switches();
@@ -415,6 +486,7 @@ static void gui_show_sticks(void)
 	lcd_set_cursor(SW_R_X, SW_Y + 8);
 	lcd_write_string("SWC", (x&SWITCH_SWC)?LCD_OP_SET:LCD_OP_CLR, FLAGS_NONE);
 }
+
 
 #define BATT_MIN	99	//NiMh: 88
 #define BATT_MAX	126	//NiMh: 104
@@ -533,15 +605,16 @@ static void gui_draw_trim(int x, int y, bool h_v, int value)
   * @note
   * @param  x, y: The TL position of the bar on screen.
   * @param  w, h: The size of the bar.
-  * @param  value: The value of the slider from 0 to 100.
+  * @param  range: Full scale slider range (0 - range).
+  * @param  value: The value of the slider.
   * @retval None
   */
-static void gui_draw_slider(int x, int y, int w, int h, int value)
+static void gui_draw_slider(int x, int y, int w, int h, int range, int value)
 {
 	int i, v, d;
 
 	// Value scaling
-	v = (w * value / 100) - (w/2);
+	v = (w * value / range) - (w/2);
 	// Division spacing
 	d = w / 20;
 

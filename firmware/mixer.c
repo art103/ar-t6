@@ -68,7 +68,7 @@ void mixer_update(void)
 	// Scale channels to -1024 to +1024.
 	for (i=0; i<STICK_INPUT_CHANNELS; ++i)
 	{
-		g_chans[i] = stick_data[i];
+		g_chans[i] = PPM_LIMIT_EXTENDED * stick_data[i] / STICK_LIMIT;
 	}
 #else
 	g_chans[0] = 0;

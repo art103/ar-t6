@@ -37,7 +37,7 @@
 #define PPM_MIN_GAP_LEN		9000
 
 // Exported globals
-volatile struct t_latency g_latency ;
+volatile struct t_latency g_latency;
 volatile int16_t g_chans[NUM_CHNOUT];
 
 // Private globals
@@ -243,7 +243,7 @@ void pulses_setup_ppm( uint8_t proto )
 		*ptr++ = position;
 	}
 
-	PPM_range = g_model.extendedLimits ? 800 : 500;   // range of 0.7 - 2.3ms or  0.8 - 2.2ms
+	PPM_range = g_model.extendedLimits ? PPM_LIMIT_EXTENDED : PPM_LIMIT_NORMAL;   // range of 0.7 - 2.3ms or  0.8 - 2.2ms
 	for (i = (proto == PROTO_PPM16) ? p-8 : startChan; i < p; i++)
 	{
 		// Get the channel and limit the range.
@@ -413,7 +413,7 @@ void TIM3_IRQHandler(void)
     // while under trainee control
     if(ppmInState && ppmInState <= 8)
     {
-    	PPM_range = g_model.extendedLimits ? 1000 : 700;   // range of 0.5 - 2.5ms or  0.8 - 2.2ms
+    	PPM_range = g_model.extendedLimits ? PPM_LIMIT_EXTENDED : PPM_LIMIT_NORMAL;   // range of 0.5 - 2.5ms or  0.8 - 2.2ms
     	val -= PPM_CENTER;
         if(val > -PPM_range && val < PPM_range)
         {

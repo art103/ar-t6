@@ -23,7 +23,7 @@
 #include "art6.h"
 
 volatile uint32_t adc_data[STICK_ADC_CHANNELS];
-ADC_CAL cal_data[STICK_ADC_CHANNELS] = {
+volatile ADC_CAL cal_data[STICK_ADC_CHANNELS] = {
 		{0, 4096, 2048},
 		{0, 4096, 2048},
 		{0, 4096, 2048},
@@ -32,7 +32,7 @@ ADC_CAL cal_data[STICK_ADC_CHANNELS] = {
 		{0, 4096, 2048},
 		{0, 3100, 1550},
 };
-int16_t stick_data[STICK_ADC_CHANNELS];
+volatile int16_t stick_data[STICK_ADC_CHANNELS];
 
 static CAL_STATE cal_state = CAL_OFF;
 
@@ -116,7 +116,7 @@ void sticks_init(void)
 
 	// ToDo: Read the calibration data out of EEPROM.
 	// if (eeprom_get_data(EEPROM_ADC_CAL, cal_data) != 0)
-	//sticks_calibrate();
+	//gui_navigate(GUI_LAYOUT_STICK_CALIBRATION);
 	gui_navigate(GUI_LAYOUT_MAIN1);
 }
 
@@ -132,53 +132,26 @@ void sticks_process(uint32_t data)
 
 	if (cal_state != CAL_OFF)
 	{
-		if (keypad_get_pressed(KEY_OK) || keypad_get_pressed(KEY_SEL))
+		if (cal_state == CAL_LIMITS)
 		{
-			if (cal_state == CAL_LIMITS)
-			{
-				cal_state = CAL_CENTER;
-				gui_popup(GUI_MSG_CAL_CENTRE, 0);
-			}
-			else
-			{
-				// Set the stick centres.
-				for (i=0; i<STICKS_TO_CALIBRATE; ++i)
-				{
-					cal_data[i].centre = adc_data[i];
-				}
-
-				/*
-				// Set the POT centres.
-				cal_data[4].centre = cal_data[4].min + ((cal_data[4].max - cal_data[4].min) / 2);
-				cal_data[5].centre = cal_data[5].min + ((cal_data[5].max - cal_data[5].min) / 2);
-
-				// VBatt has no centre.
-				cal_data[6].centre = 0;
-				*/
-
-				// ToDo: Write the calibration data into EEPROM.
-				// eeprom_set_data(EEPROM_ADC_CAL, cal_data);
-
-				cal_state = CAL_OFF;
-				gui_back();
-				gui_popup(GUI_MSG_OK, 500);
-			}
-		}
-		else if (keypad_get_pressed(KEY_CANCEL))
-		{
-			// Abort the calibration and restore data from EEPROM.
-			cal_state = CAL_OFF;
-			// ToDo: eeprom_get_data(EEPROM_ADC_CAL, cal_data);
-
-			gui_back();
-			gui_popup(GUI_MSG_CANCELLED, 500);
-		}
-		else if (cal_state == CAL_LIMITS)
-		{
-			for (i=0; i<STICKS_TO_CALIBRATE; ++i)
+			for (i=0; i<STICK_INPUT_CHANNELS; ++i)
 			{
 				if (adc_data[i] < cal_data[i].min) cal_data[i].min = adc_data[i];
 				if (adc_data[i] > cal_data[i].max) cal_data[i].max = adc_data[i];
+			}
+		}
+		else if (cal_state == CAL_CENTER)
+		{
+			// Set the stick centres.
+			for (i=0; i<STICKS_TO_CALIBRATE; ++i)
+			{
+				cal_data[i].centre = adc_data[i];
+			}
+
+			// Set the remaining centres.
+			for (i=STICKS_TO_CALIBRATE-1; i<STICK_INPUT_CHANNELS; ++i)
+			{
+				cal_data[i].centre = cal_data[i].min + ((cal_data[i].max - cal_data[i].min) / 2);
 			}
 		}
 	}
@@ -192,28 +165,24 @@ void sticks_process(uint32_t data)
 /**
   * @brief  Calibrate the endpoints and centre of the sticks.
   * @note
-  * @param  None
+  * @param  state: Calibration state to enter.
   * @retval None
   */
-void sticks_calibrate(void)
+void sticks_calibrate(CAL_STATE state)
 {
 	int i;
 
-	cal_state = CAL_LIMITS;
+	cal_state = state;
 
-	for (i=0; i<STICKS_TO_CALIBRATE; ++i)
+	if (state == CAL_LIMITS)
 	{
-		cal_data[i].min = -1;
-		cal_data[i].max = 0;
+		for (i=0; i<STICKS_TO_CALIBRATE; ++i)
+		{
+			cal_data[i].min = 0xFFFF;
+			cal_data[i].max = 0;
+			cal_data[i].centre = 2048;
+		}
 	}
-
-	// Clear the key state.
-	keypad_get_pressed(KEY_OK);
-	keypad_get_pressed(KEY_SEL);
-	keypad_get_pressed(KEY_CANCEL);
-
-	gui_navigate(GUI_LAYOUT_STICK_CALIBRATION);
-	gui_popup(GUI_MSG_CAL_MOVE_EXTENTS, 0);
 }
 
 /**
@@ -235,7 +204,15 @@ int16_t sticks_get(STICK channel)
   */
 int16_t sticks_get_percent(STICK channel)
 {
-	return 100 * (STICK_LIMIT + stick_data[channel]) / (2*STICK_LIMIT);
+	int32_t val;
+	val =  100 * (STICK_LIMIT + stick_data[channel]) / (2*STICK_LIMIT);
+
+	if (val > 100)
+		val = 100;
+	if (val < 0)
+		val = 0;
+
+	return val;
 }
 
 
@@ -254,15 +231,21 @@ void DMA1_Channel1_IRQHandler(void)
 	// Scale channels to -STICK_LIMIT to +STICK_LIMIT.
 	for (i=0; i<STICK_ADC_CHANNELS; ++i)
 	{
+		int32_t scale = cal_data[i].max - cal_data[i].min;
 		tmp = adc_data[i];
-		tmp -= cal_data[i].centre;
 		tmp *= 2*STICK_LIMIT;
-		tmp /= cal_data[i].max - cal_data[i].min;
+		tmp /= scale;
+		tmp -= 2*STICK_LIMIT * cal_data[i].centre / scale;
+
 		stick_data[i] = tmp;
 	}
 
-	// Run the mixer.
-	mixer_update();
+	// Don't run the mixer if we're calibrating
+	if (cal_state == CAL_OFF)
+	{
+		// Run the mixer.
+		mixer_update();
+	}
 
 	task_schedule(TASK_PROCESS_STICKS, 0, 20);
 }

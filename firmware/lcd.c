@@ -330,7 +330,7 @@ void lcd_write_char(uint8_t c, LCD_OP op, LCD_FLAGS flags)
 		if ((flags & CHAR_CONDENSED) != 0 && x%CHAR_WIDTH==1)
 			cursor_x--;
 	}
-	for (y=0; y<height+1; y++) lcd_set_pixel(cursor_x+width, cursor_y+y, LCD_OP_CLR);
+	for (y=0; y<height+1; y++) lcd_set_pixel(cursor_x+width, cursor_y+y, op_clr);
 
 	cursor_x += width + 1;
 	if ((flags & CHAR_CONDENSED) != 0)
@@ -539,7 +539,7 @@ void lcd_draw_message(const char *msg, LCD_OP op)
 		line_buffer[nchars] = 0;
 		cursor_x = x + (width - nchars) * (CHAR_WIDTH + 1) / 2;
 		lcd_write_string(line_buffer, op, FLAGS_NONE);
-		cursor_y += (CHAR_WIDTH + 1);
+		cursor_y += (CHAR_HEIGHT + 1);
 
 		ptr = needle1;
 	}

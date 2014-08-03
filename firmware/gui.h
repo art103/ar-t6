@@ -39,6 +39,7 @@ typedef enum
 	GUI_MSG_CAL_CENTRE,
 	GUI_MSG_OK,
 	GUI_MSG_CANCELLED,
+	GUI_MSG_OK_CANCEL,
 	GUI_MSG_MAX,
 } GUI_MSG;
 
@@ -61,6 +62,6 @@ void gui_input_key(KEYPAD_KEY key);
 
 void gui_back(void);
 void gui_navigate(GUI_LAYOUT layout);
-void gui_popup(GUI_MSG msg, uint16_t timeout);
+void gui_popup(GUI_MSG msg, int16_t timeout);
 
 #endif // _GUI_H

@@ -19,6 +19,9 @@
 #ifndef PULSES_H
 #define PULSES_H
 
+#define PPM_LIMIT_NORMAL	500
+#define PPM_LIMIT_EXTENDED	800
+
 void pulses_init(void);
 void pulses_setup(void);
 

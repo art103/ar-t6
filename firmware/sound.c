@@ -25,11 +25,10 @@
 static volatile uint32_t stop_time = 0;
 
 static const uint16_t tune_1[] = {
-		300, 50,
-		600, 50,
-		900, 100,
+		400, 100,
+		500, 100,
 		600, 100,
-		300, 100,
+		800, 100,
 		0, 0
 };
 
@@ -76,7 +75,7 @@ void sound_init(void)
 	// TIM1 (Tone Output)
 	timOcInit.TIM_OCMode = TIM_OCMode_PWM1;
 	timOcInit.TIM_OutputState = TIM_OutputState_Enable;
-	timOcInit.TIM_Pulse = 20;
+	timOcInit.TIM_Pulse = 50;
 	timOcInit.TIM_OCPolarity = TIM_OCPolarity_High;
 	timOcInit.TIM_OCIdleState = TIM_OCIdleState_Reset;
 

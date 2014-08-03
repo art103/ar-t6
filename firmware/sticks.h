@@ -49,12 +49,12 @@ typedef enum
 } CAL_STATE;
 
 extern volatile uint32_t adc_data[STICK_ADC_CHANNELS];
-extern ADC_CAL cal_data[STICK_ADC_CHANNELS];
-extern int16_t stick_data[STICK_ADC_CHANNELS];
+extern volatile ADC_CAL cal_data[STICK_ADC_CHANNELS];
+extern volatile int16_t stick_data[STICK_ADC_CHANNELS];
 
 void sticks_init(void);
 void sticks_process(uint32_t data);
-void sticks_calibrate(void);
+void sticks_calibrate(CAL_STATE state);
 int16_t sticks_get(STICK chan);
 int16_t sticks_get_percent(STICK chan);
 
