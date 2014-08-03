@@ -16,6 +16,15 @@
  *
  */
 
+/* Description:
+ *
+ * This is an IRQ driven speaker driver.
+ * Very simple sequences of single tone and duration can be sequenced
+ * with minimal CPU intervention.
+ * It uses PWM and IRQs to drive the speaker and run the sequence.
+ *
+ */
+
 #include "stm32f10x.h"
 #include "tasks.h"
 #include "sound.h"

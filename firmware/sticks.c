@@ -13,6 +13,16 @@
  * Author: Richard Taylor (richard@artaylor.co.uk)
  */
 
+/* Description:
+ *
+ * This is an IRQ and DMA driven analogue sampler.
+ * The DMA completion routine invokes the mixer directly.
+ * Scaling of the data for the GUI is done in a main loop
+ * task.
+ * Calibration is also handled through an API to this module.
+ *
+ */
+
 #include "stm32f10x.h"
 #include "sticks.h"
 #include "keypad.h"

@@ -37,7 +37,13 @@ typedef enum
     KEY_OK = 0x0200,
     KEY_CANCEL = 0x0400,
     KEY_LEFT = 0x0800,	// Rotary encoder
-    KEY_RIGHT = 0x1000	// Rotary encoder
+    KEY_RIGHT = 0x1000,	// Rotary encoder
+
+    /* Long press Keys */
+    KEY_MENU = 0x2000,
+
+    /* Repeat identifier */
+    KEY_REPEAT = 0x8000
 } KEYPAD_KEY;
 
 typedef enum

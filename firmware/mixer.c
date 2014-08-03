@@ -16,6 +16,13 @@
  *
  */
 
+/* Description:
+ *
+ * This is where the magic happens.
+ * The er9x based mixer logic is contained in here.
+ *
+ */
+
 #include "stm32f10x.h"
 #include "tasks.h"
 

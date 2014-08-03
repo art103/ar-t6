@@ -13,6 +13,12 @@
  * Author: Richard Taylor (richard@artaylor.co.uk)
  */
 
+/* Description:
+ *
+ * This is the main GUI module. It is used to respond to key presses,
+ * display and edit model and system variables.
+ */
+
 #include "stm32f10x.h"
 #include "tasks.h"
 #include "lcd.h"
@@ -186,6 +192,13 @@ void gui_process(uint32_t data)
 		case GUI_LAYOUT_SPLASH:
 		break;
 
+		/**********************************************************************
+		 * Main 1
+		 *
+		 * Displays model name, trim, battery and timer plus a graphical
+		 * representation of the stick and pot postitions and key states.
+		 *
+		 */
 		case GUI_LAYOUT_MAIN1:
 			if ((update_type & UPDATE_STICKS) != 0)
 			{
@@ -202,6 +215,13 @@ void gui_process(uint32_t data)
 			}
 		break;
 
+		/**********************************************************************
+		 * Main 2
+		 *
+		 * Displays model name, trim, battery and timer plus slider bars of
+		 * the first 8 PPM output channels.
+		 *
+		 */
 		case GUI_LAYOUT_MAIN2:
 			if ((update_type & UPDATE_STICKS) != 0)
 			{
@@ -231,6 +251,13 @@ void gui_process(uint32_t data)
 			}
 		break;
 
+		/**********************************************************************
+		 * Main 3
+		 *
+		 * Displays model name, trim, battery and timer plus condensed
+		 * decimal representation of the PPM channel outputs.
+		 *
+		 */
 		case GUI_LAYOUT_MAIN3:
 		{
 			int top = 40;
@@ -277,6 +304,11 @@ void gui_process(uint32_t data)
 		}
 		break;
 
+		/**********************************************************************
+		 * Main 4
+		 *
+		 * Displays model name, trim, battery and timer plus runtime timer
+		 */
 		case GUI_LAYOUT_MAIN4:
 			lcd_set_cursor(37, 40);
 			lcd_write_string("00:00", LCD_OP_SET, CHAR_4X);
@@ -296,6 +328,13 @@ void gui_process(uint32_t data)
 		case GUI_LAYOUT_MODEL_MENU:
 		break;
 
+		/**********************************************************************
+		 * Calibration Screen
+		 *
+		 * Drives the sticks module into calibration mode and returns to
+		 * Main 1 when complete or cancelled.
+		 *
+		 */
 		case GUI_LAYOUT_STICK_CALIBRATION:
 		{
 			static CAL_STATE state;

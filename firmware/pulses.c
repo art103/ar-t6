@@ -16,6 +16,17 @@
  *
  */
 
+/* Description:
+ *
+ * This is a standalone IRQ driven module that will take the values in
+ * g_chans[] and send them out of the PPM-OUT pin.
+ *
+ * g_ppmIns[] receives up to 8 Channels on the PPM-IN pin.
+ *
+ * ToDo: Implement a second set of 8 PPM outputs on the PPM-IN pin.
+ * Currently this will just mirror the PPM-OUT pin when set to output mode.
+ */
+
 #include "stm32f10x.h"
 #include "tasks.h"
 

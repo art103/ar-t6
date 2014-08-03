@@ -13,6 +13,12 @@
  * Author: Richard Taylor (richard@artaylor.co.uk)
  */
 
+/* Description:
+ *
+ * This module contains the entrypoint, setup and main loop.
+ *
+ */
+
 #include "stm32f10x.h"
 #include "tasks.h"
 #include "keypad.h"
@@ -22,6 +28,7 @@
 #include "myeeprom.h"
 #include "pulses.h"
 #include "mixer.h"
+#include "sound.h"
 
 EEGeneral  g_eeGeneral;
 ModelData  g_model;

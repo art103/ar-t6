@@ -13,6 +13,13 @@
  * Author: Richard Taylor (richard@artaylor.co.uk)
  */
 
+/* Description:
+ *
+ * This is a simple round robin, cooperative task scheduler.
+ * non-critical tasks are run from the main loop in sequence.
+ *
+ */
+
 #include "stm32f10x.h"
 #include "tasks.h"
 

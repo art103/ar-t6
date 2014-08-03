@@ -13,6 +13,15 @@
  * Author: Richard Taylor (richard@artaylor.co.uk)
  */
 
+/* Description:
+ *
+ * This is an LCD driver.
+ * There are low, medium and high level functions for drawing text
+ * and basic graphics to the display buffer.
+ * lcd_update() must be called to send the buffer to the LCD.
+ *
+ */
+
 #include <string.h>
 
 #include "stm32f10x.h"

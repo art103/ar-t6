@@ -13,6 +13,15 @@
  * Author: Richard Taylor (richard@artaylor.co.uk)
  */
 
+/* Description:
+ *
+ * This is an IRQ driven keypad driver.
+ * Pressed keys are stored and scheduled for processing by the main loop.
+ * This will then call into the mixer (for trim) and GUI.
+ * GUI events are asynchronous, and will be processed on the next main loop cycle.
+ *
+ */
+
 #include "stm32f10x.h"
 #include "keypad.h"
 #include "mixer.h"
@@ -116,7 +125,7 @@ static KEYPAD_KEY keypad_scan_keys(void)
 }
 
 /**
-  * @brief  Process keys and drive updates through the system.
+  * @brief  Process keys and drive the GUI.
   * @note   Called from the scheduler.
   * @param  data: EXTI lines that triggered the update.
   * @retval None
