@@ -41,9 +41,6 @@ typedef enum
 
     /* Long press Keys */
     KEY_MENU = 0x2000,
-
-    /* Repeat identifier */
-    KEY_REPEAT = 0x8000
 } KEYPAD_KEY;
 
 typedef enum
@@ -57,6 +54,7 @@ typedef enum
 void keypad_init(void);
 bool keypad_get_pressed(KEYPAD_KEY key);
 uint8_t keypad_get_switches(void);
+void keypad_cancel_repeat(void);
 
 #endif // _KEYPAD_H
 

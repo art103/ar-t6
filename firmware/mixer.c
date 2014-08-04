@@ -144,7 +144,15 @@ void mixer_input_trim(KEYPAD_KEY key)
 	if (trim_data[channel] == 0)
 		endstop = 1;
 
-	sound_play_tone(500 + 250*trim_data[channel]/MIXER_TRIM_LIMIT, (endstop != 0)?200:50 );
+	if (endstop != 0)
+	{
+		keypad_cancel_repeat();
+		sound_play_tone(500 + 250*trim_data[channel]/MIXER_TRIM_LIMIT, 200);
+	}
+	else
+	{
+		sound_play_tone(500 + 250*trim_data[channel]/MIXER_TRIM_LIMIT, 50);
+	}
 }
 
 /**

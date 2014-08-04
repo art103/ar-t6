@@ -34,8 +34,14 @@
 #define ROW(n)         (1 << (12 + n))
 #define COL(n)         (1 << (8 + n))
 
+#define KEY_HOLDOFF			100
+#define KEY_REPEAT_DELAY	1000
+#define KEY_REPEAT_TIME		200
+
 // Keys that have been pressed since the last check.
 static uint32_t keys_pressed = 0;
+static uint32_t key_repeat = 0;
+static uint32_t key_time = 0;
 
 /**
   * @brief  Scan the keypad and return the active key.
@@ -132,8 +138,27 @@ static KEYPAD_KEY keypad_scan_keys(void)
   */
 static void keypad_process(uint32_t data)
 {
-	KEYPAD_KEY key = keypad_scan_keys();
-	
+	KEYPAD_KEY key;
+
+	// Debouncing.
+	if (key_time != 0 && key_time + KEY_HOLDOFF > system_ticks)
+	{
+		task_schedule(TASK_PROCESS_KEYPAD, 0, KEY_HOLDOFF);
+		return;
+	}
+
+	// Scan the keys.
+	key = keypad_scan_keys();
+	// Scanning the keys causes the IRQ to fire, so de-schedule for now.
+	task_deschedule(TASK_PROCESS_KEYPAD);
+
+	// Cancel the repeat if we see a different key.
+	if (key == KEY_NONE)
+	{
+		key_repeat = 0;
+		key_time = 0;
+	}
+
 	// Data is used to send the rotary encoder data.
 	if (data != 0)
 	{
@@ -152,8 +177,48 @@ static void keypad_process(uint32_t data)
 	
 	if (key != 0)
 	{
+		// Re-schedule to check the keys again.
+		task_schedule(TASK_PROCESS_KEYPAD, 0, KEY_REPEAT_TIME);
+
+		if (key_time != 0)
+		{
+			// A key has been pressed previously, check for repeat.
+
+			if ((key_repeat == 0) && key_time + KEY_REPEAT_DELAY > system_ticks)
+			{
+				// Not repeating yet, and haven't passed the delay period.
+				return;
+			}
+			else
+			{
+				// Delay period passed, decide how to behave...
+				if (key & KEY_SEL)
+				{
+					// After repeat delay, send only one KEY_MENU press from KEY_SEL.
+					if (key_repeat == 0)
+						key = KEY_MENU;
+					else
+						return;
+				}
+				else if (!(key & TRIM_KEYS))
+				{
+					// For non-trim keys, don't repeat.
+					return;
+				}
+
+				// For trim keys, repeat at KEY_REPEAT_TIME intervals.
+				key_repeat = key;
+			}
+		}
+
+		// Add the key to the pressed list.
 		keys_pressed |= key;
 
+		// Record the key time.
+		key_time = system_ticks;
+
+		// Play the key tone.
+		// ToDo: Make this adhere to the global setting.
 		sound_play_tone(500, 10);
 
 		// Update the trim if needed.
@@ -274,6 +339,19 @@ uint8_t keypad_get_switches(void)
 }
 
 /**
+  * @brief  Abort the key repeat loop
+  * @note
+  * @param  None
+  * @retval None
+  */
+void keypad_cancel_repeat(void)
+{
+	key_repeat = 0;
+	key_time = 0;
+	task_deschedule(TASK_PROCESS_KEYPAD);
+}
+
+/**
   * @brief  ExtI IRQ handler
   * @note   Handles IRQ on GPIO lines 10-15.
   * @param  None
@@ -285,15 +363,18 @@ void EXTI15_10_IRQHandler(void)
 
 	if ((flags & KEYPAD_EXTI_LINES) != 0)
 	{
-		// Schedule the keys to be scanned.
-		task_schedule(TASK_PROCESS_KEYPAD, 0, 0);
-
 		// Clear the IRQ
 		EXTI->PR = KEYPAD_EXTI_LINES;
+
+		// Schedule the keys to be scanned.
+		task_schedule(TASK_PROCESS_KEYPAD, 0, 0);
 	}
 
 	if ((flags & ROTARY_EXTI_LINES) != 0)
 	{
+		// Clear the IRQ
+		EXTI->PR = ROTARY_EXTI_LINES;
+
 		// Read the encoder lines
 		uint16_t gpio = GPIO_ReadInputData(GPIOC);
 
@@ -313,8 +394,5 @@ void EXTI15_10_IRQHandler(void)
 			else
 				task_schedule(TASK_PROCESS_KEYPAD, 1, 0);
 		}
-
-		// Clear the IRQ
-		EXTI->PR = ROTARY_EXTI_LINES;
 	}
 }

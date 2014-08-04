@@ -58,7 +58,7 @@ void task_register(Tasks task, void (*fn)(uint32_t))
 /**
   * @brief  Schedule a task to run.
   * @note
-  * @param  task: ID of the task to register.
+  * @param  task: ID of the task to schedule.
   * @param  data: Data to pass to the task function.
   * @param  time_ms: When to schedule the task in ms from now (0 for ASAP).
   * @retval None
@@ -70,6 +70,17 @@ void task_schedule(Tasks task, uint32_t data, uint32_t time_ms)
 		tasks[task]  = system_ticks + time_ms;
 		task_data[task] = data;
 	}
+}
+
+/**
+  * @brief  Stop a scheduled task from running.
+  * @note
+  * @param  task: ID of the task to deschedule.
+  * @retval None
+  */
+void task_deschedule(Tasks task)
+{
+	tasks[task] = 0;
 }
 
 /**
@@ -89,8 +100,8 @@ void task_process_all(void)
 		{
 			if (task_fn[task] != 0)
 			{
-				task_fn[task](task_data[task]);
 				tasks[task] = 0;
+				task_fn[task](task_data[task]);
 			}
 		}
 	}

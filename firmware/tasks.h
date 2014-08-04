@@ -33,6 +33,7 @@ typedef enum
 void task_init(void);
 void task_register(Tasks task, void (*fn)(uint32_t));
 void task_schedule(Tasks task, uint32_t data, uint32_t time_ms);
+void task_deschedule(Tasks task);
 void task_process_all(void);
 
 // Utility functions (implemented in main.c)

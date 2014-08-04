@@ -61,12 +61,13 @@ static volatile uint8_t update_type = 0;
 
 static const char *msg[GUI_MSG_MAX] = {
 		"",
-		"Please move analog controls to their extents.",
-		"Please centre the sticks.",
+		"Please move analog controls to their extents then press OK.",
+		"Please centre the sticks then press OK.",
 		"OK",
 		"Operation Cancelled.",
 		"OK:Save Cancel:Abort"
 };
+
 
 static void gui_show_sticks(void);
 static void gui_show_switches(void);
