@@ -159,7 +159,7 @@ void sticks_process(uint32_t data)
 			}
 
 			// Set the remaining centres.
-			for (i=STICKS_TO_CALIBRATE-1; i<STICK_INPUT_CHANNELS; ++i)
+			for (i=STICKS_TO_CALIBRATE; i<STICK_INPUT_CHANNELS; ++i)
 			{
 				cal_data[i].centre = cal_data[i].min + ((cal_data[i].max - cal_data[i].min) / 2);
 			}
