@@ -62,7 +62,7 @@
 //#define KS0713_POWER_SAVE		Display off, Entire display ON.
 
 static uint8_t contrast = 0x28;
-static uint8_t lcd_buffer[LCD_WIDTH * LCD_HEIGHT / 8];
+uint8_t lcd_buffer[LCD_WIDTH * LCD_HEIGHT / 8];
 
 #define CHAR_HEIGHT				7
 #define CHAR_WIDTH				5
@@ -246,6 +246,8 @@ void lcd_set_pixel(uint8_t x, uint8_t y, LCD_OP op)
 {
 	switch (op)
 	{
+	case LCD_OP_NONE:
+		break;
 	case LCD_OP_CLR:
 		lcd_buffer[x+ (y/8)*LCD_WIDTH] &= ~(1 << (y%8));
 		break;
@@ -306,6 +308,15 @@ void lcd_write_char(uint8_t c, LCD_OP op, LCD_FLAGS flags)
 		divY = 2;
 	}
 
+	if (op == LCD_OP_XOR)
+	{
+		op_set = LCD_OP_XOR;
+		op_clr = LCD_OP_NONE;
+	}
+
+	if (flags & CHAR_CONDENSED)
+		op_clr = LCD_OP_NONE;
+
 	if ((cursor_y+height) >= LCD_HEIGHT) return;
 	else if ((cursor_x+width) >= LCD_WIDTH) return;
 
@@ -318,25 +329,16 @@ void lcd_write_char(uint8_t c, LCD_OP op, LCD_FLAGS flags)
 			x1 = x / divX;
 			y1 = y / divY;
 			d = font[ (c*CHAR_WIDTH) + x1 + row*FONT_STRIDE ];
-			if (op != LCD_OP_XOR)
-			{
-				if (d & (1 << y1%8))
-					lcd_set_pixel(cursor_x+x, cursor_y+y, op_set);
-				else
-					lcd_set_pixel(cursor_x+x, cursor_y+y, op_clr);
-
-			}
+			if (d & (1 << y1%8))
+				lcd_set_pixel(cursor_x+x, cursor_y+y, op_set);
 			else
-			{
-				if (d & (1 << y1%8))
-					lcd_set_pixel(cursor_x+x, cursor_y+y, LCD_OP_XOR);
-			}
+				lcd_set_pixel(cursor_x+x, cursor_y+y, op_clr);
 
 			if (y1%8 == 7)
 				row++;
 		}
 
-		if ((flags & CHAR_CONDENSED) != 0 && x%CHAR_WIDTH==1)
+		if ((flags & CHAR_CONDENSED) != 0 && x%CHAR_WIDTH==4)
 			cursor_x--;
 	}
 	for (y=0; y<height+1; y++) lcd_set_pixel(cursor_x+width, cursor_y+y, op_clr);

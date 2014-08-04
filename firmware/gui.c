@@ -28,6 +28,7 @@
 #include "gui.h"
 #include "myeeprom.h"
 #include "art6.h"
+#include "icons.h"
 
 // Message Popup
 #define MSG_X	6
@@ -61,7 +62,7 @@ static volatile uint8_t update_type = 0;
 
 static const char *msg[GUI_MSG_MAX] = {
 		"",
-		"Please move analog controls to their extents then press OK.",
+		"Please move all analog controls to their extents then press OK.",
 		"Please centre the sticks then press OK.",
 		"OK",
 		"Operation Cancelled.",
@@ -120,7 +121,7 @@ void gui_process(uint32_t data)
 		current_layout = new_layout;
 
 		// Clear the screen.
-		lcd_draw_rect(0, 0, LCD_WIDTH - 1, LCD_HEIGHT - 1, 0, RECT_FILL);
+		lcd_draw_rect(0, 0, LCD_WIDTH - 1, LCD_HEIGHT - 1, LCD_OP_CLR, RECT_FILL);
 		lcd_set_cursor(0, 0);
 
 		if (current_layout >= GUI_LAYOUT_MAIN1 && current_layout <= GUI_LAYOUT_MAIN4)
@@ -148,12 +149,12 @@ void gui_process(uint32_t data)
 		current_msg = new_msg;
 
 		// Draw the background.
-		lcd_draw_rect(MSG_X, MSG_Y, LCD_WIDTH - MSG_X, MSG_Y + MSG_H, 0, RECT_FILL);
-		lcd_draw_rect(MSG_X, MSG_Y, LCD_WIDTH - MSG_X, MSG_Y + MSG_H, 1, FLAGS_NONE);
-		lcd_draw_rect(MSG_X + 2, MSG_Y + 2, LCD_WIDTH - MSG_X - 2, MSG_Y + MSG_H - 2, 1, FLAGS_NONE);
+		lcd_draw_rect(MSG_X, MSG_Y, LCD_WIDTH - MSG_X, MSG_Y + MSG_H, LCD_OP_CLR, RECT_FILL);
+		lcd_draw_rect(MSG_X, MSG_Y, LCD_WIDTH - MSG_X, MSG_Y + MSG_H, LCD_OP_SET, FLAGS_NONE);
+		lcd_draw_rect(MSG_X + 2, MSG_Y + 2, LCD_WIDTH - MSG_X - 2, MSG_Y + MSG_H - 2, LCD_OP_SET, FLAGS_NONE);
 		// Draw the message
 		lcd_set_cursor(MSG_X + 4, MSG_Y + 4);
-		lcd_draw_message(msg[new_msg], 1);
+		lcd_draw_message(msg[new_msg], LCD_OP_SET);
 
 		new_msg = GUI_MSG_NONE;
 
@@ -169,6 +170,10 @@ void gui_process(uint32_t data)
 		if ((key_press & TRIM_KEYS) != 0)
 		{
 			gui_update_trim();
+		}
+		else if (key_press & KEY_MENU)
+		{
+			gui_navigate(GUI_LAYOUT_MENU);
 		}
 
 		// Update the battery level
@@ -323,11 +328,63 @@ void gui_process(uint32_t data)
 			}
 		break;
 
-		case GUI_LAYOUT_SYSTEM_MENU:
+		/**********************************************************************
+		 * Menu to select System or Model Menus
+		 */
+		case GUI_LAYOUT_MENU:
+		{
+			static uint8_t item = 0;
+
+			if (full)
+			{
+				lcd_set_cursor(25, 0);
+				lcd_write_string("Settings Menu", LCD_OP_CLR, FLAGS_NONE);
+
+				icon_draw(0, 24, 16);
+				icon_draw(1, 72, 16);
+
+				lcd_set_cursor(24, 48);
+				lcd_write_string("Radio", LCD_OP_SET, FLAGS_NONE);
+				lcd_set_cursor(72, 48);
+				lcd_write_string("Model", LCD_OP_SET, FLAGS_NONE);
+
+				lcd_draw_rect(24, 57, 56, 58, LCD_OP_SET, RECT_FILL);
+			}
+
+			if ((update_type & UPDATE_KEYPRESS) != 0)
+			{
+				if (key_press & KEY_LEFT)
+				{
+					item = 0;
+					lcd_draw_rect(24, 57, 104, 58, LCD_OP_CLR, RECT_FILL);
+					lcd_draw_rect(24, 57, 56, 58, LCD_OP_SET, RECT_FILL);
+				}
+				else if (key_press & KEY_RIGHT)
+				{
+					item = 1;
+					lcd_draw_rect(24, 57, 104, 58, LCD_OP_CLR, RECT_FILL);
+					lcd_draw_rect(72, 57, 104, 58, LCD_OP_SET, RECT_FILL);
+				}
+				else if (key_press & (KEY_SEL | KEY_OK))
+				{
+					if (item)
+						gui_navigate(GUI_LAYOUT_MODEL_MENU);
+					else
+						gui_navigate(GUI_LAYOUT_SYSTEM_MENU);
+				}
+				else if (key_press & KEY_CANCEL)
+				{
+					gui_navigate(GUI_LAYOUT_MAIN1);
+				}
+			}
+		}
 		break;
 
+		case GUI_LAYOUT_SYSTEM_MENU:
+		//break;
+
 		case GUI_LAYOUT_MODEL_MENU:
-		break;
+		//break;
 
 		/**********************************************************************
 		 * Calibration Screen
@@ -344,7 +401,7 @@ void gui_process(uint32_t data)
 				// Draw the whole screen.
 				state = CAL_LIMITS;
 				sticks_calibrate(state);
-				lcd_set_cursor(5, 8);
+				lcd_set_cursor(5, 0);
 				lcd_draw_message(msg[GUI_MSG_CAL_MOVE_EXTENTS], LCD_OP_SET);
 			}
 
@@ -358,7 +415,7 @@ void gui_process(uint32_t data)
 				lcd_set_cursor(5, 8);
 				if ((key_press & KEY_SEL) || (key_press & KEY_OK))
 				{
-					lcd_draw_rect(5, 8, 123, BOX_Y-1, LCD_OP_CLR, RECT_FILL);
+					lcd_draw_rect(5, 0, 123, BOX_Y-1, LCD_OP_CLR, RECT_FILL);
 					if (state == CAL_LIMITS)
 					{
 						state = CAL_CENTER;
@@ -475,34 +532,34 @@ static void gui_show_sticks(void)
 	int x, y;
 
 	// Stick boxes
-	lcd_draw_rect(BOX_L_X, BOX_Y, BOX_L_X + BOX_W, BOX_Y + BOX_H, 0, RECT_FILL);
-	lcd_draw_rect(BOX_R_X, BOX_Y, BOX_R_X + BOX_W, BOX_Y + BOX_H, 0, RECT_FILL);
-	lcd_draw_rect(BOX_L_X, BOX_Y, BOX_L_X + BOX_W, BOX_Y + BOX_H, 1, RECT_ROUNDED);
-	lcd_draw_rect(BOX_R_X, BOX_Y, BOX_R_X + BOX_W, BOX_Y + BOX_H, 1, RECT_ROUNDED);
+	lcd_draw_rect(BOX_L_X, BOX_Y, BOX_L_X + BOX_W, BOX_Y + BOX_H, LCD_OP_CLR, RECT_FILL);
+	lcd_draw_rect(BOX_R_X, BOX_Y, BOX_R_X + BOX_W, BOX_Y + BOX_H, LCD_OP_CLR, RECT_FILL);
+	lcd_draw_rect(BOX_L_X, BOX_Y, BOX_L_X + BOX_W, BOX_Y + BOX_H, LCD_OP_SET, RECT_ROUNDED);
+	lcd_draw_rect(BOX_R_X, BOX_Y, BOX_R_X + BOX_W, BOX_Y + BOX_H, LCD_OP_SET, RECT_ROUNDED);
 
 	// Centre point
-	lcd_draw_rect(BOX_L_X + BOX_W / 2 - 1, BOX_Y + BOX_H / 2 - 1, BOX_L_X + BOX_W / 2 + 1, BOX_Y + BOX_H / 2 + 1, 1, RECT_ROUNDED);
-	lcd_draw_rect(BOX_R_X + BOX_W / 2 - 1, BOX_Y + BOX_H / 2 - 1, BOX_R_X + BOX_W / 2 + 1, BOX_Y + BOX_H / 2 + 1, 1, RECT_ROUNDED);
+	lcd_draw_rect(BOX_L_X + BOX_W / 2 - 1, BOX_Y + BOX_H / 2 - 1, BOX_L_X + BOX_W / 2 + 1, BOX_Y + BOX_H / 2 + 1, LCD_OP_SET, RECT_ROUNDED);
+	lcd_draw_rect(BOX_R_X + BOX_W / 2 - 1, BOX_Y + BOX_H / 2 - 1, BOX_R_X + BOX_W / 2 + 1, BOX_Y + BOX_H / 2 + 1, LCD_OP_SET, RECT_ROUNDED);
 
 	// Stick position (Right)
 	x = 2 + (BOX_W-4) * sticks_get_percent(STICK_R_H) / 100;
 	y = BOX_H - 2 - (BOX_H-4) * sticks_get_percent(STICK_R_V) / 100;
-	lcd_draw_rect(BOX_R_X + x - 2, BOX_Y + y - 2, BOX_R_X + x + 2, BOX_Y + y + 2, 1, RECT_ROUNDED);
+	lcd_draw_rect(BOX_R_X + x - 2, BOX_Y + y - 2, BOX_R_X + x + 2, BOX_Y + y + 2, LCD_OP_SET, RECT_ROUNDED);
 
 	// Stick position (Left)
 	x = 2 + (BOX_W-4) * sticks_get_percent(STICK_L_H) / 100;
 	y = BOX_H - 2 - (BOX_H-4) * sticks_get_percent(STICK_L_V) / 100;
-	lcd_draw_rect(BOX_L_X + x - 2, BOX_Y + y - 2, BOX_L_X + x + 2, BOX_Y + y + 2, 1, RECT_ROUNDED);
+	lcd_draw_rect(BOX_L_X + x - 2, BOX_Y + y - 2, BOX_L_X + x + 2, BOX_Y + y + 2, LCD_OP_SET, RECT_ROUNDED);
 
 	// VRB
 	x = BOX_H * sticks_get_percent(STICK_VRB) / 100;
-	lcd_draw_rect(POT_L_X, POT_Y - BOX_H, POT_L_X + POT_W, POT_Y, 0, RECT_FILL);
-	lcd_draw_rect(POT_L_X, POT_Y - x, POT_L_X + POT_W, POT_Y, 1, RECT_FILL);
+	lcd_draw_rect(POT_L_X, POT_Y - BOX_H, POT_L_X + POT_W, POT_Y, LCD_OP_CLR, RECT_FILL);
+	lcd_draw_rect(POT_L_X, POT_Y - x, POT_L_X + POT_W, POT_Y, LCD_OP_SET, RECT_FILL);
 
 	// VRA
 	x = BOX_H * sticks_get_percent(STICK_VRA) / 100;
-	lcd_draw_rect(POT_R_X, POT_Y - BOX_H, POT_R_X + POT_W, POT_Y, 0, RECT_FILL);
-	lcd_draw_rect(POT_R_X, POT_Y - x, POT_R_X + POT_W, POT_Y, 1, RECT_FILL);
+	lcd_draw_rect(POT_R_X, POT_Y - BOX_H, POT_R_X + POT_W, POT_Y, LCD_OP_CLR, RECT_FILL);
+	lcd_draw_rect(POT_R_X, POT_Y - x, POT_R_X + POT_W, POT_Y, LCD_OP_SET, RECT_FILL);
 }
 
 /**
@@ -547,16 +604,16 @@ static void gui_show_battery(int x, int y)
 	level = (level > 12)?12:level;
 
 	// Background
-	lcd_draw_rect(x-1, y, x+15, y+7, 0, RECT_FILL);
+	lcd_draw_rect(x-1, y, x+15, y+7, LCD_OP_CLR, RECT_FILL);
 
 	// Battery Icon
-	lcd_draw_rect(x, y+1, x+12, y+6, 1, RECT_ROUNDED);
-	lcd_draw_rect(x+12, y+2, x+14, y+5, 1, RECT_ROUNDED);
-	lcd_draw_rect(x, y+2, x+level, y+5, 1, RECT_FILL);
+	lcd_draw_rect(x, y+1, x+12, y+6, LCD_OP_SET, RECT_ROUNDED);
+	lcd_draw_rect(x+12, y+2, x+14, y+5, LCD_OP_SET, RECT_ROUNDED);
+	lcd_draw_rect(x, y+2, x+level, y+5, LCD_OP_SET, RECT_FILL);
 
 	// Voltage
 	lcd_set_cursor(x + 15, y);
-	lcd_write_int(batt, 1, INT_DIV10);
+	lcd_write_int(batt, LCD_OP_SET, INT_DIV10);
 	lcd_write_string("v", LCD_OP_SET, FLAGS_NONE);
 }
 

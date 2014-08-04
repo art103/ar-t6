@@ -21,10 +21,10 @@
 
 // LCD Operation type.
 typedef enum {
-	LCD_OP_CLR = 0x00,
-	LCD_OP_SET = 0x01,
-	LCD_OP_XOR = 0x02,
-
+	LCD_OP_NONE = 0x00,
+	LCD_OP_CLR,
+	LCD_OP_SET,
+	LCD_OP_XOR,
 } LCD_OP;
 
 typedef enum {
