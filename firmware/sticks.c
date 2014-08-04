@@ -241,13 +241,19 @@ void DMA1_Channel1_IRQHandler(void)
 	// Scale channels to -STICK_LIMIT to +STICK_LIMIT.
 	for (i=0; i<STICK_ADC_CHANNELS; ++i)
 	{
-		int32_t scale = cal_data[i].max - cal_data[i].min;
 		tmp = adc_data[i];
-		tmp *= 2*STICK_LIMIT;
-		tmp /= scale;
-		tmp -= 2*STICK_LIMIT * cal_data[i].centre / scale;
-
-		stick_data[i] = tmp;
+		if (adc_data[i] >= cal_data[i].centre)
+		{
+			tmp -= cal_data[i].centre;
+			tmp *= STICK_LIMIT;
+			stick_data[i] = tmp / (cal_data[i].max - cal_data[i].centre);
+		}
+		else
+		{
+			tmp = cal_data[i].centre - tmp;
+			tmp *= -STICK_LIMIT;
+			stick_data[i] = tmp / (cal_data[i].centre - cal_data[i].min);
+		}
 	}
 
 	// Don't run the mixer if we're calibrating

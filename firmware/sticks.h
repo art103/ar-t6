@@ -18,7 +18,7 @@
 
 #define STICK_ADC_CHANNELS		7
 #define STICK_INPUT_CHANNELS	6
-#define STICKS_TO_CALIBRATE		4
+#define STICKS_TO_CALIBRATE		6
 #define STICKS_TO_TRIM			4
 
 #define STICK_LIMIT				1024
@@ -36,9 +36,9 @@ typedef enum
 
 typedef struct _adc_cal
 {
-	uint32_t min;
-	uint32_t max;
-	uint32_t centre;
+	int16_t min;
+	int16_t max;
+	int16_t centre;
 } ADC_CAL;
 
 typedef enum
