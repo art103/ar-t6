@@ -41,6 +41,8 @@ typedef enum
 	GUI_MSG_OK,
 	GUI_MSG_CANCELLED,
 	GUI_MSG_OK_CANCEL,
+	GUI_MSG_ZERO_THROTTLE,
+	GUI_MSG_CALIBRATION_REQUIRED,
 	GUI_MSG_MAX,
 } GUI_MSG;
 
@@ -61,7 +63,6 @@ void gui_process(uint32_t data);
 void gui_update(UPDATE_TYPE type);
 void gui_input_key(KEYPAD_KEY key);
 
-void gui_back(void);
 void gui_navigate(GUI_LAYOUT layout);
 void gui_popup(GUI_MSG msg, int16_t timeout);
 

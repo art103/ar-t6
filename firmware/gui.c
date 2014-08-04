@@ -32,8 +32,8 @@
 
 // Message Popup
 #define MSG_X	6
-#define MSG_Y	16
-#define MSG_H	32
+#define MSG_Y	8
+#define MSG_H	40
 
 // Stick boxes
 #define BOX_W	22
@@ -66,7 +66,9 @@ static const char *msg[GUI_MSG_MAX] = {
 		"Please centre the sticks then press OK.",
 		"OK",
 		"Operation Cancelled.",
-		"OK:Save Cancel:Abort"
+		"OK:Save Cancel:Abort",
+		"Please zero throttle to continue.",
+		"Calibration data invalid, please calibrate the sticks.",
 };
 
 
@@ -102,7 +104,8 @@ void gui_process(uint32_t data)
 
 	if (current_msg)
 	{
-		if (gui_timeout != 0 && system_ticks >= gui_timeout)
+		if ((gui_timeout != 0 && system_ticks >= gui_timeout)
+			|| (key_press & (KEY_OK | KEY_CANCEL | KEY_SEL)) )
 		{
 			gui_timeout = 0;
 			current_msg = 0;
@@ -159,6 +162,8 @@ void gui_process(uint32_t data)
 		new_msg = GUI_MSG_NONE;
 
 		lcd_update();
+
+		task_schedule(TASK_PROCESS_GUI, UPDATE_MSG, 40);
 
 		return;
 	}
@@ -477,16 +482,6 @@ void gui_input_key(KEYPAD_KEY key)
 {
 	key_press |= key;
 	gui_update(UPDATE_KEYPRESS);
-}
-
-/**
-  * @brief  Pop one level of the UI stack
-  * @note
-  * @param  None.
-  * @retval None
-  */
-void gui_back(void)
-{
 }
 
 /**

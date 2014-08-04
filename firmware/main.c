@@ -84,9 +84,7 @@ int main(void)
 	// Start the radio output.
 	pulses_init();
 
-	//gui_navigate(GUI_LAYOUT_STICK_CALIBRATION);
 	gui_navigate(GUI_LAYOUT_MAIN1);
-
 
 	/*
 	 * The main loop will sit in low power mode waiting for an interrupt.

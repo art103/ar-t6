@@ -84,7 +84,7 @@ void sound_init(void)
 	// TIM1 (Tone Output)
 	timOcInit.TIM_OCMode = TIM_OCMode_PWM1;
 	timOcInit.TIM_OutputState = TIM_OutputState_Enable;
-	timOcInit.TIM_Pulse = 50;
+	timOcInit.TIM_Pulse = 10;
 	timOcInit.TIM_OCPolarity = TIM_OCPolarity_High;
 	timOcInit.TIM_OCIdleState = TIM_OCIdleState_Reset;
 
