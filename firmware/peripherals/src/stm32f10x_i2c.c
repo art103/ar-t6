@@ -895,7 +895,7 @@ void I2C_FastModeDutyCycleConfig(I2C_TypeDef* I2Cx, uint16_t I2C_DutyCycle)
  *          - I2Cx_ER_IRQHandler() which is called when the error interurpt occurs.
  *            Where x is the peripheral instance (I2C1, I2C2 ...)
  *          - I2C_GetFlagStatus() or I2C_GetITStatus() to be called into I2Cx_ER_IRQHandler() 
- *            in order to determine which error occured.
+ *            in order to determine which error occurred.
  *          - I2C_ClearFlag() or I2C_ClearITPendingBit() and/or I2C_SoftwareResetCmd()
  *            and/or I2C_GenerateStop() in order to clear the error flag and source,
  *            and return to correct communication status.
@@ -907,9 +907,9 @@ void I2C_FastModeDutyCycleConfig(I2C_TypeDef* I2Cx, uint16_t I2C_DutyCycle)
  *     by 16 bits and concatenated to Status Register 1).
  *     - When to use:
  *       - This function is suitable for the same applications above but it allows to
- *         overcome the mentionned limitation of I2C_GetFlagStatus() function.
+ *         overcome the mentioned limitation of I2C_GetFlagStatus() function.
  *         The returned value could be compared to events already defined in the 
- *         library (stm32f10x_i2c.h) or to custom values defiend by user.
+ *         library (stm32f10x_i2c.h) or to custom values defined by user.
  *       - This function is suitable when multiple flags are monitored at the same time.
  *       - At the opposite of I2C_CheckEvent() function, this function allows user to
  *         choose when an event is accepted (when all events flags are set and no 
@@ -1079,8 +1079,8 @@ uint32_t I2C_GetLastEvent(I2C_TypeDef* I2Cx)
   *     @arg I2C_FLAG_STOPF: Stop detection flag (Slave mode)
   *     @arg I2C_FLAG_ADD10: 10-bit header sent flag (Master mode)
   *     @arg I2C_FLAG_BTF: Byte transfer finished flag
-  *     @arg I2C_FLAG_ADDR: Address sent flag (Master mode) “ADSL”
-  *   Address matched flag (Slave mode)”ENDAD”
+  *     @arg I2C_FLAG_ADDR: Address sent flag (Master mode) ï¿½ADSLï¿½
+  *   Address matched flag (Slave mode)ï¿½ENDADï¿½
   *     @arg I2C_FLAG_SB: Start bit flag (Master mode)
   * @retval The new state of I2C_FLAG (SET or RESET).
   */
@@ -1192,8 +1192,8 @@ void I2C_ClearFlag(I2C_TypeDef* I2Cx, uint32_t I2C_FLAG)
   *     @arg I2C_IT_STOPF: Stop detection flag (Slave mode)
   *     @arg I2C_IT_ADD10: 10-bit header sent flag (Master mode)
   *     @arg I2C_IT_BTF: Byte transfer finished flag
-  *     @arg I2C_IT_ADDR: Address sent flag (Master mode) “ADSL”
-  *                       Address matched flag (Slave mode)”ENDAD”
+  *     @arg I2C_IT_ADDR: Address sent flag (Master mode) ï¿½ADSLï¿½
+  *                       Address matched flag (Slave mode)ï¿½ENDADï¿½
   *     @arg I2C_IT_SB: Start bit flag (Master mode)
   * @retval The new state of I2C_IT (SET or RESET).
   */
@@ -1228,7 +1228,7 @@ ITStatus I2C_GetITStatus(I2C_TypeDef* I2Cx, uint32_t I2C_IT)
 }
 
 /**
-  * @brief  Clears the I2Cx’s interrupt pending bits.
+  * @brief  Clears the I2Cxï¿½s interrupt pending bits.
   * @param  I2Cx: where x can be 1 or 2 to select the I2C peripheral.
   * @param  I2C_IT: specifies the interrupt pending bit to clear. 
   *   This parameter can be any combination of the following values:
