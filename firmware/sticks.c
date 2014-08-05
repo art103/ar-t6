@@ -32,7 +32,7 @@
 #include "mixer.h"
 #include "art6.h"
 
-volatile uint32_t adc_data[STICK_ADC_CHANNELS];
+volatile uint16_t adc_data[STICK_ADC_CHANNELS];
 volatile ADC_CAL cal_data[STICK_ADC_CHANNELS] = {
 		{0, 4096, 2048},
 		{0, 4096, 2048},
@@ -105,14 +105,15 @@ void sticks_init(void)
 
     // DMA Configuration
 	DMA_DeInit(DMA1_Channel1);
+	DMA_StructInit(&dmaInit);
 	dmaInit.DMA_PeripheralBaseAddr = (uint32_t)&ADC1->DR;
 	dmaInit.DMA_MemoryBaseAddr = (uint32_t)&adc_data[0];
 	dmaInit.DMA_DIR = DMA_DIR_PeripheralSRC;
 	dmaInit.DMA_BufferSize = STICK_ADC_CHANNELS;
 	dmaInit.DMA_PeripheralInc = DMA_PeripheralInc_Disable;
 	dmaInit.DMA_MemoryInc = DMA_MemoryInc_Enable;
-	dmaInit.DMA_PeripheralDataSize = DMA_PeripheralDataSize_Word;
-	dmaInit.DMA_MemoryDataSize = DMA_MemoryDataSize_Word;
+	dmaInit.DMA_PeripheralDataSize = DMA_PeripheralDataSize_HalfWord;
+	dmaInit.DMA_MemoryDataSize = DMA_MemoryDataSize_HalfWord;
 	dmaInit.DMA_Mode = DMA_Mode_Circular;
 	dmaInit.DMA_Priority = DMA_Priority_VeryHigh;
 	dmaInit.DMA_M2M = DMA_M2M_Disable;
@@ -127,7 +128,6 @@ void sticks_init(void)
 	// ToDo: Read the calibration data out of EEPROM.
 	// if (eeprom_get_data(EEPROM_ADC_CAL, cal_data) != 0)
 	gui_popup(GUI_MSG_CALIBRATION_REQUIRED, 0);
-
 }
 
 /**

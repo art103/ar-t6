@@ -48,7 +48,7 @@ typedef enum
 	CAL_CENTER
 } CAL_STATE;
 
-extern volatile uint32_t adc_data[STICK_ADC_CHANNELS];
+extern volatile uint16_t adc_data[STICK_ADC_CHANNELS];
 extern volatile ADC_CAL cal_data[STICK_ADC_CHANNELS];
 extern volatile int16_t stick_data[STICK_ADC_CHANNELS];
 

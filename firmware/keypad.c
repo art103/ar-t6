@@ -43,192 +43,8 @@ static uint32_t keys_pressed = 0;
 static uint32_t key_repeat = 0;
 static uint32_t key_time = 0;
 
-/**
-  * @brief  Scan the keypad and return the active key.
-  * @note   Will only return the first key found if multiple keys pressed.
-  * @param  None
-  * @retval KEYPAD_KEY
-  *   Returns the active key
-  *     @arg KEY_xxx: The key that was pressed
-  *     @arg KEY_NONE: No key was pressed
-  */
-static KEYPAD_KEY keypad_scan_keys(void)
-{
-	KEYPAD_KEY key = KEY_NONE;
-	bool found = FALSE;
-	uint16_t rows;
-	uint8_t col;
-	
-	for (col = 0; col < 4; ++col)
-	{
-		// Walk a '0' down the cols.
-		GPIO_SetBits(GPIOB, COL_MASK);
-		GPIO_ResetBits(GPIOB, COL(col));
-		
-		// Allow some time for the GPIO to settle.
-		delay_us(100);
-		
-		// The rows are pulled high externally.
-		// Any '0' seen here is due to a switch connecting to our active '0' on a column.
-		rows = GPIO_ReadInputData(GPIOB);
-		if ((rows & ROW_MASK) != ROW_MASK)
-		{
-			// Only support one key pressed at a time.
-			found = TRUE;
-			break;
-		}
-	}
-
-	// Set the cols to all '0'.
-	GPIO_ResetBits(GPIOB, COL_MASK);
-
-	if (found)
-	{
-		rows = ~rows & ROW_MASK;
-
-		switch (col)
-		{
-			case 0:
-				if ((rows & ROW(0)) != 0)
-					key = KEY_CH1_UP;
-				else if ((rows & ROW(1)) != 0)
-					key = KEY_CH3_UP;
-			break;
-			
-			case 1:
-				if ((rows & ROW(0)) != 0)
-					key = KEY_CH1_DN;
-				else if ((rows & ROW(1)) != 0)
-					key = KEY_CH3_DN;
-				else if ((rows & ROW(2)) != 0)
-					key = KEY_SEL;
-			break;
-			
-			case 2:
-				if ((rows & ROW(0)) != 0)
-					key = KEY_CH2_UP;
-				else if ((rows & ROW(1)) != 0)
-					key = KEY_CH4_UP;
-				else if ((rows & ROW(2)) != 0)
-					key = KEY_OK;
-			break;
-
-			case 3:
-				if ((rows & ROW(0)) != 0)
-					key = KEY_CH2_DN;
-				else if ((rows & ROW(1)) != 0)
-					key = KEY_CH4_DN;
-				else if ((rows & ROW(2)) != 0)
-					key = KEY_CANCEL;
-			break;
-
-			default:
-			break;
-		}
-	}
-
-	return key;
-}
-
-/**
-  * @brief  Process keys and drive the GUI.
-  * @note   Called from the scheduler.
-  * @param  data: EXTI lines that triggered the update.
-  * @retval None
-  */
-static void keypad_process(uint32_t data)
-{
-	KEYPAD_KEY key;
-
-	// Debouncing.
-	if (key_time != 0 && key_time + KEY_HOLDOFF > system_ticks)
-	{
-		task_schedule(TASK_PROCESS_KEYPAD, 0, KEY_HOLDOFF);
-		return;
-	}
-
-	// Scan the keys.
-	key = keypad_scan_keys();
-	// Scanning the keys causes the IRQ to fire, so de-schedule for now.
-	task_deschedule(TASK_PROCESS_KEYPAD);
-
-	// Cancel the repeat if we see a different key.
-	if (key == KEY_NONE)
-	{
-		key_repeat = 0;
-		key_time = 0;
-	}
-
-	// Data is used to send the rotary encoder data.
-	if (data != 0)
-	{
-		switch (data)
-		{
-			case 1:
-				key = KEY_RIGHT;
-			break;
-			case 2:
-				key = KEY_LEFT;
-			break;
-			default:
-			break;
-		}
-	}
-	
-	if (key != 0)
-	{
-		// Re-schedule to check the keys again.
-		task_schedule(TASK_PROCESS_KEYPAD, 0, KEY_REPEAT_TIME);
-
-		if (key_time != 0)
-		{
-			// A key has been pressed previously, check for repeat.
-
-			if ((key_repeat == 0) && key_time + KEY_REPEAT_DELAY > system_ticks)
-			{
-				// Not repeating yet, and haven't passed the delay period.
-				return;
-			}
-			else
-			{
-				// Delay period passed, decide how to behave...
-				if (key & KEY_SEL)
-				{
-					// After repeat delay, send only one KEY_MENU press from KEY_SEL.
-					if (key_repeat == 0)
-						key = KEY_MENU;
-					else
-						return;
-				}
-				else if (!(key & TRIM_KEYS))
-				{
-					// For non-trim keys, don't repeat.
-					return;
-				}
-
-				// For trim keys, repeat at KEY_REPEAT_TIME intervals.
-				key_repeat = key;
-			}
-		}
-
-		// Add the key to the pressed list.
-		keys_pressed |= key;
-
-		// Record the key time.
-		key_time = system_ticks;
-
-		// Play the key tone.
-		// ToDo: Make this adhere to the global setting.
-		sound_play_tone(500, 10);
-
-		// Update the trim if needed.
-		if (key >= KEY_CH1_UP && key <= KEY_CH4_DN)
-			mixer_input_trim(key);
-
-		// Send the key to the UI.
-		gui_input_key(key);
-	}
-}
+static void keypad_process(uint32_t data);
+static KEYPAD_KEY keypad_scan_keys(void);
 
 /**
   * @brief  Initialise the keypad scanning pins.
@@ -349,6 +165,193 @@ void keypad_cancel_repeat(void)
 	key_repeat = 0;
 	key_time = 0;
 	task_deschedule(TASK_PROCESS_KEYPAD);
+}
+
+/**
+  * @brief  Process keys and drive the GUI.
+  * @note   Called from the scheduler.
+  * @param  data: EXTI lines that triggered the update.
+  * @retval None
+  */
+static void keypad_process(uint32_t data)
+{
+	KEYPAD_KEY key;
+
+	// Debouncing.
+	if (key_time != 0 && key_time + KEY_HOLDOFF > system_ticks)
+	{
+		task_schedule(TASK_PROCESS_KEYPAD, 0, KEY_HOLDOFF);
+		return;
+	}
+
+	// Scan the keys.
+	key = keypad_scan_keys();
+	// Scanning the keys causes the IRQ to fire, so de-schedule for now.
+	task_deschedule(TASK_PROCESS_KEYPAD);
+
+	// Cancel the repeat if we see a different key.
+	if (key == KEY_NONE)
+	{
+		key_repeat = 0;
+		key_time = 0;
+	}
+
+	// Data is used to send the rotary encoder data.
+	if (data != 0)
+	{
+		switch (data)
+		{
+			case 1:
+				key = KEY_RIGHT;
+			break;
+			case 2:
+				key = KEY_LEFT;
+			break;
+			default:
+			break;
+		}
+	}
+	
+	if (key != 0)
+	{
+		// Re-schedule to check the keys again.
+		task_schedule(TASK_PROCESS_KEYPAD, 0, KEY_REPEAT_TIME);
+
+		if (key_time != 0)
+		{
+			// A key has been pressed previously, check for repeat.
+
+			if ((key_repeat == 0) && key_time + KEY_REPEAT_DELAY > system_ticks)
+			{
+				// Not repeating yet, and haven't passed the delay period.
+				return;
+			}
+			else
+			{
+				// Delay period passed, decide how to behave...
+				if (key & KEY_SEL)
+				{
+					// After repeat delay, send only one KEY_MENU press from KEY_SEL.
+					if (key_repeat == 0)
+						key = KEY_MENU;
+					else
+						return;
+				}
+				else if (!(key & TRIM_KEYS))
+				{
+					// For non-trim keys, don't repeat.
+					return;
+				}
+
+				// For trim keys, repeat at KEY_REPEAT_TIME intervals.
+				key_repeat = key;
+			}
+		}
+
+		// Add the key to the pressed list.
+		keys_pressed |= key;
+
+		// Record the key time.
+		key_time = system_ticks;
+
+		// Play the key tone.
+		// ToDo: Make this adhere to the global setting.
+		sound_play_tone(500, 10);
+
+		// Update the trim if needed.
+		if (key >= KEY_CH1_UP && key <= KEY_CH4_DN)
+			mixer_input_trim(key);
+
+		// Send the key to the UI.
+		gui_input_key(key);
+	}
+}
+
+/**
+  * @brief  Scan the keypad and return the active key.
+  * @note   Will only return the first key found if multiple keys pressed.
+  * @param  None
+  * @retval KEYPAD_KEY
+  *   Returns the active key
+  *     @arg KEY_xxx: The key that was pressed
+  *     @arg KEY_NONE: No key was pressed
+  */
+static KEYPAD_KEY keypad_scan_keys(void)
+{
+	KEYPAD_KEY key = KEY_NONE;
+	bool found = FALSE;
+	uint16_t rows;
+	uint8_t col;
+
+	for (col = 0; col < 4; ++col)
+	{
+		// Walk a '0' down the cols.
+		GPIO_SetBits(GPIOB, COL_MASK);
+		GPIO_ResetBits(GPIOB, COL(col));
+
+		// Allow some time for the GPIO to settle.
+		delay_us(100);
+
+		// The rows are pulled high externally.
+		// Any '0' seen here is due to a switch connecting to our active '0' on a column.
+		rows = GPIO_ReadInputData(GPIOB);
+		if ((rows & ROW_MASK) != ROW_MASK)
+		{
+			// Only support one key pressed at a time.
+			found = TRUE;
+			break;
+		}
+	}
+
+	// Set the cols to all '0'.
+	GPIO_ResetBits(GPIOB, COL_MASK);
+
+	if (found)
+	{
+		rows = ~rows & ROW_MASK;
+
+		switch (col)
+		{
+			case 0:
+				if ((rows & ROW(0)) != 0)
+					key = KEY_CH1_UP;
+				else if ((rows & ROW(1)) != 0)
+					key = KEY_CH3_UP;
+			break;
+
+			case 1:
+				if ((rows & ROW(0)) != 0)
+					key = KEY_CH1_DN;
+				else if ((rows & ROW(1)) != 0)
+					key = KEY_CH3_DN;
+				else if ((rows & ROW(2)) != 0)
+					key = KEY_SEL;
+			break;
+
+			case 2:
+				if ((rows & ROW(0)) != 0)
+					key = KEY_CH2_UP;
+				else if ((rows & ROW(1)) != 0)
+					key = KEY_CH4_UP;
+				else if ((rows & ROW(2)) != 0)
+					key = KEY_OK;
+			break;
+
+			case 3:
+				if ((rows & ROW(0)) != 0)
+					key = KEY_CH2_DN;
+				else if ((rows & ROW(1)) != 0)
+					key = KEY_CH4_DN;
+				else if ((rows & ROW(2)) != 0)
+					key = KEY_CANCEL;
+			break;
+
+			default:
+			break;
+		}
+	}
+
+	return key;
 }
 
 /**

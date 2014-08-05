@@ -29,6 +29,7 @@
 #include "pulses.h"
 #include "mixer.h"
 #include "sound.h"
+#include "eeprom.h"
 
 EEGeneral  g_eeGeneral;
 ModelData  g_model;
@@ -83,6 +84,9 @@ int main(void)
 
 	// Start the radio output.
 	pulses_init();
+
+	// Initialize the EEPROM
+	eeprom_init();
 
 	gui_navigate(GUI_LAYOUT_MAIN1);
 
