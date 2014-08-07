@@ -258,10 +258,6 @@ static void keypad_process(uint32_t data)
 		// ToDo: Make this adhere to the global setting.
 		sound_play_tone(500, 10);
 
-		// Update the trim if needed.
-		if (key >= KEY_CH1_UP && key <= KEY_CH4_DN)
-			mixer_input_trim(key);
-
 		// Send the key to the UI.
 		gui_input_key(key);
 	}

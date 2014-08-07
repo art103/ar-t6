@@ -17,6 +17,7 @@
 #define _GUI_H
 
 #include "keypad.h"
+#include "strings.h"
 
 typedef enum
 {
@@ -32,27 +33,6 @@ typedef enum
 	GUI_LAYOUT_STICK_CALIBRATION,
 
 } GUI_LAYOUT;
-
-typedef enum
-{
-	GUI_MSG_NONE = 0,
-	GUI_MSG_CAL_MOVE_EXTENTS,
-	GUI_MSG_CAL_CENTRE,
-	GUI_MSG_OK,
-	GUI_MSG_CANCELLED,
-	GUI_MSG_OK_CANCEL,
-	GUI_MSG_ZERO_THROTTLE,
-	GUI_MSG_CALIBRATION_REQUIRED,
-
-	// Headings
-	GUI_HDG_RADIO_SETUP,
-	GUI_HDG_TRAINER,
-	GUI_HDG_VERSION,
-	GUI_HDG_DIAG,
-	GUI_HDG_ANALOG,
-	GUI_HDG_CALIBRATION,
-	GUI_MSG_MAX,
-} GUI_MSG;
 
 typedef enum
 {

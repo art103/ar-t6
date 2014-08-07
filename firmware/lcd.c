@@ -341,7 +341,7 @@ void lcd_write_char(uint8_t c, LCD_OP op, LCD_FLAGS flags)
 		if ((flags & CHAR_CONDENSED) != 0 && x%CHAR_WIDTH==4)
 			cursor_x--;
 	}
-	for (y=0; y<height+1; y++) lcd_set_pixel(cursor_x+width, cursor_y+y, op_clr);
+	for (y=0; y<height+1; y++) lcd_set_pixel(cursor_x+width, cursor_y+y, (flags & CHAR_UNDERLINE)?op_set:op_clr);
 
 	cursor_x += width + 1;
 	if ((flags & CHAR_CONDENSED) != 0)
@@ -415,6 +415,32 @@ void lcd_write_int(int32_t val, LCD_OP op, uint16_t flags)
 		lcd_write_char('.', op, flags);
 
 	lcd_write_char(u + '0', op, flags);
+}
+
+/**
+  * @brief  Write a value in hex
+  * @note
+  * @param  val: unsigned Signed integer
+  * @param  op: LCD_OP
+  * @param  flags: LCD_FLAGS
+  * @retval None
+  */
+void lcd_write_hex(uint32_t val, LCD_OP op, uint16_t flags)
+{
+	int digits = 4;
+	int i;
+	if (val > 0xFFFF)
+		digits = 8;
+
+	for (i=0; i<digits; ++i)
+	{
+		int digit = (val >> (8*(digits-i))) & 0xF;
+
+		if (digit > 9)
+			lcd_write_char(digit - 10 + 'A', op, flags);
+		else
+			lcd_write_char(digit + '0', op, flags);
+	}
 }
 
 /**

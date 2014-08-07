@@ -30,6 +30,7 @@
 #include "lcd.h"
 #include "gui.h"
 #include "mixer.h"
+#include "myeeprom.h"
 #include "art6.h"
 
 volatile uint16_t adc_data[STICK_ADC_CHANNELS];
@@ -224,6 +225,15 @@ int16_t sticks_get_percent(STICK channel)
 
 	return val;
 }
+
+uint16_t sticks_get_battery(void)
+{
+	uint16_t val = sticks_get_percent(STICK_BAT) * 129 / 100;
+	val = val * g_eeGeneral.vBatCalib / 100;
+
+	return val;
+}
+
 
 
 /**

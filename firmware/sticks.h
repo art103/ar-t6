@@ -57,5 +57,6 @@ void sticks_process(uint32_t data);
 void sticks_calibrate(CAL_STATE state);
 int16_t sticks_get(STICK chan);
 int16_t sticks_get_percent(STICK chan);
+uint16_t sticks_get_battery(void);
 
 #endif // _STICKS_H

@@ -123,6 +123,10 @@ void eeprom_init(void)
 	dmaInit.DMA_Mode = DMA_Mode_Normal;
 	dmaInit.DMA_Priority = DMA_Priority_Medium;
 	dmaInit.DMA_M2M = DMA_M2M_Disable;
+
+
+	// ToDo: Load g_eeGeneral and g_model from EEPROM.
+
 }
 
 /**

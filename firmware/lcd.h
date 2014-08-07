@@ -42,6 +42,7 @@ typedef enum {
 	CHAR_2X = 0x100,	// Draw double size
 	CHAR_4X = 0x200,	// Draw quadrouple size
 	CHAR_CONDENSED = 0x400,	// Draw with 4th column missing
+	CHAR_UNDERLINE = 0x800,	// Underline each char
 } LCD_FLAGS;
 
 void lcd_init(void);
@@ -53,6 +54,7 @@ void lcd_set_cursor(uint8_t x, uint8_t y);
 void lcd_write_char(uint8_t c, LCD_OP op, uint16_t flags);
 void lcd_write_string(char *s, LCD_OP op, uint16_t flags);
 void lcd_write_int(int32_t val, LCD_OP op, uint16_t flags);
+void lcd_write_hex(uint32_t val, LCD_OP op, uint16_t flags);
 void lcd_draw_line(uint8_t x1, uint8_t y1, uint8_t x2, uint8_t y2, LCD_OP op);
 void lcd_draw_rect(uint8_t x1, uint8_t y1, uint8_t x2, uint8_t y2, LCD_OP op, uint16_t flags);
 void lcd_draw_message(const char *msg, LCD_OP op);
