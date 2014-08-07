@@ -199,14 +199,14 @@ void lcd_backlight(bool state)
 
 
 /**
-  * @brief  Adjust the LCD contrast.
+  * @brief  Set the LCD contrast.
   * @note
-  * @param  val: signed integer to increase / decrease contrast by.
+  * @param  val: Set contrast to this value.
   * @retval None
   */
-void lcd_adj_contrast(int8_t val)
+void lcd_set_contrast(uint8_t val)
 {
-	contrast += val;
+	contrast = val;
 	if ((contrast + val) > 0xff) contrast = 0xff;
 	else if (contrast + val < 0) contrast = 0;
 

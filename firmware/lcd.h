@@ -19,6 +19,9 @@
 #define LCD_WIDTH		128
 #define LCD_HEIGHT		64
 
+#define LCD_CONTRAST_MIN	20
+#define LCD_CONTRAST_MAX	60
+
 // LCD Operation type.
 typedef enum {
 	LCD_OP_NONE = 0x00,
@@ -43,7 +46,7 @@ typedef enum {
 
 void lcd_init(void);
 void lcd_backlight(bool state);
-void lcd_adj_contrast(int8_t val);
+void lcd_set_contrast(uint8_t val);
 void lcd_update(void);
 void lcd_set_pixel(uint8_t x, uint8_t y, LCD_OP op);
 void lcd_set_cursor(uint8_t x, uint8_t y);

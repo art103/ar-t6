@@ -106,6 +106,22 @@ void sound_init(void)
     sound_play_tune(0);
 }
 
+void sound_set_volume(uint8_t volume)
+{
+	TIM_OCInitTypeDef timOcInit;
+
+	TIM_OCStructInit(&timOcInit);
+
+	// TIM1 (Tone Output)
+	timOcInit.TIM_OCMode = TIM_OCMode_PWM1;
+	timOcInit.TIM_OutputState = TIM_OutputState_Enable;
+	timOcInit.TIM_Pulse = 10 * volume;
+	timOcInit.TIM_OCPolarity = TIM_OCPolarity_High;
+	timOcInit.TIM_OCIdleState = TIM_OCIdleState_Reset;
+
+	TIM_OC1Init(TIM1, &timOcInit);
+}
+
 /**
   * @brief  Play a tune at index n.
   * @note
