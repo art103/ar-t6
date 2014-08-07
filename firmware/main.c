@@ -77,6 +77,7 @@ int main(void)
 
 	// Block here until all switches are set correctly.
 	//check_switches();
+	strncpy(g_eeGeneral.ownerName, "R         ", 10);
 	strncpy(g_model.name, "SK450 Quad", 10);
 	g_model.tmrVal = 360;
 
@@ -88,7 +89,7 @@ int main(void)
 	// Initialize the EEPROM
 	eeprom_init();
 
-	gui_navigate(GUI_LAYOUT_MAIN1);
+	gui_navigate(GUI_LAYOUT_SYSTEM_MENU);
 
 	/*
 	 * The main loop will sit in low power mode waiting for an interrupt.

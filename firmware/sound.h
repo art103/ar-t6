@@ -22,5 +22,6 @@
 void sound_init(void);
 void sound_play_tune(uint8_t index);
 void sound_play_tone(uint16_t freq, uint16_t duration);
+void sound_set_volume(uint8_t volume);
 
 #endif // SOUND_H

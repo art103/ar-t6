@@ -127,7 +127,7 @@ void sticks_init(void)
 
 	// ToDo: Read the calibration data out of EEPROM.
 	// if (eeprom_get_data(EEPROM_ADC_CAL, cal_data) != 0)
-	gui_popup(GUI_MSG_CALIBRATION_REQUIRED, 0);
+	//gui_popup(GUI_MSG_CALIBRATION_REQUIRED, 0);
 }
 
 /**

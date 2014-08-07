@@ -34,7 +34,7 @@
 #define ROW(n)         (1 << (12 + n))
 #define COL(n)         (1 << (8 + n))
 
-#define KEY_HOLDOFF			100
+#define KEY_HOLDOFF			10
 #define KEY_REPEAT_DELAY	1000
 #define KEY_REPEAT_TIME		200
 
