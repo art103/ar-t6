@@ -35,8 +35,8 @@
 #define COL(n)         (1 << (8 + n))
 
 #define KEY_HOLDOFF			10
-#define KEY_REPEAT_DELAY	1000
-#define KEY_REPEAT_TIME		200
+#define KEY_REPEAT_DELAY	500
+#define KEY_REPEAT_TIME		100
 
 // Keys that have been pressed since the last check.
 static uint32_t keys_pressed = 0;
@@ -44,7 +44,6 @@ static uint32_t key_repeat = 0;
 static uint32_t key_time = 0;
 
 static void keypad_process(uint32_t data);
-static KEYPAD_KEY keypad_scan_keys(void);
 
 /**
   * @brief  Initialise the keypad scanning pins.
@@ -139,16 +138,16 @@ bool keypad_get_pressed(KEYPAD_KEY key)
 uint8_t keypad_get_switches(void)
 {
 	uint8_t switches = 0;
-	if (GPIO_ReadInputDataBit(GPIOB, GPIO_Pin_0))
+	if (!GPIO_ReadInputDataBit(GPIOB, GPIO_Pin_0))
 		switches |= SWITCH_SWA;
 
-	if (GPIO_ReadInputDataBit(GPIOB, GPIO_Pin_1))
+	if (!GPIO_ReadInputDataBit(GPIOB, GPIO_Pin_1))
 		switches |= SWITCH_SWB;
 
-	if (GPIO_ReadInputDataBit(GPIOB, GPIO_Pin_5))
+	if (!GPIO_ReadInputDataBit(GPIOB, GPIO_Pin_5))
 		switches |= SWITCH_SWC;
 
-	if (GPIO_ReadInputDataBit(GPIOC, GPIO_Pin_13))
+	if (!GPIO_ReadInputDataBit(GPIOC, GPIO_Pin_13))
 		switches |= SWITCH_SWD;
 
 	return switches;
@@ -272,7 +271,7 @@ static void keypad_process(uint32_t data)
   *     @arg KEY_xxx: The key that was pressed
   *     @arg KEY_NONE: No key was pressed
   */
-static KEYPAD_KEY keypad_scan_keys(void)
+KEYPAD_KEY keypad_scan_keys(void)
 {
 	KEYPAD_KEY key = KEY_NONE;
 	bool found = FALSE;

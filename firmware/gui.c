@@ -83,7 +83,7 @@ static void gui_draw_slider(int x, int y, int w, int h, int range, int value);
 static void gui_draw_stick_icon(STICK stick);
 
 static void gui_string_edit(char *string, int8_t delta, uint32_t keys);
-static uint32_t gui_bitfield_edit(char *string, uint32_t field, int8_t delta, uint32_t keys);
+static uint32_t gui_bitfield_edit(char *string, uint32_t field, int8_t delta, uint32_t keys, uint8_t edit);
 static int32_t gui_int_edit(int32_t data, int32_t delta, int32_t min, int32_t max);
 
 
@@ -436,6 +436,7 @@ void gui_process(uint32_t data)
 			static uint8_t list = 0;
 			static uint8_t list_top = 0;
 			static uint8_t list_limit = 0;
+			static uint8_t field = 0;
 			uint8_t i;
 			int8_t inc = 0;
 
@@ -495,7 +496,12 @@ void gui_process(uint32_t data)
 				if (g_menu_mode > 0)
 					g_menu_mode--;
 				else
+				{
+					page = 0;
+					list = 0;
+					list_top = 0;
 					gui_navigate(g_main_layout);
+				}
 			}
 
 			if (list < list_top) list_top = list;
@@ -523,7 +529,7 @@ void gui_process(uint32_t data)
 				{
 				case SYS_PAGE_SETUP:
 					list_limit = SYS_MENU_LIST1_LEN-1;
-					for (i=list_top; i<list_top + LIST_ROWS; ++i)
+					for (i=list_top; (i<list_top + LIST_ROWS) && (i <= list_limit); ++i)
 					{
 						LCD_OP op_list = LCD_OP_SET;
 						LCD_OP op_item = LCD_OP_SET;
@@ -666,7 +672,7 @@ void gui_process(uint32_t data)
 							break;
 						case 17: // Default Sw
 							lcd_set_cursor(104, (i-list_top+1) * 8);
-							g_eeGeneral.switchWarningStates = gui_bitfield_edit("ABCD", g_eeGeneral.switchWarningStates, inc, g_key_press);
+							g_eeGeneral.switchWarningStates = gui_bitfield_edit("ABCD", g_eeGeneral.switchWarningStates, inc, g_key_press, edit);
 							break;
 						case 18: // Memory Warning
 							lcd_set_cursor(110, (i-list_top+1) * 8);
@@ -687,11 +693,13 @@ void gui_process(uint32_t data)
 							lcd_write_string((char*)menu_on_off[g_eeGeneral.enablePpmsim], op_item, FLAGS_NONE);
 							break;
 						case 21: // Channel Order & Mode
+							if (edit)
+								g_eeGeneral.stickMode = gui_int_edit(g_eeGeneral.stickMode, inc, CHAN_ORDER_ATER, CHAN_ORDER_RETA);
 							{
 								int j;
 								for (j=STICK_R_H; j<=STICK_L_H; ++j)
 								{
-									gui_draw_stick_icon(STICK_R_H);
+									gui_draw_stick_icon(j);
 									lcd_write_char(' ', LCD_OP_SET, FLAGS_NONE);
 								}
 							}
@@ -708,82 +716,261 @@ void gui_process(uint32_t data)
 					break; // SYS_PAGE_SETUP
 
 				case SYS_PAGE_TRAINER:
-					list_limit = 5;
-					for (i=list_top; i<list_top + LIST_ROWS; ++i)
+					list_limit = 6;
+					for (i=list_top; (i<list_top + LIST_ROWS) && (i <= list_limit); ++i)
 					{
 						LCD_OP op_list = LCD_OP_SET;
 						LCD_OP op_item = LCD_OP_SET;
 						uint8_t edit = 0;
+						static int8_t col = 0;
+						static uint8_t col_edit = 0;
+
+						// First row isn't editable
+						if (list == 0)
+							list = 1;
+
 						if ((g_menu_mode == MENU_MODE_LIST) && (i == list))
 						{
 							op_list = LCD_OP_CLR;
 						}
-						else if ((g_menu_mode == MENU_MODE_EDIT || g_menu_mode == MENU_MODE_EDIT_S) && (i == list))
+						else if (g_menu_mode == MENU_MODE_EDIT || g_menu_mode == MENU_MODE_EDIT_S)
 						{
-							edit = 1;
-							op_item = LCD_OP_CLR;
+							if (i == list)
+							{
+								edit = 1;
+								op_item = LCD_OP_CLR;
+							}
+
+							if (g_menu_mode == MENU_MODE_EDIT && (list < 5))
+							{
+								g_menu_mode = MENU_MODE_EDIT_S;
+								col = 0;
+								col_edit = 1;
+							}
+							else if (g_menu_mode == MENU_MODE_EDIT_S)
+							{
+								// We do our own navigation for this one.
+
+								if (g_key_press & (KEY_SEL | KEY_OK))
+								{
+									col_edit = 1 - col_edit;
+								}
+								else if (g_key_press & (KEY_CANCEL))
+								{
+									col = 0;
+									col_edit = 0;
+									g_menu_mode = MENU_MODE_LIST;
+								}
+
+								if (edit && col_edit == 0)
+								{
+									col += inc;
+									if (col > 3)
+										col = 3;
+									if (col < 0)
+										col = 0;
+								}
+							}
 						}
 
 						lcd_set_cursor(0, (i-list_top+1) * 8);
-						lcd_write_string((char*)system_menu_list1[i], op_list, FLAGS_NONE);
-						lcd_write_string(" ", LCD_OP_SET, FLAGS_NONE);
+
 						switch (i)
 						{
-						// ToDo: Implement!
-						case 0:	// Owner
-							if (!edit)
-								lcd_write_string(g_eeGeneral.ownerName, LCD_OP_SET, FLAGS_NONE);
-							else
-								gui_string_edit(g_eeGeneral.ownerName, inc, g_key_press);
+						case 0:
+							lcd_set_cursor(24, (i-list_top+1) * 8);
+							lcd_write_string((char*)mix_mode_hdr, LCD_OP_SET, FLAGS_NONE);
+							lcd_set_cursor(66, (i-list_top+1) * 8);
+							lcd_write_string("% src sw", LCD_OP_SET, FLAGS_NONE);
 							break;
-						case 1:	// Beeper
-							lcd_set_cursor(92, (i-list_top+1) * 8);
+						case 1:
+						case 2:
+						case 3:
+						case 4:
+							// Mode
+							if (edit && col_edit && col == 0)
+								g_eeGeneral.trainer.mix[i-1].mode = gui_int_edit(g_eeGeneral.trainer.mix[i-1].mode, inc, 0, 3);
+							lcd_write_string((char*)sticks[i-1], op_list, FLAGS_NONE);
+							lcd_write_string(" ", LCD_OP_SET, FLAGS_NONE);
+							lcd_write_string((char*)mix_mode[g_eeGeneral.trainer.mix[i-1].mode], (edit && col == 0)?LCD_OP_CLR:LCD_OP_SET, FLAGS_NONE);
+
+							// Amount
+							if (edit && col_edit && col == 1)
+								g_eeGeneral.trainer.mix[i-1].studWeight = gui_int_edit(g_eeGeneral.trainer.mix[i-1].studWeight, inc, -100, 100);
+							lcd_set_cursor(66, (i-list_top+1) * 8);
+							lcd_write_int(g_eeGeneral.trainer.mix[i-1].studWeight, (edit && col == 1)?LCD_OP_CLR:LCD_OP_SET, ALIGN_RIGHT);
+
+							// Source
+							if (edit && col_edit && col == 2)
+								g_eeGeneral.trainer.mix[i-1].srcChn = gui_int_edit(g_eeGeneral.trainer.mix[i-1].srcChn, inc, 0, 7);
+							lcd_set_cursor(78, (i-list_top+1) * 8);
+							lcd_write_string("ch", LCD_OP_SET, FLAGS_NONE);
+							lcd_write_int(g_eeGeneral.trainer.mix[i-1].srcChn+1, (edit && col == 2)?LCD_OP_CLR:LCD_OP_SET, FLAGS_NONE);
+
+							// Switch
+							if (edit && col_edit && col == 3)
+								g_eeGeneral.trainer.mix[i-1].swtch = gui_int_edit(g_eeGeneral.trainer.mix[i-1].swtch, inc, -NUM_SWITCHES, NUM_SWITCHES);
+							{
+								int8_t sw = g_eeGeneral.trainer.mix[i-1].swtch;
+								lcd_set_cursor(102, (i-list_top+1) * 8);
+								if (sw < 0)
+								{
+									lcd_write_char('!', LCD_OP_SET, FLAGS_NONE);
+									sw = -sw;
+								}
+								lcd_write_string((char*)switches[sw], (edit && col == 3)?LCD_OP_CLR:LCD_OP_SET, FLAGS_NONE);
+							}
+							break;
+						case 5:
+							lcd_write_string("Multiplier ", op_list, FLAGS_NONE);
 							if (edit)
-								g_eeGeneral.beeperVal = gui_int_edit(g_eeGeneral.beeperVal, inc, BEEPER_SILENT, BEEPER_NORMAL);
-							lcd_write_string((char*)system_menu_beeper[g_eeGeneral.beeperVal], op_item, FLAGS_NONE);
+								g_eeGeneral.PPM_Multiplier = gui_int_edit(g_eeGeneral.PPM_Multiplier, inc, 10, 50);
+							lcd_write_int(g_eeGeneral.PPM_Multiplier, op_item, INT_DIV10);
+							break;
+						case 6:
+							{
+								int j;
+								lcd_write_string("Cal", op_list, FLAGS_NONE);
+								for (j=0; j<4; ++j)
+								{
+									lcd_set_cursor(43 + j*25, (i-list_top+1) * 8);
+									lcd_write_int(g_ppmIns[j] - g_eeGeneral.trainer.calib[j], LCD_OP_SET, ALIGN_RIGHT | CHAR_CONDENSED);
+								}
+
+								if (edit && (g_key_press & (KEY_OK | KEY_SEL)))
+								{
+									for (j=0; j<4; ++j)
+									{
+										g_eeGeneral.trainer.calib[j] = g_ppmIns[j];
+									}
+									g_menu_mode = MENU_MODE_LIST;
+								}
+							}
 							break;
 						}
 					}
 					break; // SYS_PAGE_TRAINER
 
 				case SYS_PAGE_VERSION:
-					// ToDo: Implement!
+					lcd_set_cursor(30, 2 * 8);
+					lcd_write_string("Vers:", LCD_OP_SET, ALIGN_RIGHT);
+					lcd_set_cursor(36, 2 * 8);
+					lcd_write_int(VERSION_MAJOR, LCD_OP_SET, INT_PAD10);
+					lcd_write_char('.', LCD_OP_SET, ALIGN_RIGHT);
+					lcd_write_int(VERSION_MINOR, LCD_OP_SET, INT_PAD10);
+					lcd_write_char('.', LCD_OP_SET, ALIGN_RIGHT);
+					lcd_write_int(VERSION_PATCH, LCD_OP_SET, INT_PAD10);
+
+					lcd_set_cursor(30, 3 * 8);
+					lcd_write_string("Date:", LCD_OP_SET, ALIGN_RIGHT);
+					lcd_set_cursor(36, 3 * 8);
+					lcd_write_string(__DATE__, LCD_OP_SET, FLAGS_NONE);
+
+					lcd_set_cursor(30, 4 * 8);
+					lcd_write_string("Time:", LCD_OP_SET, ALIGN_RIGHT);
+					lcd_set_cursor(36, 4 * 8);
+					lcd_write_string(__TIME__, LCD_OP_SET, FLAGS_NONE);
 					break; // SYS_PAGE_VERSION
 
 				case SYS_PAGE_DIAG:
-					// ToDo: Implement!
+					{
+						uint8_t sw = keypad_get_switches();
+						for (i=0; i<NUM_SWITCHES; ++i)
+						{
+							lcd_set_cursor(6 * 6, (2 + i) * 8);
+							lcd_write_string((char*)switches[i+1], LCD_OP_SET, FLAGS_NONE);
+							lcd_write_char(' ', LCD_OP_SET, FLAGS_NONE);
+							lcd_write_int((sw&(1 << i))?1:0, LCD_OP_SET, FLAGS_NONE);
+						}
+
+						i = 0;
+						lcd_set_cursor(3 * 6, (2 + i) * 8);
+						lcd_write_string("Sel", LCD_OP_SET, ALIGN_RIGHT);
+						lcd_set_cursor(4 * 6, (2 + i) * 8);
+						lcd_write_int((keypad_scan_keys() == KEY_SEL)?1:0, LCD_OP_SET, FLAGS_NONE);
+						i++;
+						lcd_set_cursor(3 * 6, (2 + i) * 8);
+						lcd_write_string("OK", LCD_OP_SET, ALIGN_RIGHT);
+						lcd_set_cursor(4 * 6, (2 + i) * 8);
+						lcd_write_int((keypad_scan_keys() == KEY_OK)?1:0, LCD_OP_SET, FLAGS_NONE);
+						i++;
+						lcd_set_cursor(3 * 6, (2 + i) * 8);
+						lcd_write_string("Can", LCD_OP_SET, ALIGN_RIGHT);
+						lcd_set_cursor(4 * 6, (2 + i) * 8);
+						lcd_write_int((keypad_scan_keys() == KEY_CANCEL)?1:0, LCD_OP_SET, FLAGS_NONE);
+						i++;
+
+						i = 0;
+						lcd_set_cursor(12 * 6, (2 + i) * 8);
+						lcd_write_string("Trim - +", LCD_OP_SET, FLAGS_NONE);
+						i++;
+						lcd_set_cursor(12 * 6, (2 + i) * 8);
+						lcd_write_string("\x0A\x0B\x0C ", LCD_OP_SET, CHAR_NOSPACE);
+						lcd_set_cursor(17 * 6, (2 + i) * 8);
+						lcd_write_int((keypad_scan_keys() == KEY_CH1_DN)?1:0, LCD_OP_SET, FLAGS_NONE);
+						lcd_write_char(' ', LCD_OP_SET, FLAGS_NONE);
+						lcd_write_int((keypad_scan_keys() == KEY_CH1_UP)?1:0, LCD_OP_SET, FLAGS_NONE);
+						i++;
+						lcd_set_cursor(12 * 6, (2 + i) * 8);
+						lcd_write_string("\x0D\x0E\x0F ", LCD_OP_SET, CHAR_NOSPACE);
+						lcd_set_cursor(17 * 6, (2 + i) * 8);
+						lcd_write_int((keypad_scan_keys() == KEY_CH2_DN)?1:0, LCD_OP_SET, FLAGS_NONE);
+						lcd_write_char(' ', LCD_OP_SET, FLAGS_NONE);
+						lcd_write_int((keypad_scan_keys() == KEY_CH2_UP)?1:0, LCD_OP_SET, FLAGS_NONE);
+						i++;
+						lcd_set_cursor(12 * 6, (2 + i) * 8);
+						lcd_write_string("\x10\x11\x12 ", LCD_OP_SET, CHAR_NOSPACE);
+						lcd_set_cursor(17 * 6, (2 + i) * 8);
+						lcd_write_int((keypad_scan_keys() == KEY_CH3_DN)?1:0, LCD_OP_SET, FLAGS_NONE);
+						lcd_write_char(' ', LCD_OP_SET, FLAGS_NONE);
+						lcd_write_int((keypad_scan_keys() == KEY_CH3_UP)?1:0, LCD_OP_SET, FLAGS_NONE);
+						i++;
+						lcd_set_cursor(12 * 6, (2 + i) * 8);
+						lcd_write_string("\x13\x14\x15 ", LCD_OP_SET, CHAR_NOSPACE);
+						lcd_set_cursor(17 * 6, (2 + i) * 8);
+						lcd_write_int((keypad_scan_keys() == KEY_CH4_DN)?1:0, LCD_OP_SET, FLAGS_NONE);
+						lcd_write_char(' ', LCD_OP_SET, FLAGS_NONE);
+						lcd_write_int((keypad_scan_keys() == KEY_CH4_UP)?1:0, LCD_OP_SET, FLAGS_NONE);
+						i++;
+					}
 					break; // SYS_PAGE_DIAG
 
 				case SYS_PAGE_ANA:
-					list_limit = 1;
-
-					if (g_menu_mode == MENU_MODE_EDIT)
-						g_eeGeneral.vBatCalib = gui_int_edit(g_eeGeneral.vBatCalib, inc, 80, 120);
-
-					for (i=0; i<STICK_ADC_CHANNELS; ++i)
 					{
-						lcd_set_cursor(24, (i * 8));
-						lcd_write_char('A', LCD_OP_SET, FLAGS_NONE);
-						lcd_write_int(i, LCD_OP_SET, FLAGS_NONE);
-						lcd_write_char(' ', LCD_OP_SET, FLAGS_NONE);
-						lcd_write_hex(adc_data[i], LCD_OP_SET, FLAGS_NONE);
-						lcd_write_string("  ", LCD_OP_SET, FLAGS_NONE);
-						// All but battery
-						if (i != 6)
+						LCD_OP op_list = LCD_OP_SET;
+						list_limit = 1;
+
+						if (g_menu_mode == MENU_MODE_EDIT || g_menu_mode == MENU_MODE_LIST)
 						{
-							lcd_write_int(sticks_get_percent(i), LCD_OP_SET, INT_DIV10);
-						}
-						else
-						{
-							lcd_write_int(sticks_get_battery(), LCD_OP_SET, INT_DIV10);
-							lcd_write_string("v", LCD_OP_SET, FLAGS_NONE);
+							g_eeGeneral.vBatCalib = gui_int_edit(g_eeGeneral.vBatCalib, inc, 80, 120);
+							op_list = LCD_OP_CLR;
 						}
 
+						for (i=0; i<STICK_ADC_CHANNELS; ++i)
+						{
+							lcd_set_cursor(24, (i+1) * 8);
+							lcd_write_char('A', LCD_OP_SET, FLAGS_NONE);
+							lcd_write_int(i, LCD_OP_SET, FLAGS_NONE);
+							lcd_write_char(' ', LCD_OP_SET, FLAGS_NONE);
+							lcd_write_hex(adc_data[i], LCD_OP_SET, FLAGS_NONE);
+							lcd_write_string("  ", LCD_OP_SET, FLAGS_NONE);
+							// All but battery
+							if (i != 6)
+							{
+								lcd_write_int(sticks_get_percent(i), LCD_OP_SET, FLAGS_NONE);
+							}
+							else
+							{
+								lcd_write_int(sticks_get_battery(), op_list, INT_DIV10);
+								lcd_write_string("v", op_list, FLAGS_NONE);
+							}
+
+						}
 					}
 					break; // SYS_PAGE_ANA
 
 				case SYS_PAGE_CAL:
-					lcd_set_cursor(5, 8);
+					lcd_set_cursor(5, 16);
 					lcd_draw_message(msg[GUI_MSG_CAL_OK_START], LCD_OP_SET);
 
 					if (g_update_type & UPDATE_STICKS)
@@ -793,12 +980,14 @@ void gui_process(uint32_t data)
 
 					if (g_key_press & KEY_OK)
 					{
+						page = 0;
+						list = 0;
+						list_top = 0;
 						gui_navigate(GUI_LAYOUT_STICK_CALIBRATION);
 					}
 					break; // SYS_PAGE_CAL
 				}
 			}
-
 
 
 			else // GUI_LAYOUT_MODEL_MENU
@@ -809,6 +998,13 @@ void gui_process(uint32_t data)
 				 * This is the model editing menu with 10 pages.
 				 *
 				 */
+
+				lcd_write_string((char*)msg[GUI_HDG_MODELSEL + page], LCD_OP_CLR, FLAGS_NONE);
+				lcd_set_cursor(104, 0);
+				lcd_write_int(page+1, (g_menu_mode == MENU_MODE_PAGE)?LCD_OP_CLR:LCD_OP_SET, ALIGN_RIGHT);
+				lcd_set_cursor(110, 0);
+				lcd_write_string("/10", (g_menu_mode == MENU_MODE_PAGE)?LCD_OP_CLR:LCD_OP_SET, FLAGS_NONE);
+
 
 				/**********************************************************************
 				 * System Menu Pages
@@ -1049,13 +1245,13 @@ static void gui_show_switches(void)
 	// Switches
 	x = keypad_get_switches();
 	lcd_set_cursor(SW_L_X, SW_Y);
-	lcd_write_string("SWB", (x&SWITCH_SWB)?LCD_OP_SET:LCD_OP_CLR, FLAGS_NONE);
+	lcd_write_string("SWB", (x&SWITCH_SWB)?LCD_OP_CLR:LCD_OP_SET, FLAGS_NONE);
 	lcd_set_cursor(SW_L_X, SW_Y + 8);
-	lcd_write_string("SWD", (x&SWITCH_SWD)?LCD_OP_SET:LCD_OP_CLR, FLAGS_NONE);
+	lcd_write_string("SWD", (x&SWITCH_SWD)?LCD_OP_CLR:LCD_OP_SET, FLAGS_NONE);
 	lcd_set_cursor(SW_R_X, SW_Y);
-	lcd_write_string("SWA", (x&SWITCH_SWA)?LCD_OP_SET:LCD_OP_CLR, FLAGS_NONE);
+	lcd_write_string("SWA", (x&SWITCH_SWA)?LCD_OP_CLR:LCD_OP_SET, FLAGS_NONE);
 	lcd_set_cursor(SW_R_X, SW_Y + 8);
-	lcd_write_string("SWC", (x&SWITCH_SWC)?LCD_OP_SET:LCD_OP_CLR, FLAGS_NONE);
+	lcd_write_string("SWC", (x&SWITCH_SWC)?LCD_OP_CLR:LCD_OP_SET, FLAGS_NONE);
 }
 
 /**
@@ -1217,16 +1413,18 @@ static void gui_draw_stick_icon(STICK stick)
 	switch (stick)
 	{
 	case STICK_R_H:
-		lcd_write_string("\10\11\12", LCD_OP_SET, FLAGS_NONE);
+		lcd_write_string("\x0A\x0B\x0C", LCD_OP_SET, CHAR_NOSPACE);
 		break;
 	case STICK_R_V:
-		lcd_write_string("\13\14\15", LCD_OP_SET, FLAGS_NONE);
+		lcd_write_string("\x0D\x0E\x0F", LCD_OP_SET, CHAR_NOSPACE);
 		break;
 	case STICK_L_V:
-		lcd_write_string("\16\17\18", LCD_OP_SET, FLAGS_NONE);
+		lcd_write_string("\x10\x11\x12", LCD_OP_SET, CHAR_NOSPACE);
 		break;
 	case STICK_L_H:
-		lcd_write_string("\19\20\21", LCD_OP_SET, FLAGS_NONE);
+		lcd_write_string("\x13\x14\x15", LCD_OP_SET, CHAR_NOSPACE);
+		break;
+	default:
 		break;
 	}
 }
@@ -1286,39 +1484,48 @@ static void gui_string_edit(char *string, int8_t delta, uint32_t keys)
   * @param  keys: Any pressed keys.
   * @retval Modified version of bitfield.
   */
-static uint32_t gui_bitfield_edit(char *string, uint32_t field, int8_t delta, uint32_t keys)
+static uint32_t gui_bitfield_edit(char *string, uint32_t field, int8_t delta, uint32_t keys, uint8_t edit)
 {
 	static int8_t char_index = 0;
 	static int8_t edit_mode = 1;
 	int i;
 	uint32_t ret = field;
+	uint16_t lcd_flags = FLAGS_NONE;
 
-	if (keys & KEY_SEL)
+	if (edit)
 	{
-		g_menu_mode = MENU_MODE_EDIT_S;
-		edit_mode = 1 - edit_mode;
-	}
-	else if (keys & (KEY_CANCEL | KEY_OK))
-	{
-		char_index = 0;
-		edit_mode = 1;
-		g_menu_mode = MENU_MODE_LIST;
-	}
+		if (keys & KEY_SEL)
+		{
+			edit_mode = 1 - edit_mode;
+			g_menu_mode = MENU_MODE_EDIT_S;
+		}
+		else if (keys & (KEY_CANCEL | KEY_OK))
+		{
+			char_index = 0;
+			edit_mode = 1;
+			g_menu_mode = MENU_MODE_LIST;
+		}
+		else if (keys & (KEY_LEFT | KEY_RIGHT))
+		{
+			if (edit_mode)
+			{
+				ret ^= 1 << char_index;
+			}
+			else
+			{
+				char_index += delta;
+			}
+		}
 
-	if (edit_mode)
-	{
-		ret ^= 1 << char_index;
+		if (char_index < 0) char_index = 0;
+		if (char_index >= strlen(string)) char_index = strlen(string) - 1;
 	}
-	else
-	{
-		char_index += delta;
-	}
-
-	if (char_index < 0) char_index = 0;
-	if (char_index >= strlen(string)) char_index = strlen(string) - 1;
 
 	for (i=0; i<strlen(string); ++i)
-		lcd_write_char(string[i], (ret & (1 << i))?LCD_OP_CLR:LCD_OP_SET, (i == char_index)?CHAR_UNDERLINE:FLAGS_NONE);
+	{
+		lcd_flags = (i == char_index && edit_mode == 0)?CHAR_UNDERLINE:FLAGS_NONE;
+		lcd_write_char(string[i], (ret & (1 << i))?LCD_OP_CLR:LCD_OP_SET, lcd_flags);
+	}
 
 	return ret;
 }

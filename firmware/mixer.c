@@ -151,7 +151,7 @@ void mixer_input_trim(KEYPAD_KEY key)
 	}
 	else
 	{
-		sound_play_tone(500 + 250*trim_data[channel]/MIXER_TRIM_LIMIT, 50);
+		sound_play_tone(500 + 250*trim_data[channel]/MIXER_TRIM_LIMIT, 100);
 	}
 }
 

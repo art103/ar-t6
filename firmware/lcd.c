@@ -64,9 +64,7 @@
 static uint8_t contrast = 0x28;
 uint8_t lcd_buffer[LCD_WIDTH * LCD_HEIGHT / 8];
 
-#define CHAR_HEIGHT				7
-#define CHAR_WIDTH				5
-#define FONT_STRIDE				(255 * 5)
+#define FONT_STRIDE				(16 * 5)
 
 static uint8_t cursor_x = 0;
 static uint8_t cursor_y = 0;
@@ -284,7 +282,7 @@ void lcd_set_cursor(uint8_t x, uint8_t y)
   * @param  flags: LCD_FLAGS (CHAR_*)
   * @retval None
   */
-void lcd_write_char(uint8_t c, LCD_OP op, LCD_FLAGS flags)
+void lcd_write_char(uint8_t c, LCD_OP op, uint16_t flags)
 {
 	uint8_t x, y;
 	uint8_t x1, y1, divX = 1, divY = 1;
@@ -329,6 +327,9 @@ void lcd_write_char(uint8_t c, LCD_OP op, LCD_FLAGS flags)
 			x1 = x / divX;
 			y1 = y / divY;
 			d = font[ (c*CHAR_WIDTH) + x1 + row*FONT_STRIDE ];
+			if (flags & CHAR_UNDERLINE)
+				d |= 0x80;
+
 			if (d & (1 << y1%8))
 				lcd_set_pixel(cursor_x+x, cursor_y+y, op_set);
 			else
@@ -341,10 +342,10 @@ void lcd_write_char(uint8_t c, LCD_OP op, LCD_FLAGS flags)
 		if ((flags & CHAR_CONDENSED) != 0 && x%CHAR_WIDTH==4)
 			cursor_x--;
 	}
-	for (y=0; y<height+1; y++) lcd_set_pixel(cursor_x+width, cursor_y+y, (flags & CHAR_UNDERLINE)?op_set:op_clr);
+	for (y=0; y<height+1; y++) lcd_set_pixel(cursor_x+width, cursor_y+y, op_clr);
 
 	cursor_x += width + 1;
-	if ((flags & CHAR_CONDENSED) != 0)
+	if ((flags & (CHAR_CONDENSED | CHAR_NOSPACE)) != 0)
 		cursor_x--;
 
 	if (cursor_x >= LCD_WIDTH)
@@ -359,10 +360,18 @@ void lcd_write_char(uint8_t c, LCD_OP op, LCD_FLAGS flags)
   * @param  flags: LCD_FLAGS (CHAR_*)
   * @retval None
   */
-void lcd_write_string(char *s, LCD_OP op, LCD_FLAGS flags)
+void lcd_write_string(char *s, LCD_OP op, uint16_t flags)
 {
 	char *ptr = s;
 	uint8_t n = strlen(s);
+
+	if (flags & ALIGN_RIGHT)
+	{
+		if (flags & CHAR_CONDENSED)
+			cursor_x -= n * CHAR_WIDTH;
+		else
+			cursor_x -= n * (CHAR_WIDTH + 1);
+	}
 
 	for (ptr = s; n > 0; ptr++, n--)
 		lcd_write_char(*ptr, op, flags);
@@ -386,6 +395,9 @@ static int16_t u;
   */
 void lcd_write_int(int32_t val, LCD_OP op, uint16_t flags)
 {
+	int count = 0;
+	int i;
+
 	if (val < 0) u = -val;
 	else u = val;
 	tth = u / 10000;
@@ -396,6 +408,23 @@ void lcd_write_int(int32_t val, LCD_OP op, uint16_t flags)
 	u -= h * 100;
 	t = u / 10;
 	u -= t * 10;
+
+	if (flags & ALIGN_RIGHT)
+	{
+		if (val < 0) count++;
+		//if (val >= 0) lcd_write_char('+', op);
+
+		if (tth > 0) count++;
+		if (tth > 0 || th > 0) count++;
+		if (tth > 0 || th > 0 || h > 0) count++;
+		if (tth > 0 || th > 0 || h > 0 || t > 0 || (flags & INT_DIV10) || (flags & INT_PAD10)) count++;
+		if (flags & INT_DIV10) count++;
+
+		if (flags & CHAR_CONDENSED)
+			cursor_x -= count * CHAR_WIDTH;
+		else
+			cursor_x -= count * (CHAR_WIDTH + 1);
+	}
 
 	if (val < 0) lcd_write_char('-', op, flags);
 	//if (val >= 0) lcd_write_char('+', op);
@@ -434,7 +463,7 @@ void lcd_write_hex(uint32_t val, LCD_OP op, uint16_t flags)
 
 	for (i=0; i<digits; ++i)
 	{
-		int digit = (val >> (8*(digits-i))) & 0xF;
+		int digit = (val >> (4*(digits-i-1))) & 0xF;
 
 		if (digit > 9)
 			lcd_write_char(digit - 10 + 'A', op, flags);

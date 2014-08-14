@@ -189,7 +189,7 @@ void sticks_calibrate(CAL_STATE state)
 	{
 		for (i=0; i<STICKS_TO_CALIBRATE; ++i)
 		{
-			cal_data[i].min = 0xFFFF;
+			cal_data[i].min = 0x7FFF;
 			cal_data[i].max = 0;
 			cal_data[i].centre = 2048;
 		}

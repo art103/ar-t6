@@ -54,6 +54,7 @@ void SysTick_Handler(void)
 int main(void)
 {
 	// PLL and stack setup has aready been done.
+	SystemCoreClockUpdate();
 
 	// 1ms System tick
 	SysTick_Config(SystemCoreClock / 1000);
@@ -89,7 +90,7 @@ int main(void)
 	// Initialize the EEPROM
 	eeprom_init();
 
-	gui_navigate(GUI_LAYOUT_SYSTEM_MENU);
+	gui_navigate(GUI_LAYOUT_MODEL_MENU);
 
 	/*
 	 * The main loop will sit in low power mode waiting for an interrupt.

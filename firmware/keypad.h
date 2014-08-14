@@ -52,6 +52,7 @@ typedef enum
 } KEYPAD_SWITCH;
 
 void keypad_init(void);
+KEYPAD_KEY keypad_scan_keys(void);
 bool keypad_get_pressed(KEYPAD_KEY key);
 uint8_t keypad_get_switches(void);
 void keypad_cancel_repeat(void);

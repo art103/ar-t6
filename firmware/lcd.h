@@ -22,6 +22,9 @@
 #define LCD_CONTRAST_MIN	20
 #define LCD_CONTRAST_MAX	60
 
+#define CHAR_HEIGHT				7
+#define CHAR_WIDTH				5
+
 // LCD Operation type.
 typedef enum {
 	LCD_OP_NONE = 0x00,
@@ -43,6 +46,9 @@ typedef enum {
 	CHAR_4X = 0x200,	// Draw quadrouple size
 	CHAR_CONDENSED = 0x400,	// Draw with 4th column missing
 	CHAR_UNDERLINE = 0x800,	// Underline each char
+	CHAR_NOSPACE = 0x1000,
+
+	ALIGN_RIGHT = 0x2000,
 } LCD_FLAGS;
 
 void lcd_init(void);

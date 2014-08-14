@@ -75,9 +75,9 @@ const char *system_menu_beeper[BEEPER_MAX] = {
 
 const char *msg[GUI_MSG_MAX] = {
 		"",
-		"Press OK to start Calibration.",
-		"Please move all analog controls to their extents then press OK.",
-		"Please centre the sticks then press OK.",
+		"Press [OK] to start Calibration.",
+		"Move all controls to their extents then press [OK].",
+		"Centre the sticks then press [OK].",
 		"OK",
 		"Operation Cancelled.",
 		"OK:Save Cancel:Abort",
@@ -88,8 +88,8 @@ const char *msg[GUI_MSG_MAX] = {
 		"RADIO SETUP",
 		"TRAINER",
 		"VERSION",
-		"DIAG",
-		"ANA",
+		"DIAGNOSTICS",
+		"ANALOG",
 		"CALIBRATION",
 
 		// Headings (Model)

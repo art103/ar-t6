@@ -22,6 +22,11 @@
 #define PACK( __Declaration__ ) __Declaration__ __attribute__((__packed__))
 #endif
 
+#define VERSION_MAJOR		0
+#define VERSION_MINOR		1
+#define VERSION_PATCH		0
+
+
 //eeprom data
 //#define EE_VERSION 2
 #define MAX_MODELS  16
@@ -91,7 +96,7 @@ PACK(typedef struct t_EEGeneral {
     uint8_t   vBatWarn;
     uint8_t   vBatCalib;
     int8_t    lightSw;
-//    TrainerData trainer;
+    TrainerData trainer;
 //    uint8_t   view;
     uint8_t   disableThrottleWarning:1;
     uint8_t   disableSwitchWarning:1;
