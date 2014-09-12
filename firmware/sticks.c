@@ -34,15 +34,6 @@
 #include "art6.h"
 
 volatile uint16_t adc_data[STICK_ADC_CHANNELS];
-volatile ADC_CAL cal_data[STICK_ADC_CHANNELS] = {
-		{0, 4096, 2048},
-		{0, 4096, 2048},
-		{0, 4096, 2048},
-		{0, 4096, 2048},
-		{0, 4096, 2048},
-		{0, 4096, 2048},
-		{0, 3100, 1550},
-};
 volatile int16_t stick_data[STICK_ADC_CHANNELS];
 
 static CAL_STATE cal_state = CAL_OFF;
@@ -125,10 +116,6 @@ void sticks_init(void)
 	DMA_ITConfig(DMA1_Channel1, DMA_IT_TC, ENABLE);
 
 	task_register(TASK_PROCESS_STICKS, sticks_process);
-
-	// ToDo: Read the calibration data out of EEPROM.
-	// if (eeprom_get_data(EEPROM_ADC_CAL, cal_data) != 0)
-	//gui_popup(GUI_MSG_CALIBRATION_REQUIRED, 0);
 }
 
 /**
@@ -147,8 +134,8 @@ void sticks_process(uint32_t data)
 		{
 			for (i=0; i<STICK_INPUT_CHANNELS; ++i)
 			{
-				if (adc_data[i] < cal_data[i].min) cal_data[i].min = adc_data[i];
-				if (adc_data[i] > cal_data[i].max) cal_data[i].max = adc_data[i];
+				if (adc_data[i] < g_eeGeneral.calData[i].min) g_eeGeneral.calData[i].min = adc_data[i];
+				if (adc_data[i] > g_eeGeneral.calData[i].max) g_eeGeneral.calData[i].max = adc_data[i];
 			}
 		}
 		else if (cal_state == CAL_CENTER)
@@ -156,13 +143,13 @@ void sticks_process(uint32_t data)
 			// Set the stick centres.
 			for (i=0; i<STICKS_TO_CALIBRATE; ++i)
 			{
-				cal_data[i].centre = adc_data[i];
+				g_eeGeneral.calData[i].centre = adc_data[i];
 			}
 
 			// Set the remaining centres.
 			for (i=STICKS_TO_CALIBRATE; i<STICK_INPUT_CHANNELS; ++i)
 			{
-				cal_data[i].centre = cal_data[i].min + ((cal_data[i].max - cal_data[i].min) / 2);
+				g_eeGeneral.calData[i].centre = g_eeGeneral.calData[i].min + ((g_eeGeneral.calData[i].max - g_eeGeneral.calData[i].min) / 2);
 			}
 		}
 	}
@@ -171,6 +158,13 @@ void sticks_process(uint32_t data)
 
 	// Schedule another update.
 	ADC_SoftwareStartConvCmd(ADC1, ENABLE);
+
+	// Don't run the mixer if we're calibrating
+	if (cal_state == CAL_OFF)
+	{
+		// Run the mixer.
+		mixer_update();
+	}
 }
 
 /**
@@ -189,9 +183,9 @@ void sticks_calibrate(CAL_STATE state)
 	{
 		for (i=0; i<STICKS_TO_CALIBRATE; ++i)
 		{
-			cal_data[i].min = 0x7FFF;
-			cal_data[i].max = 0;
-			cal_data[i].centre = 2048;
+			g_eeGeneral.calData[i].min = 0x7FFF;
+			g_eeGeneral.calData[i].max = 0;
+			g_eeGeneral.calData[i].centre = 2048;
 		}
 	}
 }
@@ -216,7 +210,7 @@ int16_t sticks_get(STICK channel)
 int16_t sticks_get_percent(STICK channel)
 {
 	int32_t val;
-	val =  100 * (STICK_LIMIT + stick_data[channel]) / (2*STICK_LIMIT);
+	val =  100 * (RESX + stick_data[channel]) / (2*RESX);
 
 	if (val > 100)
 		val = 100;
@@ -252,25 +246,18 @@ void DMA1_Channel1_IRQHandler(void)
 	for (i=0; i<STICK_ADC_CHANNELS; ++i)
 	{
 		tmp = adc_data[i];
-		if (adc_data[i] >= cal_data[i].centre)
+		if (adc_data[i] >= g_eeGeneral.calData[i].centre)
 		{
-			tmp -= cal_data[i].centre;
-			tmp *= STICK_LIMIT;
-			stick_data[i] = tmp / (cal_data[i].max - cal_data[i].centre);
+			tmp -= g_eeGeneral.calData[i].centre;
+			tmp *= RESX;
+			stick_data[i] = tmp / (g_eeGeneral.calData[i].max - g_eeGeneral.calData[i].centre);
 		}
 		else
 		{
-			tmp = cal_data[i].centre - tmp;
-			tmp *= -STICK_LIMIT;
-			stick_data[i] = tmp / (cal_data[i].centre - cal_data[i].min);
+			tmp = g_eeGeneral.calData[i].centre - tmp;
+			tmp *= -RESX;
+			stick_data[i] = tmp / (g_eeGeneral.calData[i].centre - g_eeGeneral.calData[i].min);
 		}
-	}
-
-	// Don't run the mixer if we're calibrating
-	if (cal_state == CAL_OFF)
-	{
-		// Run the mixer.
-		mixer_update();
 	}
 
 	task_schedule(TASK_PROCESS_STICKS, 0, 20);

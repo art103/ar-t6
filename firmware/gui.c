@@ -436,7 +436,6 @@ void gui_process(uint32_t data)
 			static uint8_t list = 0;
 			static uint8_t list_top = 0;
 			static uint8_t list_limit = 0;
-			static uint8_t field = 0;
 			uint8_t i;
 			int8_t inc = 0;
 

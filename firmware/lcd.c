@@ -396,7 +396,6 @@ static int16_t u;
 void lcd_write_int(int32_t val, LCD_OP op, uint16_t flags)
 {
 	int count = 0;
-	int i;
 
 	if (val < 0) u = -val;
 	else u = val;

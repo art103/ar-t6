@@ -47,10 +47,10 @@ extern uint8_t SlaveMode;
 //#define CONVERT_MODE(x)  (((x)<=4) ? convert_mode_helper(x) : (x))
 ////#define CHANNEL_ORDER(x) (pgm_read_byte(chout_ar + g_eeGeneral.templateSetup*4 + (x)-1))
 //#define CHANNEL_ORDER(x) ( ( (pgm_read_byte(bchout_ar + g_eeGeneral.templateSetup) >> (6-(x-1) * 2)) & 3 ) + 1 )
-//#define THR_STICK       (2-(g_eeGeneral.stickMode&1))
-//#define ELE_STICK       (1+(g_eeGeneral.stickMode&1))
-//#define AIL_STICK       ((g_eeGeneral.stickMode&2) ? 0 : 3)
-//#define RUD_STICK       ((g_eeGeneral.stickMode&2) ? 3 : 0)
+#define THR_STICK       ((g_eeGeneral.stickMode&1) ? 1 : 3)
+#define ELE_STICK       ((g_eeGeneral.stickMode&1) ? 3 : 1)
+#define AIL_STICK       ((g_eeGeneral.stickMode==1 || g_eeGeneral.stickMode==2) ? 0 : 2)
+#define RUD_STICK       ((g_eeGeneral.stickMode==1 || g_eeGeneral.stickMode==2) ? 2 : 0)
 //
 //enum EnumKeys {
 //    KEY_MENU ,
@@ -81,8 +81,8 @@ extern uint8_t SlaveMode;
 //    SW_Trainer
 //};
 //
-#define NUM_CSW  8 //number of custom switches
-#define EXTRA_CSW	5
+//#define NUM_CSW  8 //number of custom switches
+//#define EXTRA_CSW	5
 //#define EXTRA_VOICE_SW	8
 //
 //extern const prog_char APM Str_Switches[] ;
@@ -169,28 +169,28 @@ extern uint8_t SlaveMode;
 //#define NUM_STICKS	4
 //
 //
-//#define SWASH_TYPE_120   1
-//#define SWASH_TYPE_120X  2
-//#define SWASH_TYPE_140   3
-//#define SWASH_TYPE_90    4
-//#define SWASH_TYPE_NUM   4
+#define SWASH_TYPE_120   1
+#define SWASH_TYPE_120X  2
+#define SWASH_TYPE_140   3
+#define SWASH_TYPE_90    4
+#define SWASH_TYPE_NUM   4
 //
 //#define MIX_P1    5
 //#define MIX_P2    6
 //#define MIX_P3    7
-//#define MIX_MAX   8
-//#define MIX_FULL  9
-//#define MIX_CYC1  10
-//#define MIX_CYC2  11
-//#define MIX_CYC3  12
+#define MIX_MAX   8
+#define MIX_FULL  9
+#define MIX_CYC1  10
+#define MIX_CYC2  11
+#define MIX_CYC3  12
 //
-//#define DR_HIGH   0
-//#define DR_MID    1
-//#define DR_LOW    2
-//#define DR_EXPO   0
-//#define DR_WEIGHT 1
-//#define DR_RIGHT  0
-//#define DR_LEFT   1
+#define DR_HIGH   0
+#define DR_MID    1
+#define DR_LOW    2
+#define DR_EXPO   0
+#define DR_WEIGHT 1
+#define DR_RIGHT  0
+#define DR_LEFT   1
 //#define DR_BOTH   2
 //#define DR_DRSW1  99
 //#define DR_DRSW2  98
@@ -218,12 +218,12 @@ extern uint8_t SlaveMode;
 //#define DSW_SWC   21
 //
 //#define SCROLL_TH 64
-//#define INACTIVITY_THRESHOLD 256
+#define INACTIVITY_THRESHOLD 256
 //#define THRCHK_DEADBAND 16
 //#define SPLASH_TIMEOUT  (4*100)  //400 msec - 4 seconds
 //
 //#ifdef FIX_MODE
-//#define IS_THROTTLE(x)  ((x) == 2) // (((2-(g_eeGeneral.stickMode&1)) == x) && (x<4))
+#define IS_THROTTLE(x)  ((x) == THR_STICK)
 //#else
 //uint8_t IS_THROTTLE( uint8_t x ) ;
 //#endif
@@ -310,8 +310,8 @@ extern uint8_t SlaveMode;
 //void zeroVariables();
 //void mainSequence() ;
 //
-//#define NO_TRAINER 0x01
-//#define NO_INPUT   0x02
+#define NO_TRAINER 0x01
+#define NO_INPUT   0x02
 //#define FADE_FIRST	0x20
 //#define FADE_LAST		0x40
 ////#define NO_TRIMS   0x04
@@ -485,16 +485,16 @@ extern uint8_t SlaveMode;
 //
 #define NUM_PPM     8
 //number of real outputchannels CH1-CH16
-#define NUM_CHNOUT  16
+#define NUM_CHNOUT  8
 ///number of real input channels (1-9) plus virtual input channels X1-X4
 #define PPM_BASE    MIX_CYC3
 #define CHOUT_BASE  (PPM_BASE+NUM_PPM)
 //
 //
-//#define NUM_XCHNRAW (CHOUT_BASE+NUM_CHNOUT) // NUMCH + P1P2P3+ AIL/RUD/ELE/THR + MAX/FULL + CYC1/CYC2/CYC3
+#define NUM_XCHNRAW (CHOUT_BASE+NUM_CHNOUT) // NUMCH + P1P2P3+ AIL/RUD/ELE/THR + MAX/FULL + CYC1/CYC2/CYC3
 ////#define NUM_XCHNRAW (CHOUT_BASE+NUM_CHNOUT+1) // NUMCH + P1P2P3+ AIL/RUD/ELE/THR + MAX/FULL + CYC1/CYC2/CYC3 +3POS
 /////number of real output channels (CH1-CH8) plus virtual output channels X1-X4
-//#define NUM_XCHNOUT (NUM_CHNOUT) //(NUM_CHNOUT)//+NUM_VIRT)
+#define NUM_XCHNOUT (NUM_CHNOUT) //(NUM_CHNOUT)//+NUM_VIRT)
 //
 #define NUM_SCALERS	4
 //

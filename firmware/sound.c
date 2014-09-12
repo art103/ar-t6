@@ -128,8 +128,11 @@ void sound_set_volume(uint8_t volume)
   * @param  tune: Index of the tune.
   * @retval None.
   */
-void sound_play_tune(uint8_t index)
+void sound_play_tune(TUNE index)
 {
+	// ToDo: Add some more tunes :)
+	index = 0;
+
 	tune = tunes[index];
 
     if (tune != 0)

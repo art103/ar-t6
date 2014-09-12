@@ -73,24 +73,21 @@ int main(void)
 	// Initialize the ADC / DMA
 	sticks_init();
 
+	// Initialize the EEPROM
+	eeprom_init();
+
+	// ToDo: Block here until all switches are set correctly.
+	//check_switches();
+
 	// Initialize the buzzer
 	sound_init();
-
-	// Block here until all switches are set correctly.
-	//check_switches();
-	strncpy(g_eeGeneral.ownerName, "R         ", 10);
-	strncpy(g_model.name, "SK450 Quad", 10);
-	g_model.tmrVal = 360;
 
 	mixer_init();
 
 	// Start the radio output.
 	pulses_init();
 
-	// Initialize the EEPROM
-	eeprom_init();
-
-	gui_navigate(GUI_LAYOUT_MODEL_MENU);
+	gui_navigate(GUI_LAYOUT_MAIN1);
 
 	/*
 	 * The main loop will sit in low power mode waiting for an interrupt.
@@ -124,3 +121,26 @@ int main(void)
 		//PWR_EnterSTANDBYMode();
 	}
 }
+
+/**
+  * @brief  This function handles NMI exception.
+  * @param  None
+  * @retval None
+  */
+void NMI_Handler(void)
+{
+}
+
+/**
+  * @brief  This function handles Hard Fault exception.
+  * @param  None
+  * @retval None
+  */
+void HardFault_Handler(void)
+{
+  /* Go to infinite loop when Hard Fault exception occurs */
+  while (1)
+  {}
+}
+
+

@@ -19,8 +19,17 @@
 #ifndef SOUND_H
 #define SOUND_H
 
+typedef enum _tune
+{
+	STARTUP,
+	AU_MIX_WARNING_1,
+	AU_MIX_WARNING_2,
+	AU_MIX_WARNING_3,
+	AU_POT_STICK_MIDDLE,
+	AU_INACTIVITY,
+} TUNE;
 void sound_init(void);
-void sound_play_tune(uint8_t index);
+void sound_play_tune(TUNE index);
 void sound_play_tone(uint16_t freq, uint16_t duration);
 void sound_set_volume(uint8_t volume);
 

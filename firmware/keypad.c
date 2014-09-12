@@ -28,6 +28,7 @@
 #include "tasks.h"
 #include "gui.h"
 #include "sound.h"
+#include "myeeprom.h"
 
 #define ROW_MASK       (0x07 << 12)
 #define COL_MASK       (0x0F << 8)
@@ -154,6 +155,17 @@ uint8_t keypad_get_switches(void)
 }
 
 /**
+  * @brief  Check a specific switch
+  * @note
+  * @param  sw: The Switch to check.
+  * @retval bool: true if on, false if off.
+  */
+bool keypad_get_switch(KEYPAD_SWITCH sw)
+{
+	return (keypad_get_switches() & sw);
+}
+
+/**
   * @brief  Abort the key repeat loop
   * @note
   * @param  None
@@ -254,8 +266,8 @@ static void keypad_process(uint32_t data)
 		key_time = system_ticks;
 
 		// Play the key tone.
-		// ToDo: Make this adhere to the global setting.
-		sound_play_tone(500, 10);
+		if (g_eeGeneral.beeperVal > BEEPER_NOKEY)
+			sound_play_tone(500, 10);
 
 		// Send the key to the UI.
 		gui_input_key(key);

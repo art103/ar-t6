@@ -30,29 +30,21 @@
 //eeprom data
 //#define EE_VERSION 2
 #define MAX_MODELS  16
-#define MAX_MIXERS  32
-#define MAX_CURVE5  8
-#define MAX_CURVE9  8
-#define MDVERS_r9   1
-#define MDVERS_r14  2
-#define MDVERS_r22  3
-#define MDVERS_r77  4
-#define MDVERS_r85  5
-#define MDVERS_r261 6
-#define MDVERS_r352 7
-#define MDVERS_r365 8
-#define MDVERS_r668 9
-#define MDVERS_r803 10
-#define MDVERS      11
+#define MAX_MIXERS  24
+#define MAX_CURVE5  4
+#define MAX_CURVE9  4
 
-//OBSOLETE - USE ONLY MDVERS NOW
-//#define GENERAL_MYVER_r261 3
-//#define GENERAL_MYVER_r365 4
-//#define GENERAL_MYVER      5
-
-
-// eeprom ver <9 => mdvers == 1
-// eeprom ver >9 => mdvers ==2
+//#define MDVERS_r9   1
+//#define MDVERS_r14  2
+//#define MDVERS_r22  3
+//#define MDVERS_r77  4
+//#define MDVERS_r85  5
+//#define MDVERS_r261 6
+//#define MDVERS_r352 7
+//#define MDVERS_r365 8
+//#define MDVERS_r668 9
+//#define MDVERS_r803 10
+//#define MDVERS      11
 
 #define WARN_THR_BIT  0x01
 #define WARN_BEP_BIT  0x80
@@ -73,6 +65,14 @@
 
 #define MAX_MODES		4
 
+PACK(typedef struct _adc_cal
+{
+	int16_t min;
+	int16_t max;
+	int16_t centre;
+}) ADC_CAL;
+
+
 PACK(typedef struct t_TrainerMix {
     uint8_t srcChn:3; //0-7 = ch1-8
     int8_t  swtch:5;
@@ -87,11 +87,11 @@ PACK(typedef struct t_TrainerData {
 
 PACK(typedef struct t_EEGeneral {
 //    uint8_t   myVers;
+	ADC_CAL	calData[7];
 //    int16_t   calibMid[7];
 //    int16_t   calibSpanNeg[7];
 //    int16_t   calibSpanPos[7];
-//    uint16_t  chkSum;
-//    uint8_t   currModel; //0..15
+    uint8_t   currModel; //0..15
     uint8_t   contrast;
     uint8_t   vBatWarn;
     uint8_t   vBatCalib;
@@ -102,7 +102,7 @@ PACK(typedef struct t_EEGeneral {
     uint8_t   disableSwitchWarning:1;
     uint8_t   disableMemoryWarning:1;
     uint8_t   beeperVal:3;
-//    uint8_t   reserveWarning:1;
+//    uint8_t   reverseWarning:1;
     uint8_t   disableAlarmWarning:1;
     uint8_t   stickMode;
     uint8_t   inactivityTimer;
@@ -113,7 +113,6 @@ PACK(typedef struct t_EEGeneral {
     uint8_t   disableSplashScreen:1;
 //    uint8_t   disablePotScroll:1;
 //    uint8_t   disableBG:1;
-//    uint8_t   frskyinternalalarm:1;
 //    uint8_t   spare_filter ;		// No longer needed, left for eepe compatibility for now
     uint8_t   lightAutoOff;
 //    uint8_t   templateSetup;  		//RETA order according to chout_ar array
@@ -133,12 +132,12 @@ PACK(typedef struct t_EEGeneral {
     int8_t		volume;
 //    uint8_t   res[3];
 //    uint8_t   crosstrim:1 ;
-//    uint8_t   FrskyPins:1 ;
 //    uint8_t   rotateScreen:1 ;
 //    uint8_t   serialLCD:1 ;
 //    uint8_t   SSD1306:1 ;
 //    uint8_t   spare1:3 ;
 //		uint8_t		stickReverse ;
+    uint16_t  chkSum;
 }) EEGeneral;
 
 
@@ -224,48 +223,6 @@ PACK(typedef struct t_SafetySwData { // Custom Switches data
 	} opt ;
 }) SafetySwData;
 
-PACK(typedef struct t_FrSkyChannelData
-{
-	union _opt
-	{
-		struct alarm
-		{
-    	uint8_t   ratio;                // 0.0 means not used, 0.1V steps EG. 6.6 Volts = 66. 25.1V = 251, etc.
-    	uint8_t   alarms_value[2];      // 0.1V steps EG. 6.6 Volts = 66. 25.1V = 251, etc.
-    	uint8_t   alarms_level:4;
-    	uint8_t   alarms_greater:2;     // 0=LT(<), 1=GT(>)
-    	uint8_t   type:2;               // 0=volts, 1=raw, 2=volts*2, 3=Amps
-		} alarm ;
-		struct scale
-		{
-    	uint8_t   ratio ;       	// 0.0 means not used, 0.1V steps EG. 6.6 Volts = 66. 25.1V = 251, etc.
-    	uint8_t   offset ;    	  // 0.0 means not used, 0.1V steps EG. 6.6 Volts = 66. 25.1V = 251, etc.
-			uint8_t   units ;					// 0.1V steps EG. 6.6 Volts = 66. 25.1V = 251, etc.
-    	uint8_t   multiplier:3 ;  // 1, 2, 3 or 4
-    	uint8_t   unused1:1 ;
-    	uint8_t   decimals:2 ;		// 0, 1 or 2
-    	uint8_t   type:2;       	// 0=volts, 1=raw, 2=volts*2, 3=Amps
-		} scale ;
-	} opt ;
-}) FrSkyChannelData;
-
-//PACK(typedef struct t_FrSkyalarms
-//{
-//	uint8_t frskyAlarmType ;
-//	uint8_t frskyAlarmLimit ;
-//	uint8_t frskyAlarmSound ;
-//}) FrSkyAlarmData;
-
-PACK(typedef struct t_FrSkyData {
-    FrSkyChannelData channels[2];
-		uint8_t voltSource:2 ;
-		uint8_t ampSource:2 ;
-		uint8_t FASoffset:4 ;			// 0.0 to 1.5
-		uint8_t frskyAlarmLimit ;		// For mAh
-		uint8_t frskyAlarmSound ;		// For mAh
-//		FrSkyAlarmData alarmData[4] ;
-}) FrSkyData;
-
 PACK(typedef struct t_gvar {
 	int8_t gvar ;
 	uint8_t gvsource ;
@@ -296,12 +253,6 @@ PACK(typedef struct t_Vario
 }) VarioData ;
 
 
-//PACK(typedef struct t_swVoice {
-//  uint8_t  vswtch:5 ;
-//	uint8_t vmode:3 ; // ON, OFF, BOTH, 15Secs, 30Secs, 60Secs, Varibl
-//  uint8_t  val ;
-//}) voiceSwData ;
-
 // Scale a value
 PACK(typedef struct t_scale
 {
@@ -320,25 +271,21 @@ PACK(typedef struct t_scale
 PACK(typedef struct t_ModelData {
     char      name[MODEL_NAME_LEN];             // 10 must be first for eeLoadModelName
 //    uint8_t   reserved_spare;  //used to be MDVERS - now depreciated
-    uint8_t   modelVoice ;		// Index to model name voice (260+value)
+//    uint8_t   modelVoice ;		// Index to model name voice (260+value)
     int8_t    tmrMode;              // timer trigger source -> off, abs, stk, stk%, sw/!sw, !m_sw/!m_sw
     uint8_t   tmrDir:1;    //0=>Count Down, 1=>Count Up
     uint8_t   traineron:1;  // 0 disable trainer, 1 allow trainer
     uint8_t   t2throttle:1 ;  // Start timer2 using throttle
-    uint8_t   FrSkyUsrProto:1 ;  // Protocol in FrSky User Data, 0=FrSky Hub, 1=WS HowHigh
-    uint8_t   FrSkyGpsAlt:1 ;  	// Use Gps Altitude as main altitude reading
-    uint8_t   FrSkyImperial:1 ;  // Convert FrSky values to imperial units
-    uint8_t   FrSkyAltAlarm:2;
     uint16_t  tmrVal;
-    uint8_t   protocol:4 ;
-    uint8_t   country:2 ;
-    uint8_t   sub_protocol:2 ;
+    uint8_t   protocol:2;
+//    uint8_t   country:2 ;
+//    uint8_t   sub_protocol:2 ;
     int8_t    ppmNCH;
     uint8_t   thrTrim:1;            // Enable Throttle Trim
-		uint8_t   xnumBlades:2;					// RPM scaling
-		uint8_t   mixTime:1 ;						// Scaling for slow/delay
+	uint8_t   xnumBlades:2;					// RPM scaling
+	uint8_t   mixTime:1 ;						// Scaling for slow/delay
     uint8_t   thrExpo:1;            // Enable Throttle Expo
-		uint8_t   ppmStart:3 ;					// Start channel for PPM
+	uint8_t   ppmStart:3 ;					// Start channel for PPM
     int8_t    trimInc;              // Trim Increments (0-4)
     int8_t    ppmDelay;
     int8_t    trimSw;
@@ -358,30 +305,30 @@ PACK(typedef struct t_ModelData {
     int8_t    trim[4];
     int8_t    curves5[MAX_CURVE5][5];
     int8_t    curves9[MAX_CURVE9][9];
-    CSwData   customSw[NUM_CSW];
-    uint8_t   frSkyVoltThreshold ;
+//    CSwData   customSw[NUM_CSW];
     int8_t		tmrModeB;
-    uint8_t   numVoice:5;		// 0-16, rest are Safety switches
-		uint8_t		anaVolume:3 ;	// analog volume control
+//    uint8_t   numVoice:5;		// 0-16, rest are Safety switches
+//		uint8_t		anaVolume:3 ;	// analog volume control
     SafetySwData  safetySw[NUM_CHNOUT];
-    FrSkyData frsky;
-		uint8_t numBlades ;
-		uint8_t frskyoffset[2] ;		// Offsets for A1 and A2 (pending)
-		uint8_t unused1[5] ;
-		uint8_t sub_trim_limit ;
-		uint8_t CustomDisplayIndex[6] ;
-		GvarData gvars[MAX_GVARS] ;
-		PhaseData phaseData[MAX_MODES] ;
-		VarioData varioData ;
-		uint8_t modelVersion ;
-		int8_t pxxFailsafe[16] ;
-    CxSwData xcustomSw[EXTRA_CSW];
-	uint8_t   currentSource ;
-	uint8_t   altSource ;
-	uint8_t phaseNames[MAX_MODES][6] ;
+//    FrSkyData frsky;
+//		uint8_t numBlades ;
+//		uint8_t frskyoffset[2] ;		// Offsets for A1 and A2 (pending)
+//		uint8_t unused1[5] ;
+//		uint8_t sub_trim_limit ;
+//		uint8_t CustomDisplayIndex[6] ;
+//		GvarData gvars[MAX_GVARS] ;
+//		PhaseData phaseData[MAX_MODES] ;
+//		VarioData varioData ;
+//		uint8_t modelVersion ;
+//		int8_t pxxFailsafe[16] ;
+//    CxSwData xcustomSw[EXTRA_CSW];
+//	uint8_t   currentSource ;
+//	uint8_t   altSource ;
+//	uint8_t phaseNames[MAX_MODES][6] ;
 	ScaleData Scalers[NUM_SCALERS] ;
 
 //		uint8_t   altSource ;
+    uint16_t  chkSum;
 }) ModelData;
 
 #define TOTAL_EEPROM_USAGE (sizeof(ModelData)*MAX_MODELS + sizeof(EEGeneral))

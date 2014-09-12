@@ -18,9 +18,14 @@
 
 #include <stdint.h>
 
+#define EEPROM_PAGE_SIZE 32
+
 void eeprom_init(void);
-void eeprom_read(uint16_t offset, uint16_t length, uint8_t *buffer);
-void eeprom_write(uint16_t offset, uint16_t length, uint8_t *buffer);
+void eeprom_read(uint16_t offset, uint16_t length, void *buffer);
+void eeprom_write(uint16_t offset, uint16_t length, void *buffer);
+void eeprom_wait_complete(void);
+uint16_t eeprom_calc_chksum(void *buffer, uint16_t length);
+void eeprom_process(uint32_t data);
 
 #endif // _KEYPAD_H
 

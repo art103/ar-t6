@@ -147,6 +147,8 @@ void pulses_init(void)
 	g_model.ppmNCH = 8;
 	g_model.pulsePol = 0;
 
+	g_eeGeneral.vBatCalib = 100;
+
 	pulses_setup();
 }
 

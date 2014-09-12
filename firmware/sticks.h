@@ -16,12 +16,18 @@
 #ifndef _STICKS_H
 #define _STICKS_H
 
+#include "myeeprom.h"
+
 #define STICK_ADC_CHANNELS		7
 #define STICK_INPUT_CHANNELS	6
 #define STICKS_TO_CALIBRATE		6
 #define STICKS_TO_TRIM			4
 
-#define STICK_LIMIT				1024
+#define RESX    (1<<10) // 1024
+#define RESXu   1024u
+#define RESXul  1024ul
+#define RESXl   1024l
+#define RESKul  100ul
 
 typedef enum
 {
@@ -34,12 +40,6 @@ typedef enum
 	STICK_BAT
 } STICK;
 
-typedef struct _adc_cal
-{
-	int16_t min;
-	int16_t max;
-	int16_t centre;
-} ADC_CAL;
 
 typedef enum
 {
