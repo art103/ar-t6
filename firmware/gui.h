@@ -54,4 +54,6 @@ void gui_input_key(KEYPAD_KEY key);
 void gui_navigate(GUI_LAYOUT layout);
 void gui_popup(GUI_MSG msg, int16_t timeout);
 
+GUI_LAYOUT gui_get_layout(void);
+
 #endif // _GUI_H

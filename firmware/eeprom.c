@@ -136,7 +136,8 @@ void eeprom_init(void)
 	// Read the configuration data out of EEPROM.
 	eeprom_read(0, sizeof(EEGeneral), &g_eeGeneral);
 	eeprom_wait_complete();
-	if (eeprom_calc_chksum(&g_eeGeneral, sizeof(EEGeneral) - 2) != g_eeGeneral.chkSum)
+	g_eeGeneral_chksum = eeprom_calc_chksum(&g_eeGeneral, sizeof(EEGeneral) - 2);
+	if (g_eeGeneral_chksum != g_eeGeneral.chkSum)
 	{
 		gui_popup(GUI_MSG_EEPROM_INVALID, 0);
 		memset(&g_eeGeneral, 0, sizeof(EEGeneral));
@@ -145,7 +146,8 @@ void eeprom_init(void)
 	{
 		eeprom_read(sizeof(g_eeGeneral) + g_eeGeneral.currModel * sizeof(g_model), sizeof(g_model), (void*)&g_model);
 		eeprom_wait_complete();
-		if (eeprom_calc_chksum((void*)&g_model, sizeof(g_model) - 2) != g_model.chkSum)
+		g_model_chksum = eeprom_calc_chksum((void*)&g_model, sizeof(g_model) - 2);
+		if (g_model_chksum != g_model.chkSum)
 		{
 			memset(&g_model, 0, sizeof(g_model));
 		}
@@ -208,7 +210,7 @@ void eeprom_write(uint16_t offset, uint16_t length, void *buffer)
 		uint16_t towrite = EEPROM_PAGE_SIZE;
 
 		eeprom_wait_complete();
-		delay_ms(6);
+		delay_us(5500);
 
 		addr = offset + written;
 		read_write = 0;
@@ -277,20 +279,23 @@ void eeprom_process(uint32_t data)
 {
 	uint16_t chksum;
 
-	chksum = eeprom_calc_chksum(&g_eeGeneral, sizeof(EEGeneral) - 2);
-	if (chksum != g_eeGeneral_chksum)
+	if (gui_get_layout() >= GUI_LAYOUT_MAIN1 && gui_get_layout() <= GUI_LAYOUT_MAIN4)
 	{
-		g_eeGeneral.chkSum = chksum;
-		eeprom_write(0, sizeof(EEGeneral), &g_eeGeneral);
-		g_eeGeneral_chksum = chksum;
-	}
+		chksum = eeprom_calc_chksum(&g_eeGeneral, sizeof(EEGeneral) - 2);
+		if (chksum != g_eeGeneral_chksum)
+		{
+			g_eeGeneral.chkSum = chksum;
+			eeprom_write(0, sizeof(EEGeneral), &g_eeGeneral);
+			g_eeGeneral_chksum = chksum;
+		}
 
-	chksum = eeprom_calc_chksum(&g_model, sizeof(ModelData) - 2);
-	if (chksum != g_model_chksum)
-	{
-		g_model.chkSum = chksum;
-		eeprom_write(sizeof(EEGeneral) + g_eeGeneral.currModel * sizeof(ModelData), sizeof(ModelData), &g_model);
-		g_model_chksum = chksum;
+		chksum = eeprom_calc_chksum(&g_model, sizeof(ModelData) - 2);
+		if (chksum != g_model_chksum)
+		{
+			g_model.chkSum = chksum;
+			eeprom_write(sizeof(EEGeneral) + g_eeGeneral.currModel * sizeof(ModelData), sizeof(ModelData), &g_model);
+			g_model_chksum = chksum;
+		}
 	}
 
 	task_schedule(TASK_PROCESS_EEPROM, 0, 1000);
@@ -331,6 +336,7 @@ void I2C1_EV_IRQHandler(void)
 	switch (state)
 	{
 		case STATE_IDLE:
+			dmaRunning = 0;
 			if (event & (I2C_FLAG_MSL | I2C_FLAG_SB))
 			{
 				state = STATE_START;
@@ -357,7 +363,6 @@ void I2C1_EV_IRQHandler(void)
 		case STATE_ADDRESSED2:
 			if (event & I2C_FLAG_BTF)
 			{
-				dmaRunning = 0;
 				if (read_write)
 				{
 					state = STATE_RESTART;
@@ -384,10 +389,9 @@ void I2C1_EV_IRQHandler(void)
 			if (dmaRunning == 0)
 			{
 				dmaRunning = 1;
-				DMA_Cmd(channel, DISABLE);
+				//DMA_Cmd(channel, DISABLE);
 				DMA_Init(channel, &dmaInit);
 				I2C_DMALastTransferCmd(I2C1, ENABLE);
-
 				DMA_Cmd(channel, ENABLE);
 			}
 			else if (event & I2C_FLAG_TXE)

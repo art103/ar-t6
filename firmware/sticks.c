@@ -187,6 +187,11 @@ void sticks_calibrate(CAL_STATE state)
 			g_eeGeneral.calData[i].max = 0;
 			g_eeGeneral.calData[i].centre = 2048;
 		}
+
+		// Battery
+		g_eeGeneral.calData[i].min = 0;
+		g_eeGeneral.calData[i].max = 3100;
+		g_eeGeneral.calData[i].centre = 1550;
 	}
 }
 
@@ -240,9 +245,10 @@ void DMA1_Channel1_IRQHandler(void)
 	int32_t tmp;
 	int i;
 
+	DMA_ClearFlag(DMA1_FLAG_TC1);
 	DMA_ClearITPendingBit(DMA_IT_TC);
 
-	// Scale channels to -STICK_LIMIT to +STICK_LIMIT.
+	// Scale channels to -RESX to +RESX.
 	for (i=0; i<STICK_ADC_CHANNELS; ++i)
 	{
 		tmp = adc_data[i];

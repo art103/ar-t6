@@ -1189,6 +1189,16 @@ void gui_popup(GUI_MSG msg, int16_t timeout)
 	task_schedule(TASK_PROCESS_GUI, UPDATE_MSG, 0);
 }
 
+/**
+  * @brief  Returns the gurrently displayed layout.
+  * @note
+  * @param  None
+  * @retval The current layout.
+  */
+GUI_LAYOUT gui_get_layout(void)
+{
+	return g_current_layout;
+}
 
 /**
   * @brief  Display The stick position in two squares.
