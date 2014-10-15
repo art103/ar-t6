@@ -27,6 +27,7 @@
 
 #include "stm32f10x.h"
 #include "tasks.h"
+#include "myeeprom.h"
 #include "sound.h"
 
 #define BUZZER_PIN	(1 << 8)
@@ -103,6 +104,7 @@ void sound_init(void)
     nvicInit.NVIC_IRQChannel = TIM1_CC_IRQn;
     NVIC_Init(&nvicInit);
 
+    sound_set_volume(g_eeGeneral.volume);
     sound_play_tune(0);
 }
 
