@@ -49,7 +49,7 @@ typedef enum _state
 static volatile STATE state = STATE_ERROR;
 static volatile uint8_t read_write = 1;
 static volatile uint16_t addr = 0;
-static volatile DMA_InitTypeDef dmaInit;
+static volatile DMA_InitTypeDef g_dmaInit;
 
 // Cache of the checksum of the EEPROM contents.
 // Used to check periodically to see if we need to save.
@@ -67,6 +67,7 @@ void eeprom_init(void)
 	I2C_InitTypeDef i2cInit;
 	GPIO_InitTypeDef gpioInit;
 	NVIC_InitTypeDef nvicInit;
+	DMA_InitTypeDef dmaInit;
 
 	// Enable the I2C block clocks and setup the pins.
 	RCC_APB1PeriphClockCmd(RCC_APB1Periph_I2C1, ENABLE);
@@ -124,6 +125,7 @@ void eeprom_init(void)
 	dmaInit.DMA_Mode = DMA_Mode_Normal;
 	dmaInit.DMA_Priority = DMA_Priority_Medium;
 	dmaInit.DMA_M2M = DMA_M2M_Disable;
+	g_dmaInit = dmaInit;
 
 	I2C_DMACmd(I2C1, ENABLE);
 
@@ -174,9 +176,9 @@ void eeprom_read(uint16_t offset, uint16_t length, void *buffer)
 	read_write = 1;
 
 	// Configure the DMA controller, but don't enable it yet.
-	dmaInit.DMA_MemoryBaseAddr = (uint32_t)buffer;
-	dmaInit.DMA_BufferSize = length;
-	dmaInit.DMA_DIR = DMA_DIR_PeripheralSRC;
+	g_dmaInit.DMA_MemoryBaseAddr = (uint32_t)buffer;
+	g_dmaInit.DMA_BufferSize = length;
+	g_dmaInit.DMA_DIR = DMA_DIR_PeripheralSRC;
 
 	state = STATE_IDLE;
 
@@ -204,6 +206,8 @@ void eeprom_write(uint16_t offset, uint16_t length, void *buffer)
 	lcd_write_char(0x05, LCD_OP_SET, FLAGS_NONE);
 	lcd_update();
 
+	eeprom_wait_complete();
+
 	// We have to split the transfer into page writes.
 	for (i=0; i<(length / EEPROM_PAGE_SIZE) + 1; ++i)
 	{
@@ -215,15 +219,21 @@ void eeprom_write(uint16_t offset, uint16_t length, void *buffer)
 		addr = offset + written;
 		read_write = 0;
 
-		if (length - written < EEPROM_PAGE_SIZE)
+		// Check to see if we need an extra cycle to round up to a page.
+		if (written == 0 && offset % EEPROM_PAGE_SIZE != 0)
+		{
+			towrite = offset % EEPROM_PAGE_SIZE;
+			i--;
+		}
+		else if (length - written < EEPROM_PAGE_SIZE)
 			towrite = length - written;
 
 		if (towrite > 0)
 		{
 			// Configure the DMA controller, but don't enable it yet.
-			dmaInit.DMA_MemoryBaseAddr = (uint32_t)buffer + written;
-			dmaInit.DMA_BufferSize = towrite;
-			dmaInit.DMA_DIR = DMA_DIR_PeripheralDST;
+			g_dmaInit.DMA_MemoryBaseAddr = (uint32_t)buffer + written;
+			g_dmaInit.DMA_BufferSize = towrite;
+			g_dmaInit.DMA_DIR = DMA_DIR_PeripheralDST;
 
 			state = STATE_IDLE;
 
@@ -388,6 +398,7 @@ void I2C1_EV_IRQHandler(void)
 			//if (event & I2C_FLAG_ADDR)
 			if (dmaRunning == 0)
 			{
+				DMA_InitTypeDef dmaInit = g_dmaInit;
 				dmaRunning = 1;
 				//DMA_Cmd(channel, DISABLE);
 				DMA_Init(channel, &dmaInit);

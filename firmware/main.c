@@ -31,8 +31,8 @@
 #include "sound.h"
 #include "eeprom.h"
 
-EEGeneral  g_eeGeneral;
-ModelData  g_model;
+volatile EEGeneral  g_eeGeneral;
+volatile ModelData  g_model;
 uint8_t SlaveMode;		// Trainer Slave
 
 /**
@@ -74,6 +74,7 @@ int main(void)
 	sticks_init();
 
 	// Initialize the EEPROM
+	delay_ms(2000);
 	eeprom_init();
 
 	// ToDo: Block here until all switches are set correctly.
