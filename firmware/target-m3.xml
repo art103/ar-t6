@@ -1,0 +1,55 @@
+<?xml version="1.0"?><!DOCTYPE target SYSTEM "gdb-target.dtd">
+<target>
+<feature name="org.gnu.gdb.arm.m-profile">
+
+  <struct id="XPSR-bits" size="4">
+  <field end="31" name="N" start="31"/>
+  <field end="30" name="Z" start="30"/>
+  <field end="29" name="C" start="29"/>
+  <field end="28" name="V" start="28"/>
+  <field end="27" name="Q" start="27"/>
+  <field end="26" name="ICI/IT" start="25"/>
+  <field end="24" name="T" start="24"/>
+  <field end="15" name="ICI/IT " start="10"/>
+  <field end="8" name="EXCPTN" start="0"/>
+  </struct>
+  
+  <struct id="XPSR" size="4">
+  <field end="31" name="XPSR" start="0"/>
+  </struct>
+  
+  <union id="xPSR">
+    <field name="xPSR" type="uint32">
+      <reg name="xPSR" bitsize="32" type="xSPR"/>
+    </field>
+    <field name="xPSR " type="XPSR-bits"/>
+  </union>
+  
+  <reg name="r0" bitsize="32" type="uint32"/>
+  <reg name="r1" bitsize="32" type="uint32"/>
+  <reg name="r2" bitsize="32" type="uint32"/>
+  <reg name="r3" bitsize="32" type="uint32"/>
+  <reg name="r4" bitsize="32" type="uint32"/>
+  <reg name="r5" bitsize="32" type="uint32"/>
+  <reg name="r6" bitsize="32" type="uint32"/>
+  <reg name="r7" bitsize="32" type="uint32"/>
+  <reg name="r8" bitsize="32" type="uint32"/>
+  <reg name="r9" bitsize="32" type="uint32"/>
+  <reg name="r10" bitsize="32" type="uint32"/>
+  <reg name="r11" bitsize="32" type="uint32"/>
+  <reg name="r12" bitsize="32" type="uint32"/>               
+  <reg name="sp" bitsize="32" type="data_ptr"/>
+  <reg name="lr" bitsize="32" type="uint32"/>
+  <reg name="pc" bitsize="32" type="code_ptr"/>
+  
+  <reg name="" bitsize="128" type="uint128"/>
+  <reg name="" bitsize="128" type="uint128"/>
+  <reg name="" bitsize="128" type="uint128"/>
+  <reg name="" bitsize="128" type="uint128"/>
+  <reg name="" bitsize="128" type="uint128"/>
+  <reg name="" bitsize="128" type="uint128"/>
+  <reg name="" bitsize="32"/>
+  
+  <reg name="xPSR" bitsize="32" type="xPSR"/>
+</feature>
+</target>
