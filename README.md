@@ -7,6 +7,16 @@ The STM32 ARM processor is more capable than the Arduino in the Turnigy 9x.
 Details of the project as it progresses are here:
 http://www2.artaylor.co.uk/ar-t6.html
 
+Environment:
+Eclipse + CodeSourcery ARM toolchain
+GDB (Eclipse plugin)
+
+stlink:
+http://www.github.com/texane/stlink
+
+STM32 Discovery board (remove the jumpers for external SWD).
+
+
 Status:
 All hardware blocks are implemented in code. 
 Main GUI functionality and framework is implemented. 
