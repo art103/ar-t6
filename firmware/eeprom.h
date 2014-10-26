@@ -18,8 +18,6 @@
 
 #include <stdint.h>
 
-#define EEPROM_PAGE_SIZE 32
-
 void eeprom_init(void);
 void eeprom_read(uint16_t offset, uint16_t length, void *buffer);
 void eeprom_write(uint16_t offset, uint16_t length, void *buffer);

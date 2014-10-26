@@ -30,6 +30,9 @@
 #include "lcd.h"
 #include "tasks.h"
 
+#define EEPROM_PAGE_SIZE 32
+#define EEPROM_PAGE_MASK 0xFFE0
+
 #define I2C_PINS	(1 << 6 | 1 << 7)
 
 #define EEPROM_ADDR 0xA0
@@ -51,10 +54,19 @@ static volatile uint8_t read_write = 1;
 static volatile uint16_t addr = 0;
 static volatile DMA_InitTypeDef g_dmaInit;
 
-// Cache of the checksum of the EEPROM contents.
-// Used to check periodically to see if we need to save.
-static uint16_t g_eeGeneral_chksum = 0;
-static uint16_t g_model_chksum = 0;
+/**
+  * @brief  compute given model's address in eeprom
+  * @note
+  * @param  modelNumber
+  * @retval eeprom address for model
+  */
+static uint16_t model_address(uint8_t modelNumber)
+{
+	uint16_t modelAddress = sizeof(EEGeneral) + modelNumber * sizeof(ModelData);
+	modelAddress = ( modelAddress + EEPROM_PAGE_SIZE - 1 ) & EEPROM_PAGE_MASK;
+	return modelAddress;
+}
+
 
 /**
   * @brief  Initialise the I2C bus and EEPROM.
@@ -64,6 +76,8 @@ static uint16_t g_model_chksum = 0;
   */
 void eeprom_init(void)
 {
+	int i;
+
 	I2C_InitTypeDef i2cInit;
 	GPIO_InitTypeDef gpioInit;
 	NVIC_InitTypeDef nvicInit;
@@ -138,18 +152,18 @@ void eeprom_init(void)
 	// Read the configuration data out of EEPROM.
 	eeprom_read(0, sizeof(EEGeneral), &g_eeGeneral);
 	eeprom_wait_complete();
-	g_eeGeneral_chksum = eeprom_calc_chksum(&g_eeGeneral, sizeof(EEGeneral) - 2);
-	if (g_eeGeneral_chksum != g_eeGeneral.chkSum)
+	uint16_t chksum = eeprom_calc_chksum(&g_eeGeneral, sizeof(EEGeneral) - 2);
+	if (chksum != g_eeGeneral.chkSum)
 	{
 		gui_popup(GUI_MSG_EEPROM_INVALID, 0);
 		memset(&g_eeGeneral, 0, sizeof(EEGeneral));
 	}
 	else
 	{
-		eeprom_read(sizeof(g_eeGeneral) + g_eeGeneral.currModel * sizeof(g_model), sizeof(g_model), (void*)&g_model);
+		eeprom_read( model_address( g_eeGeneral.currModel ), sizeof(g_model), (void*)&g_model);
 		eeprom_wait_complete();
-		g_model_chksum = eeprom_calc_chksum((void*)&g_model, sizeof(g_model) - 2);
-		if (g_model_chksum != g_model.chkSum)
+		chksum = eeprom_calc_chksum((void*)&g_model, sizeof(g_model) - 2);
+		if (chksum != g_model.chkSum)
 		{
 			memset(&g_model, 0, sizeof(g_model));
 		}
@@ -206,40 +220,42 @@ void eeprom_write(uint16_t offset, uint16_t length, void *buffer)
 	lcd_write_char(0x05, LCD_OP_SET, FLAGS_NONE);
 	lcd_update();
 
+	// Make sure notheing else is pending
 	eeprom_wait_complete();
 
 	// We have to split the transfer into page writes.
-	for (i=0; i<(length / EEPROM_PAGE_SIZE) + 1; ++i)
+	while( written < length )
 	{
-		uint16_t towrite = EEPROM_PAGE_SIZE;
-
-		eeprom_wait_complete();
-		delay_us(5500);
-
 		addr = offset + written;
 		read_write = 0;
 
-		// Check to see if we need an extra cycle to round up to a page.
+		// Compute this write size but check to see if we need to round up to a page.
+		// Check only on first write when written==0
+		uint16_t towrite = EEPROM_PAGE_SIZE;
 		if (written == 0 && offset % EEPROM_PAGE_SIZE != 0)
 		{
 			towrite = offset % EEPROM_PAGE_SIZE;
-			i--;
 		}
 		else if (length - written < EEPROM_PAGE_SIZE)
-			towrite = length - written;
-
-		if (towrite > 0)
 		{
-			// Configure the DMA controller, but don't enable it yet.
-			g_dmaInit.DMA_MemoryBaseAddr = (uint32_t)buffer + written;
-			g_dmaInit.DMA_BufferSize = towrite;
-			g_dmaInit.DMA_DIR = DMA_DIR_PeripheralDST;
-
-			state = STATE_IDLE;
-
-			// Start the I2C transactions.
-			I2C_GenerateSTART(I2C1, ENABLE);
+			towrite = length - written;
 		}
+
+		// Configure DMA transaction
+		state = STATE_IDLE;
+
+		// Configure the DMA controller, but don't enable it yet.
+		g_dmaInit.DMA_MemoryBaseAddr = (uint32_t)buffer + written;
+		g_dmaInit.DMA_BufferSize = towrite;
+		g_dmaInit.DMA_DIR = DMA_DIR_PeripheralDST;
+		// Start the I2C transactions.
+		I2C_GenerateSTART(I2C1, ENABLE);
+
+		eeprom_wait_complete();
+
+		// Todo: actively poll the eeprom for write complete
+		delay_us(5500);
+
 		written += towrite;
 	}
 
@@ -256,7 +272,7 @@ void eeprom_write(uint16_t offset, uint16_t length, void *buffer)
   */
 void eeprom_wait_complete(void)
 {
-	while (state != STATE_COMPLETE);
+	while (state != STATE_COMPLETE && state != STATE_ERROR);
 }
 
 /**
@@ -292,19 +308,29 @@ void eeprom_process(uint32_t data)
 	if (gui_get_layout() >= GUI_LAYOUT_MAIN1 && gui_get_layout() <= GUI_LAYOUT_MAIN4)
 	{
 		chksum = eeprom_calc_chksum(&g_eeGeneral, sizeof(EEGeneral) - 2);
-		if (chksum != g_eeGeneral_chksum)
+		if (chksum != g_eeGeneral.chkSum)
 		{
 			g_eeGeneral.chkSum = chksum;
 			eeprom_write(0, sizeof(EEGeneral), &g_eeGeneral);
-			g_eeGeneral_chksum = chksum;
+#if 0
+			// verify write
+			static EEGeneral x_eeGeneral;
+			static int errcnt = 0;
+			eeprom_read(0, sizeof(x_eeGeneral), &x_eeGeneral);
+			chksum = eeprom_calc_chksum(&x_eeGeneral, sizeof(x_eeGeneral) - 2);
+			if( chksum != x_eeGeneral.chkSum )
+			{
+				static int errcnt = 0;
+				errcnt++;
+			}
+#endif
 		}
 
 		chksum = eeprom_calc_chksum(&g_model, sizeof(ModelData) - 2);
-		if (chksum != g_model_chksum)
+		if (chksum != g_model.chkSum)
 		{
 			g_model.chkSum = chksum;
-			eeprom_write(sizeof(EEGeneral) + g_eeGeneral.currModel * sizeof(ModelData), sizeof(ModelData), &g_model);
-			g_model_chksum = chksum;
+			eeprom_write( model_address( g_eeGeneral.currModel ), sizeof(ModelData), &g_model);
 		}
 	}
 
