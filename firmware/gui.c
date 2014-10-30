@@ -552,7 +552,14 @@ void gui_process(uint32_t data)
 							if (!edit)
 								lcd_write_string(g_eeGeneral.ownerName, LCD_OP_SET, FLAGS_NONE);
 							else
+							{
+								// make sure the string is filled up to the max length
+								// TODO: this should be when the eeGeneral is initialized so perhaps not here
+								int i;
+								for(i = sizeof(g_eeGeneral.ownerName)-1;i>0;i--) if( g_eeGeneral.ownerName[i]==0 ) g_eeGeneral.ownerName[i]=' ';
+								g_eeGeneral.ownerName[sizeof(g_eeGeneral.ownerName)-1]=0;
 								gui_string_edit(g_eeGeneral.ownerName, inc, g_key_press);
+							}
 							break;
 						case 1:	// Beeper
 							lcd_set_cursor(92, (i-list_top+1) * 8);
@@ -1467,7 +1474,6 @@ static void gui_string_edit(char *string, int8_t delta, uint32_t keys)
 
 	if (edit_mode)
 	{
-
 		string[char_index] += delta;
 		if (string[char_index] < 32) string[char_index] = 32;
 		if (string[char_index] > 126) string[char_index] = 126;
@@ -1480,8 +1486,29 @@ static void gui_string_edit(char *string, int8_t delta, uint32_t keys)
 	if (char_index < 0) char_index = 0;
 	if (char_index >= strlen(string)) char_index = strlen(string) - 1;
 
+	//rolling counter that slows down cursor blinking
+	static int8_t roll;
+	roll++;
+	// draw the whole string
 	for (i=0; i<strlen(string); ++i)
-		lcd_write_char(string[i], (i == char_index)?LCD_OP_CLR:LCD_OP_SET, FLAGS_NONE);
+	{
+		LCD_OP op = LCD_OP_CLR;
+		int fg = FLAGS_NONE;
+		if(i == char_index)
+		{
+			if( edit_mode )
+			{
+				// this makes a block flashing cursor
+				op = roll&8 ? LCD_OP_SET : LCD_OP_CLR;
+			}
+			else
+			{
+				// this makes a underline flashing
+				fg = roll&8 ? CHAR_UNDERLINE: FLAGS_NONE;
+			}
+		}
+		lcd_write_char(string[i], op, fg);
+	}
 }
 
 /**

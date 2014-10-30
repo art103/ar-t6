@@ -45,6 +45,7 @@ typedef enum _state
 	STATE_ADDRESSED2,
 	STATE_RESTART,
 	STATE_TRANSFERRING,
+	STATE_COMPLETING,
 	STATE_COMPLETE,
 	STATE_ERROR
 } STATE;
@@ -213,14 +214,15 @@ void eeprom_write(uint16_t offset, uint16_t length, void *buffer)
 	int i;
 	uint16_t written = 0;
 
-	if (state == STATE_ERROR)
-		return;
+	//do we care here that prev transaction erred?
+	//if (state == STATE_ERROR)
+	//return;
 
 	lcd_set_cursor(0, 0);
 	lcd_write_char(0x05, LCD_OP_SET, FLAGS_NONE);
 	lcd_update();
 
-	// Make sure notheing else is pending
+	// Make sure nothing else is pending
 	eeprom_wait_complete();
 
 	// We have to split the transfer into page writes.
@@ -241,21 +243,15 @@ void eeprom_write(uint16_t offset, uint16_t length, void *buffer)
 			towrite = length - written;
 		}
 
-		// Configure DMA transaction
+		// Start the I2C transactions.
 		state = STATE_IDLE;
-
 		// Configure the DMA controller, but don't enable it yet.
 		g_dmaInit.DMA_MemoryBaseAddr = (uint32_t)buffer + written;
 		g_dmaInit.DMA_BufferSize = towrite;
 		g_dmaInit.DMA_DIR = DMA_DIR_PeripheralDST;
-		// Start the I2C transactions.
 		I2C_GenerateSTART(I2C1, ENABLE);
-
+		// The rest happens in IRQ&DMA so just wait for it to COMPLETE or ERR
 		eeprom_wait_complete();
-
-		// Todo: actively poll the eeprom for write complete
-		delay_us(5500);
-
 		written += towrite;
 	}
 
@@ -312,18 +308,6 @@ void eeprom_process(uint32_t data)
 		{
 			g_eeGeneral.chkSum = chksum;
 			eeprom_write(0, sizeof(EEGeneral), &g_eeGeneral);
-#if 0
-			// verify write
-			static EEGeneral x_eeGeneral;
-			static int errcnt = 0;
-			eeprom_read(0, sizeof(x_eeGeneral), &x_eeGeneral);
-			chksum = eeprom_calc_chksum(&x_eeGeneral, sizeof(x_eeGeneral) - 2);
-			if( chksum != x_eeGeneral.chkSum )
-			{
-				static int errcnt = 0;
-				errcnt++;
-			}
-#endif
 		}
 
 		chksum = eeprom_calc_chksum(&g_model, sizeof(ModelData) - 2);
@@ -353,7 +337,17 @@ void I2C1_ER_IRQHandler(void)
 		I2C_ClearFlag(I2C1, I2C_FLAG_TIMEOUT);
 		I2C_AcknowledgeConfig(I2C1, DISABLE);
 		I2C_GenerateSTOP(I2C1, ENABLE);
-		state = STATE_ERROR;
+
+		// timeout on addressing - this is ok as we are waiting for EEPROM to complete
+		// hence restart the polling
+		if( state == STATE_COMPLETING )
+		{
+			I2C_GenerateSTART(I2C1, ENABLE);
+		}
+		else // really an error
+		{
+			state = STATE_ERROR;
+		}
 	}
 }
 
@@ -363,6 +357,7 @@ void I2C1_ER_IRQHandler(void)
   * @param  None
   * @retval None
   */
+static int c = 0;
 void I2C1_EV_IRQHandler(void)
 {
 	uint32_t event = I2C_GetLastEvent(I2C1);
@@ -435,9 +430,42 @@ void I2C1_EV_IRQHandler(void)
 			{
 				if (DMA_GetCurrDataCounter(channel) <= 1)
 				{
-					state = STATE_COMPLETE;
+					DMA_Cmd(channel, DISABLE);
 					I2C_GenerateSTOP(I2C1, ENABLE);
+					if( read_write )
+					{
+						state = STATE_COMPLETE;
+					}
+					else
+					{
+						//state = STATE_COMPLETE;
+						state = STATE_COMPLETING;
+						while(I2C_GetFlagStatus(I2C1, I2C_FLAG_BUSY));
+						I2C_GenerateSTART(I2C1, ENABLE);
+						c = 0;
+					}
 				}
+			}
+		}
+		break;
+
+		case STATE_COMPLETING :
+		{
+			if ((event & (I2C_FLAG_MSL | I2C_FLAG_SB)) && c==0)
+			{
+				I2C_Send7bitAddress(I2C1, EEPROM_ADDR, I2C_Direction_Transmitter);
+				c = 1;
+			}
+			else if ((event & I2C_FLAG_ADDR) && c==1)
+			{
+				I2C_GenerateSTOP(I2C1, ENABLE);
+				state = STATE_COMPLETE;
+			}
+			else
+			{
+				I2C_ClearFlag(I2C1, I2C_FLAG_AF);
+				I2C_GenerateSTART(I2C1, ENABLE);
+				c=0;
 			}
 		}
 		break;
