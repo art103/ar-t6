@@ -21,6 +21,7 @@
 #define NUM_SWITCHES	4
 
 #define SYS_MENU_LIST1_LEN	23
+#define MOD_MENU_LIST1_LEN	2
 
 typedef enum
 {
@@ -142,5 +143,6 @@ const char *channel_order[CHAN_ORDER_MAX];
 extern const char *system_menu_beeper[BEEPER_MAX];
 extern const char *msg[GUI_MSG_MAX];
 extern const char *system_menu_list1[SYS_MENU_LIST1_LEN];
+extern const char *model_menu_list1[MOD_MENU_LIST1_LEN];
 
 #endif // _STRINGS_H

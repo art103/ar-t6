@@ -86,6 +86,25 @@ static void gui_string_edit(char *string, int8_t delta, uint32_t keys);
 static uint32_t gui_bitfield_edit(char *string, uint32_t field, int8_t delta, uint32_t keys, uint8_t edit);
 static int32_t gui_int_edit(int32_t data, int32_t delta, int32_t min, int32_t max);
 
+/**
+  * @brief  Prefill strig with space up to length
+  * @note
+  * @param  str to fill
+  * @param  len size of memory for string
+  * @retval str
+  */
+static char* prefill_string(char* str, int len)
+{
+	str[--len]=0;
+	while(--len>=0)
+	{
+		if( str[len] == 0 )
+		{
+			str[len]=' ';
+		}
+	}
+	return str;
+}
 
 /**
   * @brief  Initialise the GUI.
@@ -555,9 +574,7 @@ void gui_process(uint32_t data)
 							{
 								// make sure the string is filled up to the max length
 								// TODO: this should be when the eeGeneral is initialized so perhaps not here
-								int i;
-								for(i = sizeof(g_eeGeneral.ownerName)-1;i>0;i--) if( g_eeGeneral.ownerName[i]==0 ) g_eeGeneral.ownerName[i]=' ';
-								g_eeGeneral.ownerName[sizeof(g_eeGeneral.ownerName)-1]=0;
+								prefill_string(g_eeGeneral.ownerName, sizeof(g_eeGeneral.ownerName));
 								gui_string_edit(g_eeGeneral.ownerName, inc, g_key_press);
 							}
 							break;
@@ -876,6 +893,14 @@ void gui_process(uint32_t data)
 					lcd_write_string("Time:", LCD_OP_SET, ALIGN_RIGHT);
 					lcd_set_cursor(36, 4 * 8);
 					lcd_write_string(__TIME__, LCD_OP_SET, FLAGS_NONE);
+
+					lcd_set_cursor(30, 6 * 8);
+					lcd_write_string("eMEM:",LCD_OP_SET, ALIGN_RIGHT);
+					lcd_set_cursor(36, 6 * 8);
+					lcd_write_int(sizeof(g_eeGeneral), LCD_OP_SET, INT_PAD10);
+					lcd_set_cursor(50, 6 * 8);
+					lcd_write_int(sizeof(g_model), LCD_OP_SET, INT_PAD10);
+
 					break; // SYS_PAGE_VERSION
 
 				case SYS_PAGE_DIAG:
@@ -1018,8 +1043,51 @@ void gui_process(uint32_t data)
 				switch (page)
 				{
 				case MOD_PAGE_SELECT:
-					// ToDo: Implement!
-					break;
+				{
+					list_limit = MOD_MENU_LIST1_LEN-1;
+					for (i=list_top; (i<list_top + LIST_ROWS) && (i <= list_limit); ++i)
+					{
+						LCD_OP op_list = LCD_OP_SET;
+						LCD_OP op_item = LCD_OP_SET;
+						uint8_t edit = 0;
+						if ((g_menu_mode == MENU_MODE_LIST) && (i == list))
+						{
+							op_list = LCD_OP_CLR;
+						}
+						else if ((g_menu_mode == MENU_MODE_EDIT || g_menu_mode == MENU_MODE_EDIT_S) && (i == list))
+						{
+							edit = 1;
+							op_item = LCD_OP_CLR;
+						}
+
+						lcd_set_cursor(0, (i-list_top+1) * 8);
+						lcd_write_string((char*)model_menu_list1[i], op_list, FLAGS_NONE);
+						lcd_write_string(" ", LCD_OP_SET, FLAGS_NONE);
+						switch (i)
+						{
+						case 0:	// Model Number
+							lcd_set_cursor(110, (i-list_top+1) * 8);
+							if (edit)
+							{
+								g_eeGeneral.currModel = gui_int_edit(g_eeGeneral.currModel, inc, 0, MAX_MODELS);
+							}
+							lcd_write_int(g_eeGeneral.currModel, op_item, FLAGS_NONE);
+							break;
+						case 1:	// Model Name
+							// todo: initalize str elswhere
+							prefill_string(g_model.name, sizeof(g_model.name));
+							if (!edit)
+								lcd_write_string(g_model.name, LCD_OP_SET, FLAGS_NONE);
+							else
+							{
+								gui_string_edit(g_model.name, inc, g_key_press);
+							}
+							break;
+						}
+					}
+				}
+				// ToDo: Implement!
+				break;
 
 				case MOD_PAGE_SETUP:
 					// ToDo: Implement!

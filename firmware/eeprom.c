@@ -68,6 +68,22 @@ static uint16_t model_address(uint8_t modelNumber)
 	return modelAddress;
 }
 
+/**
+  * @brief  Read current model into global g_model
+  * @note   current models is g_eeGeneral.currModel
+  * @retval None
+  */
+void eeprom_load_current_model()
+{
+	eeprom_read( model_address( g_eeGeneral.currModel ), sizeof(g_model), (void*)&g_model);
+	eeprom_wait_complete();
+	uint16_t chksum = eeprom_calc_chksum((void*)&g_model, sizeof(g_model) - 2);
+	if (chksum != g_model.chkSum)
+	{
+		memset(&g_model, 0, sizeof(g_model));
+	}
+}
+
 
 /**
   * @brief  Initialise the I2C bus and EEPROM.
@@ -159,16 +175,7 @@ void eeprom_init(void)
 		gui_popup(GUI_MSG_EEPROM_INVALID, 0);
 		memset(&g_eeGeneral, 0, sizeof(EEGeneral));
 	}
-	else
-	{
-		eeprom_read( model_address( g_eeGeneral.currModel ), sizeof(g_model), (void*)&g_model);
-		eeprom_wait_complete();
-		chksum = eeprom_calc_chksum((void*)&g_model, sizeof(g_model) - 2);
-		if (chksum != g_model.chkSum)
-		{
-			memset(&g_model, 0, sizeof(g_model));
-		}
-	}
+	eeprom_load_current_model();
 	task_schedule(TASK_PROCESS_EEPROM, 0, 1000);
 }
 
@@ -300,6 +307,7 @@ uint16_t eeprom_calc_chksum(void *buffer, uint16_t length)
 void eeprom_process(uint32_t data)
 {
 	uint16_t chksum;
+	static uint8_t curModel = 0xFF;
 
 	if (gui_get_layout() >= GUI_LAYOUT_MAIN1 && gui_get_layout() <= GUI_LAYOUT_MAIN4)
 	{
@@ -316,6 +324,11 @@ void eeprom_process(uint32_t data)
 			g_model.chkSum = chksum;
 			eeprom_write( model_address( g_eeGeneral.currModel ), sizeof(ModelData), &g_model);
 		}
+	}
+	if( curModel != g_eeGeneral.currModel )
+	{
+		curModel =  g_eeGeneral.currModel;
+		eeprom_load_current_model();
 	}
 
 	task_schedule(TASK_PROCESS_EEPROM, 0, 1000);

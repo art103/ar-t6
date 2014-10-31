@@ -29,7 +29,7 @@
 
 //eeprom data
 //#define EE_VERSION 2
-#define MAX_MODELS  16
+#define MAX_MODELS  15
 #define MAX_MIXERS  24
 #define MAX_CURVE5  4
 #define MAX_CURVE9  4
