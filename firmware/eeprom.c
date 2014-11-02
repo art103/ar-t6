@@ -30,6 +30,9 @@
 #include "lcd.h"
 #include "tasks.h"
 
+#define EEPROM_PAGE_SIZE 32
+#define EEPROM_PAGE_MASK 0xFFE0
+
 #define I2C_PINS	(1 << 6 | 1 << 7)
 
 #define EEPROM_ADDR 0xA0
@@ -42,6 +45,7 @@ typedef enum _state
 	STATE_ADDRESSED2,
 	STATE_RESTART,
 	STATE_TRANSFERRING,
+	STATE_COMPLETING,
 	STATE_COMPLETE,
 	STATE_ERROR
 } STATE;
@@ -51,10 +55,35 @@ static volatile uint8_t read_write = 1;
 static volatile uint16_t addr = 0;
 static volatile DMA_InitTypeDef g_dmaInit;
 
-// Cache of the checksum of the EEPROM contents.
-// Used to check periodically to see if we need to save.
-static uint16_t g_eeGeneral_chksum = 0;
-static uint16_t g_model_chksum = 0;
+/**
+  * @brief  compute given model's address in eeprom
+  * @note
+  * @param  modelNumber
+  * @retval eeprom address for model
+  */
+static uint16_t model_address(uint8_t modelNumber)
+{
+	uint16_t modelAddress = sizeof(EEGeneral) + modelNumber * sizeof(ModelData);
+	modelAddress = ( modelAddress + EEPROM_PAGE_SIZE - 1 ) & EEPROM_PAGE_MASK;
+	return modelAddress;
+}
+
+/**
+  * @brief  Read current model into global g_model
+  * @note   current models is g_eeGeneral.currModel
+  * @retval None
+  */
+void eeprom_load_current_model()
+{
+	eeprom_read( model_address( g_eeGeneral.currModel ), sizeof(g_model), (void*)&g_model);
+	eeprom_wait_complete();
+	uint16_t chksum = eeprom_calc_chksum((void*)&g_model, sizeof(g_model) - 2);
+	if (chksum != g_model.chkSum)
+	{
+		memset(&g_model, 0, sizeof(g_model));
+	}
+}
+
 
 /**
   * @brief  Initialise the I2C bus and EEPROM.
@@ -64,6 +93,8 @@ static uint16_t g_model_chksum = 0;
   */
 void eeprom_init(void)
 {
+	int i;
+
 	I2C_InitTypeDef i2cInit;
 	GPIO_InitTypeDef gpioInit;
 	NVIC_InitTypeDef nvicInit;
@@ -138,22 +169,13 @@ void eeprom_init(void)
 	// Read the configuration data out of EEPROM.
 	eeprom_read(0, sizeof(EEGeneral), &g_eeGeneral);
 	eeprom_wait_complete();
-	g_eeGeneral_chksum = eeprom_calc_chksum(&g_eeGeneral, sizeof(EEGeneral) - 2);
-	if (g_eeGeneral_chksum != g_eeGeneral.chkSum)
+	uint16_t chksum = eeprom_calc_chksum(&g_eeGeneral, sizeof(EEGeneral) - 2);
+	if (chksum != g_eeGeneral.chkSum)
 	{
 		gui_popup(GUI_MSG_EEPROM_INVALID, 0);
 		memset(&g_eeGeneral, 0, sizeof(EEGeneral));
 	}
-	else
-	{
-		eeprom_read(sizeof(g_eeGeneral) + g_eeGeneral.currModel * sizeof(g_model), sizeof(g_model), (void*)&g_model);
-		eeprom_wait_complete();
-		g_model_chksum = eeprom_calc_chksum((void*)&g_model, sizeof(g_model) - 2);
-		if (g_model_chksum != g_model.chkSum)
-		{
-			memset(&g_model, 0, sizeof(g_model));
-		}
-	}
+	eeprom_load_current_model();
 	task_schedule(TASK_PROCESS_EEPROM, 0, 1000);
 }
 
@@ -199,47 +221,44 @@ void eeprom_write(uint16_t offset, uint16_t length, void *buffer)
 	int i;
 	uint16_t written = 0;
 
-	if (state == STATE_ERROR)
-		return;
+	//do we care here that prev transaction erred?
+	//if (state == STATE_ERROR)
+	//return;
 
 	lcd_set_cursor(0, 0);
 	lcd_write_char(0x05, LCD_OP_SET, FLAGS_NONE);
 	lcd_update();
 
+	// Make sure nothing else is pending
 	eeprom_wait_complete();
 
 	// We have to split the transfer into page writes.
-	for (i=0; i<(length / EEPROM_PAGE_SIZE) + 1; ++i)
+	while( written < length )
 	{
-		uint16_t towrite = EEPROM_PAGE_SIZE;
-
-		eeprom_wait_complete();
-		delay_us(5500);
-
 		addr = offset + written;
 		read_write = 0;
 
-		// Check to see if we need an extra cycle to round up to a page.
+		// Compute this write size but check to see if we need to round up to a page.
+		// Check only on first write when written==0
+		uint16_t towrite = EEPROM_PAGE_SIZE;
 		if (written == 0 && offset % EEPROM_PAGE_SIZE != 0)
 		{
 			towrite = offset % EEPROM_PAGE_SIZE;
-			i--;
 		}
 		else if (length - written < EEPROM_PAGE_SIZE)
-			towrite = length - written;
-
-		if (towrite > 0)
 		{
-			// Configure the DMA controller, but don't enable it yet.
-			g_dmaInit.DMA_MemoryBaseAddr = (uint32_t)buffer + written;
-			g_dmaInit.DMA_BufferSize = towrite;
-			g_dmaInit.DMA_DIR = DMA_DIR_PeripheralDST;
-
-			state = STATE_IDLE;
-
-			// Start the I2C transactions.
-			I2C_GenerateSTART(I2C1, ENABLE);
+			towrite = length - written;
 		}
+
+		// Start the I2C transactions.
+		state = STATE_IDLE;
+		// Configure the DMA controller, but don't enable it yet.
+		g_dmaInit.DMA_MemoryBaseAddr = (uint32_t)buffer + written;
+		g_dmaInit.DMA_BufferSize = towrite;
+		g_dmaInit.DMA_DIR = DMA_DIR_PeripheralDST;
+		I2C_GenerateSTART(I2C1, ENABLE);
+		// The rest happens in IRQ&DMA so just wait for it to COMPLETE or ERR
+		eeprom_wait_complete();
 		written += towrite;
 	}
 
@@ -256,7 +275,7 @@ void eeprom_write(uint16_t offset, uint16_t length, void *buffer)
   */
 void eeprom_wait_complete(void)
 {
-	while (state != STATE_COMPLETE);
+	while (state != STATE_COMPLETE && state != STATE_ERROR);
 }
 
 /**
@@ -288,24 +307,28 @@ uint16_t eeprom_calc_chksum(void *buffer, uint16_t length)
 void eeprom_process(uint32_t data)
 {
 	uint16_t chksum;
+	static uint8_t curModel = 0xFF;
 
 	if (gui_get_layout() >= GUI_LAYOUT_MAIN1 && gui_get_layout() <= GUI_LAYOUT_MAIN4)
 	{
 		chksum = eeprom_calc_chksum(&g_eeGeneral, sizeof(EEGeneral) - 2);
-		if (chksum != g_eeGeneral_chksum)
+		if (chksum != g_eeGeneral.chkSum)
 		{
 			g_eeGeneral.chkSum = chksum;
 			eeprom_write(0, sizeof(EEGeneral), &g_eeGeneral);
-			g_eeGeneral_chksum = chksum;
 		}
 
 		chksum = eeprom_calc_chksum(&g_model, sizeof(ModelData) - 2);
-		if (chksum != g_model_chksum)
+		if (chksum != g_model.chkSum)
 		{
 			g_model.chkSum = chksum;
-			eeprom_write(sizeof(EEGeneral) + g_eeGeneral.currModel * sizeof(ModelData), sizeof(ModelData), &g_model);
-			g_model_chksum = chksum;
+			eeprom_write( model_address( g_eeGeneral.currModel ), sizeof(ModelData), &g_model);
 		}
+	}
+	if( curModel != g_eeGeneral.currModel )
+	{
+		curModel =  g_eeGeneral.currModel;
+		eeprom_load_current_model();
 	}
 
 	task_schedule(TASK_PROCESS_EEPROM, 0, 1000);
@@ -327,7 +350,17 @@ void I2C1_ER_IRQHandler(void)
 		I2C_ClearFlag(I2C1, I2C_FLAG_TIMEOUT);
 		I2C_AcknowledgeConfig(I2C1, DISABLE);
 		I2C_GenerateSTOP(I2C1, ENABLE);
-		state = STATE_ERROR;
+
+		// timeout on addressing - this is ok as we are waiting for EEPROM to complete
+		// hence restart the polling
+		if( state == STATE_COMPLETING )
+		{
+			I2C_GenerateSTART(I2C1, ENABLE);
+		}
+		else // really an error
+		{
+			state = STATE_ERROR;
+		}
 	}
 }
 
@@ -337,6 +370,7 @@ void I2C1_ER_IRQHandler(void)
   * @param  None
   * @retval None
   */
+static int c = 0;
 void I2C1_EV_IRQHandler(void)
 {
 	uint32_t event = I2C_GetLastEvent(I2C1);
@@ -409,9 +443,42 @@ void I2C1_EV_IRQHandler(void)
 			{
 				if (DMA_GetCurrDataCounter(channel) <= 1)
 				{
-					state = STATE_COMPLETE;
+					DMA_Cmd(channel, DISABLE);
 					I2C_GenerateSTOP(I2C1, ENABLE);
+					if( read_write )
+					{
+						state = STATE_COMPLETE;
+					}
+					else
+					{
+						//state = STATE_COMPLETE;
+						state = STATE_COMPLETING;
+						while(I2C_GetFlagStatus(I2C1, I2C_FLAG_BUSY));
+						I2C_GenerateSTART(I2C1, ENABLE);
+						c = 0;
+					}
 				}
+			}
+		}
+		break;
+
+		case STATE_COMPLETING :
+		{
+			if ((event & (I2C_FLAG_MSL | I2C_FLAG_SB)) && c==0)
+			{
+				I2C_Send7bitAddress(I2C1, EEPROM_ADDR, I2C_Direction_Transmitter);
+				c = 1;
+			}
+			else if ((event & I2C_FLAG_ADDR) && c==1)
+			{
+				I2C_GenerateSTOP(I2C1, ENABLE);
+				state = STATE_COMPLETE;
+			}
+			else
+			{
+				I2C_ClearFlag(I2C1, I2C_FLAG_AF);
+				I2C_GenerateSTART(I2C1, ENABLE);
+				c=0;
 			}
 		}
 		break;
