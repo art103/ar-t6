@@ -134,6 +134,25 @@ const char *system_menu_list1[SYS_MENU_LIST1_LEN] = {
 };
 
 const char *model_menu_list1[MOD_MENU_LIST1_LEN] = {
-		"Model#",
-		"Name",
+		"Model Number",
+		"Model Name",
+		"Timer Mode",
+		"Timer Direction",
+		"Timer Value",
+		"Trainer Ok",
+};
+
+
+const char* timer_modes[] = {
+		"Off",
+		"Abs",
+		"Stk",
+		"Stk%",
+		"Sw/!Sw",
+		"!m_sw/!m_sw"
+};
+
+const char* dir_labels[] = {
+		"Down",
+		"Up",
 };

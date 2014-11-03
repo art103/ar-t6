@@ -86,6 +86,31 @@ static void gui_string_edit(char *string, int8_t delta, uint32_t keys);
 static uint32_t gui_bitfield_edit(char *string, uint32_t field, int8_t delta, uint32_t keys, uint8_t edit);
 static int32_t gui_int_edit(int32_t data, int32_t delta, int32_t min, int32_t max);
 
+#define GUI_EDIT_INT( VAR, MIN, MAX ) \
+		if (edit) VAR = gui_int_edit(VAR, inc, MIN, MAX); \
+			lcd_write_int(VAR, op_item, FLAGS_NONE);
+
+#define GUI_EDIT_ENUM( VAR, MIN, MAX, LABELS ) \
+		if (edit) VAR = gui_int_edit(VAR, inc, MIN, MAX); \
+		lcd_write_string((char*)LABELS[VAR], op_item, FLAGS_NONE);
+
+#define GUI_EDIT_STR( VAR ) \
+			prefill_string(VAR, sizeof(VAR));\
+			if (!edit) lcd_write_string(VAR, LCD_OP_SET, FLAGS_NONE); \
+			else       gui_string_edit(VAR, inc, g_key_press);
+
+#define GUI_CASE( CASE, COL, ACTION ) \
+case CASE: \
+	{ ACTION } \
+	break; \
+
+#define GUI_CASE_COL( CASE, COL, ACTION ) \
+case CASE: \
+	lcd_set_cursor(COL, line); \
+	{ ACTION } \
+	break; \
+
+
 /**
   * @brief  Prefill strig with space up to length
   * @note
@@ -549,6 +574,7 @@ void gui_process(uint32_t data)
 					list_limit = SYS_MENU_LIST1_LEN-1;
 					for (i=list_top; (i<list_top + LIST_ROWS) && (i <= list_limit); ++i)
 					{
+						const uint8_t line = (i-list_top+1) * 8;
 						LCD_OP op_list = LCD_OP_SET;
 						LCD_OP op_item = LCD_OP_SET;
 						uint8_t edit = 0;
@@ -562,7 +588,7 @@ void gui_process(uint32_t data)
 							op_item = LCD_OP_CLR;
 						}
 
-						lcd_set_cursor(0, (i-list_top+1) * 8);
+						lcd_set_cursor(0, line);
 						lcd_write_string((char*)system_menu_list1[i], op_list, FLAGS_NONE);
 						lcd_write_string(" ", LCD_OP_SET, FLAGS_NONE);
 						switch (i)
@@ -579,13 +605,13 @@ void gui_process(uint32_t data)
 							}
 							break;
 						case 1:	// Beeper
-							lcd_set_cursor(92, (i-list_top+1) * 8);
+							lcd_set_cursor(92, line);
 							if (edit)
 								g_eeGeneral.beeperVal = gui_int_edit(g_eeGeneral.beeperVal, inc, BEEPER_SILENT, BEEPER_NORMAL);
 							lcd_write_string((char*)system_menu_beeper[g_eeGeneral.beeperVal], op_item, FLAGS_NONE);
 							break;
 						case 2:	// Volume
-							lcd_set_cursor(110, (i-list_top+1) * 8);
+							lcd_set_cursor(110, line);
 							if (edit)
 							{
 								g_eeGeneral.volume = gui_int_edit(g_eeGeneral.volume, inc, 0, 10);
@@ -594,7 +620,6 @@ void gui_process(uint32_t data)
 							lcd_write_int(g_eeGeneral.volume, op_item, FLAGS_NONE);
 							break;
 						case 3:	// Contrast
-							lcd_set_cursor(110, (i-list_top+1) * 8);
 							if (edit)
 							{
 								g_eeGeneral.contrast = gui_int_edit(g_eeGeneral.contrast, inc, LCD_CONTRAST_MIN, LCD_CONTRAST_MAX);
@@ -603,39 +628,39 @@ void gui_process(uint32_t data)
 							lcd_write_int(g_eeGeneral.contrast, op_item, FLAGS_NONE);
 							break;
 						case 4:	// Battery Warning
-							lcd_set_cursor(110, (i-list_top+1) * 8);
+							lcd_set_cursor(110, line);
 							if (edit)
 								g_eeGeneral.vBatWarn = gui_int_edit(g_eeGeneral.vBatWarn, inc, BATT_MIN, BATT_MAX);
 							lcd_write_int(g_eeGeneral.vBatWarn, op_item, FLAGS_NONE);
 							lcd_write_char('v', op_item, FLAGS_NONE);
 							break;
 						case 5:	// Inactivity Timer
-							lcd_set_cursor(110, (i-list_top+1) * 8);
+							lcd_set_cursor(110, line);
 							if (edit)
 								g_eeGeneral.inactivityTimer = gui_int_edit(g_eeGeneral.inactivityTimer, inc, 0, 250);
 							lcd_write_int(g_eeGeneral.inactivityTimer, op_item, FLAGS_NONE);
 							lcd_write_char('m', op_item, FLAGS_NONE);
 							break;
 						case 6:	// Throttle Reverse
-							lcd_set_cursor(110, (i-list_top+1) * 8);
+							lcd_set_cursor(110, line);
 							if (edit)
 								g_eeGeneral.throttleReversed = gui_int_edit(g_eeGeneral.throttleReversed, inc, 0, 1);
 							lcd_write_string((char*)menu_on_off[g_eeGeneral.throttleReversed], op_item, FLAGS_NONE);
 							break;
 						case 7:	// Minute Beep
-							lcd_set_cursor(110, (i-list_top+1) * 8);
+							lcd_set_cursor(110, line);
 							if (edit)
 								g_eeGeneral.minuteBeep = gui_int_edit(g_eeGeneral.minuteBeep, inc, 0, 1);
 							lcd_write_string((char*)menu_on_off[g_eeGeneral.minuteBeep], op_item, FLAGS_NONE);
 							break;
 						case 8:	// Beep Countdown
-							lcd_set_cursor(110, (i-list_top+1) * 8);
+							lcd_set_cursor(110, line);
 							if (edit)
 								g_eeGeneral.preBeep = gui_int_edit(g_eeGeneral.preBeep, inc, 0, 1);
 							lcd_write_string((char*)menu_on_off[g_eeGeneral.preBeep], op_item, FLAGS_NONE);
 							break;
 						case 9:	// Flash on beep
-							lcd_set_cursor(110, (i-list_top+1) * 8);
+							lcd_set_cursor(110, line);
 							if (edit)
 								g_eeGeneral.flashBeep = gui_int_edit(g_eeGeneral.flashBeep, inc, 0, 1);
 							lcd_write_string((char*)menu_on_off[g_eeGeneral.flashBeep], op_item, FLAGS_NONE);
@@ -643,7 +668,7 @@ void gui_process(uint32_t data)
 						case 10: // Light Switch
 							{
 								int8_t sw = g_eeGeneral.lightSw;
-								lcd_set_cursor(104, (i-list_top+1) * 8);
+								lcd_set_cursor(104, line);
 								if (edit)
 								{
 									g_eeGeneral.lightSw = gui_int_edit(g_eeGeneral.lightSw, inc, -NUM_SWITCHES, NUM_SWITCHES);
@@ -657,60 +682,60 @@ void gui_process(uint32_t data)
 							}
 							break;
 						case 11: // Backlight invert
-							lcd_set_cursor(110, (i-list_top+1) * 8);
+							lcd_set_cursor(110, line);
 							if (edit)
 								g_eeGeneral.blightinv = gui_int_edit(g_eeGeneral.blightinv, inc, 0, 1);
 							lcd_write_string((char*)menu_on_off[g_eeGeneral.blightinv], op_item, FLAGS_NONE);
 							break;
 						case 12: // Light timeout
-							lcd_set_cursor(104, (i-list_top+1) * 8);
+							lcd_set_cursor(104, line);
 							if (edit)
 								g_eeGeneral.lightAutoOff = gui_int_edit(g_eeGeneral.lightAutoOff, inc, 0, 255);
 							lcd_write_int(g_eeGeneral.lightAutoOff, op_item, FLAGS_NONE);
 							lcd_write_char('s', op_item, FLAGS_NONE);
 							break;
 						case 13: // Light on stick move
-							lcd_set_cursor(110, (i-list_top+1) * 8);
+							lcd_set_cursor(110, line);
 							if (edit)
 								g_eeGeneral.lightOnStickMove = gui_int_edit(g_eeGeneral.lightOnStickMove, inc, 0, 1);
 							lcd_write_string((char*)menu_on_off[g_eeGeneral.lightOnStickMove], op_item, FLAGS_NONE);
 							break;
 						case 14: // Splash screen
-							lcd_set_cursor(110, (i-list_top+1) * 8);
+							lcd_set_cursor(110, line);
 							if (edit)
 								g_eeGeneral.disableSplashScreen = gui_int_edit(g_eeGeneral.disableSplashScreen, inc, 0, 1);
 							lcd_write_string((char*)menu_on_off[1-g_eeGeneral.disableSplashScreen], op_item, FLAGS_NONE);
 							break;
 						case 15: // Throttle Warning
-							lcd_set_cursor(110, (i-list_top+1) * 8);
+							lcd_set_cursor(110, line);
 							if (edit)
 								g_eeGeneral.disableThrottleWarning = gui_int_edit(g_eeGeneral.disableThrottleWarning, inc, 0, 1);
 							lcd_write_string((char*)menu_on_off[1-g_eeGeneral.disableThrottleWarning], op_item, FLAGS_NONE);
 							break;
 						case 16: // Switch Warning
-							lcd_set_cursor(110, (i-list_top+1) * 8);
+							lcd_set_cursor(110, line);
 							if (edit)
 								g_eeGeneral.disableSwitchWarning = gui_int_edit(g_eeGeneral.disableSwitchWarning, inc, 0, 1);
 							lcd_write_string((char*)menu_on_off[1-g_eeGeneral.disableSwitchWarning], op_item, FLAGS_NONE);
 							break;
 						case 17: // Default Sw
-							lcd_set_cursor(104, (i-list_top+1) * 8);
+							lcd_set_cursor(104, line);
 							g_eeGeneral.switchWarningStates = gui_bitfield_edit("ABCD", g_eeGeneral.switchWarningStates, inc, g_key_press, edit);
 							break;
 						case 18: // Memory Warning
-							lcd_set_cursor(110, (i-list_top+1) * 8);
+							lcd_set_cursor(110, line);
 							if (edit)
 								g_eeGeneral.disableMemoryWarning = gui_int_edit(g_eeGeneral.disableMemoryWarning, inc, 0, 1);
 							lcd_write_string((char*)menu_on_off[1-g_eeGeneral.disableMemoryWarning], op_item, FLAGS_NONE);
 							break;
 						case 19: // Alarm Warning
-							lcd_set_cursor(110, (i-list_top+1) * 8);
+							lcd_set_cursor(110, line);
 							if (edit)
 								g_eeGeneral.disableAlarmWarning = gui_int_edit(g_eeGeneral.disableAlarmWarning, inc, 0, 1);
 							lcd_write_string((char*)menu_on_off[1-g_eeGeneral.disableAlarmWarning], op_item, FLAGS_NONE);
 							break;
 						case 20: // PPSIM
-							lcd_set_cursor(110, (i-list_top+1) * 8);
+							lcd_set_cursor(110, line);
 							if (edit)
 								g_eeGeneral.enablePpmsim = gui_int_edit(g_eeGeneral.enablePpmsim, inc, 0, 1);
 							lcd_write_string((char*)menu_on_off[g_eeGeneral.enablePpmsim], op_item, FLAGS_NONE);
@@ -1047,6 +1072,7 @@ void gui_process(uint32_t data)
 					list_limit = MOD_MENU_LIST1_LEN-1;
 					for (i=list_top; (i<list_top + LIST_ROWS) && (i <= list_limit); ++i)
 					{
+						const uint8_t line = (i-list_top+1) * 8;
 						LCD_OP op_list = LCD_OP_SET;
 						LCD_OP op_item = LCD_OP_SET;
 						uint8_t edit = 0;
@@ -1060,29 +1086,18 @@ void gui_process(uint32_t data)
 							op_item = LCD_OP_CLR;
 						}
 
-						lcd_set_cursor(0, (i-list_top+1) * 8);
+						lcd_set_cursor(0, line);
 						lcd_write_string((char*)model_menu_list1[i], op_list, FLAGS_NONE);
 						lcd_write_string(" ", LCD_OP_SET, FLAGS_NONE);
 						switch (i)
 						{
-						case 0:	// Model Number
-							lcd_set_cursor(110, (i-list_top+1) * 8);
-							if (edit)
-							{
-								g_eeGeneral.currModel = gui_int_edit(g_eeGeneral.currModel, inc, 0, MAX_MODELS);
-							}
-							lcd_write_int(g_eeGeneral.currModel, op_item, FLAGS_NONE);
-							break;
-						case 1:	// Model Name
-							// todo: initalize str elswhere
-							prefill_string(g_model.name, sizeof(g_model.name));
-							if (!edit)
-								lcd_write_string(g_model.name, LCD_OP_SET, FLAGS_NONE);
-							else
-							{
-								gui_string_edit(g_model.name, inc, g_key_press);
-							}
-							break;
+						// Model Number
+						GUI_CASE_COL( 0, 96, GUI_EDIT_INT(g_eeGeneral.currModel, 0, MAX_MODELS) )
+						GUI_CASE_COL( 1, 74, GUI_EDIT_STR(g_model.name) )
+						GUI_CASE_COL( 2, 96, GUI_EDIT_ENUM( g_model.tmrMode, 0, 5, timer_modes ))
+						GUI_CASE_COL( 3, 96, GUI_EDIT_ENUM( g_model.tmrDir, 0, 1, dir_labels ))
+						GUI_CASE_COL( 4, 96, GUI_EDIT_INT( g_model.tmrVal, 0, 3600 ))
+						GUI_CASE_COL( 5, 96, GUI_EDIT_ENUM( g_model.traineron, 0, 1, menu_on_off ))
 						}
 					}
 				}
