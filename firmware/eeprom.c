@@ -44,6 +44,7 @@ typedef enum _state
 	STATE_ADDRESSED1,
 	STATE_ADDRESSED2,
 	STATE_RESTART,
+	STATE_TRANSFER_START,
 	STATE_TRANSFERRING,
 	STATE_COMPLETING,
 	STATE_COMPLETE,
@@ -54,17 +55,19 @@ static volatile STATE state = STATE_ERROR;
 static volatile uint8_t read_write = 1;
 static volatile uint16_t addr = 0;
 static volatile DMA_InitTypeDef g_dmaInit;
+static volatile uint8_t curModel = 0xFF;
 
 /**
   * @brief  compute given model's address in eeprom
-  * @note
+  * @note rounds up to the nearest eeprom page
   * @param  modelNumber
   * @retval eeprom address for model
   */
 static uint16_t model_address(uint8_t modelNumber)
 {
-	uint16_t modelAddress = sizeof(EEGeneral) + modelNumber * sizeof(ModelData);
-	modelAddress = ( modelAddress + EEPROM_PAGE_SIZE - 1 ) & EEPROM_PAGE_MASK;
+	const uint16_t modelAddressBase = ( sizeof(EEGeneral) + EEPROM_PAGE_SIZE - 1 ) & EEPROM_PAGE_MASK;
+	const uint16_t modelSizePageRoundup = ( sizeof( ModelData ) + EEPROM_PAGE_SIZE - 1 ) & EEPROM_PAGE_MASK;
+	uint16_t modelAddress = modelAddressBase + modelNumber * modelSizePageRoundup ;
 	return modelAddress;
 }
 
@@ -76,12 +79,17 @@ static uint16_t model_address(uint8_t modelNumber)
 void eeprom_load_current_model()
 {
 	eeprom_read( model_address( g_eeGeneral.currModel ), sizeof(g_model), (void*)&g_model);
-	eeprom_wait_complete();
 	uint16_t chksum = eeprom_calc_chksum((void*)&g_model, sizeof(g_model) - 2);
 	if (chksum != g_model.chkSum)
 	{
 		memset(&g_model, 0, sizeof(g_model));
+		memcpy(&g_model.name, "MODEL1234", sizeof(g_model.name));
+		g_model.chkSum = eeprom_calc_chksum((void*)&g_model, sizeof(g_model) - 2);
+		eeprom_write( model_address( g_eeGeneral.currModel ), sizeof(g_model), (void*)&g_model);
 	}
+	// make sure the string is terminated
+	g_model.name[sizeof(g_model.name)-1]=0;
+	curModel = g_eeGeneral.currModel;
 }
 
 
@@ -93,8 +101,6 @@ void eeprom_load_current_model()
   */
 void eeprom_init(void)
 {
-	int i;
-
 	I2C_InitTypeDef i2cInit;
 	GPIO_InitTypeDef gpioInit;
 	NVIC_InitTypeDef nvicInit;
@@ -166,14 +172,41 @@ void eeprom_init(void)
 
 	task_register(TASK_PROCESS_EEPROM, eeprom_process);
 
+	/* TEST EEPROM
+	if(0)
+	{
+		char s[64];
+		int addr = 1024;
+		int i,k;
+		for(k=0;k<16;k++)
+		{
+			for(i=0; i<sizeof(s); i++) s[i]=k+i;
+			eeprom_write(addr, sizeof(s), &s);
+			memset( s, 0, sizeof(s) );
+			eeprom_read(addr, sizeof(s), &s);
+			for(i=0; i<sizeof(s); i++) s[i]++;
+			eeprom_write(addr, sizeof(s), &s);
+			memset( s, 0, sizeof(s) );
+			eeprom_read(addr, sizeof(s), &s);
+			for(i=0; i<sizeof(s); i++) s[i]++;
+			eeprom_write(addr, sizeof(s), &s);
+			memset( s, 0, sizeof(s) );
+			eeprom_read(addr, sizeof(s), &s);
+		}
+		s[0]++;
+	}
+	*/
+
 	// Read the configuration data out of EEPROM.
 	eeprom_read(0, sizeof(EEGeneral), &g_eeGeneral);
-	eeprom_wait_complete();
 	uint16_t chksum = eeprom_calc_chksum(&g_eeGeneral, sizeof(EEGeneral) - 2);
 	if (chksum != g_eeGeneral.chkSum)
 	{
 		gui_popup(GUI_MSG_EEPROM_INVALID, 0);
-		memset(&g_eeGeneral, 0, sizeof(EEGeneral));
+		g_eeGeneral.ownerName[sizeof(g_eeGeneral.ownerName)-1]=0;
+		// memset(&g_eeGeneral, 0, sizeof(EEGeneral));
+		// rechecksum - otherwise it will overwrite
+		g_eeGeneral.chkSum = eeprom_calc_chksum(&g_eeGeneral, sizeof(EEGeneral) - 2);
 	}
 	eeprom_load_current_model();
 	task_schedule(TASK_PROCESS_EEPROM, 0, 1000);
@@ -189,8 +222,9 @@ void eeprom_init(void)
   */
 void eeprom_read(uint16_t offset, uint16_t length, void *buffer)
 {
-	if (state == STATE_ERROR)
-		return;
+	//do we care here that prev transaction erred?
+	//if (state == STATE_ERROR)
+	//return;
 
 	eeprom_wait_complete();
 
@@ -206,6 +240,10 @@ void eeprom_read(uint16_t offset, uint16_t length, void *buffer)
 
 	// Start the I2C transactions.
 	I2C_GenerateSTART(I2C1, ENABLE);
+
+	// wait for the read to complete
+	eeprom_wait_complete();
+
 }
 
 /**
@@ -218,7 +256,6 @@ void eeprom_read(uint16_t offset, uint16_t length, void *buffer)
   */
 void eeprom_write(uint16_t offset, uint16_t length, void *buffer)
 {
-	int i;
 	uint16_t written = 0;
 
 	//do we care here that prev transaction erred?
@@ -256,14 +293,19 @@ void eeprom_write(uint16_t offset, uint16_t length, void *buffer)
 		g_dmaInit.DMA_MemoryBaseAddr = (uint32_t)buffer + written;
 		g_dmaInit.DMA_BufferSize = towrite;
 		g_dmaInit.DMA_DIR = DMA_DIR_PeripheralDST;
+
 		I2C_GenerateSTART(I2C1, ENABLE);
+
 		// The rest happens in IRQ&DMA so just wait for it to COMPLETE or ERR
 		eeprom_wait_complete();
+		if( state == STATE_ERROR )
+			break;
+
 		written += towrite;
 	}
 
 	lcd_set_cursor(0, 0);
-	lcd_write_char(' ', LCD_OP_SET, FLAGS_NONE);
+	lcd_write_char(state==STATE_ERROR?'E':' ', LCD_OP_SET, FLAGS_NONE);
 	lcd_update();
 }
 
@@ -307,7 +349,6 @@ uint16_t eeprom_calc_chksum(void *buffer, uint16_t length)
 void eeprom_process(uint32_t data)
 {
 	uint16_t chksum;
-	static uint8_t curModel = 0xFF;
 
 	if (gui_get_layout() >= GUI_LAYOUT_MAIN1 && gui_get_layout() <= GUI_LAYOUT_MAIN4)
 	{
@@ -348,13 +389,15 @@ void I2C1_ER_IRQHandler(void)
 	{
 		I2C_ClearFlag(I2C1, I2C_FLAG_AF);
 		I2C_ClearFlag(I2C1, I2C_FLAG_TIMEOUT);
-		I2C_AcknowledgeConfig(I2C1, DISABLE);
+		// I2C_AcknowledgeConfig(I2C1, DISABLE);
 		I2C_GenerateSTOP(I2C1, ENABLE);
 
 		// timeout on addressing - this is ok as we are waiting for EEPROM to complete
 		// hence restart the polling
 		if( state == STATE_COMPLETING )
 		{
+			// wait for STOP
+			while(I2C_GetFlagStatus(I2C1, I2C_FLAG_BUSY));
 			I2C_GenerateSTART(I2C1, ENABLE);
 		}
 		else // really an error
@@ -370,18 +413,15 @@ void I2C1_ER_IRQHandler(void)
   * @param  None
   * @retval None
   */
-static int c = 0;
 void I2C1_EV_IRQHandler(void)
 {
 	uint32_t event = I2C_GetLastEvent(I2C1);
-	DMA_Channel_TypeDef *channel = (read_write)?DMA1_Channel7:DMA1_Channel6;
-	static uint8_t dmaRunning = 0;
+#define ISEV(EV) ((event & EV)==EV)
 
 	switch (state)
 	{
 		case STATE_IDLE:
-			dmaRunning = 0;
-			if (event & (I2C_FLAG_MSL | I2C_FLAG_SB))
+			if ( ISEV(I2C_EVENT_MASTER_MODE_SELECT) )
 			{
 				state = STATE_START;
 				I2C_Send7bitAddress(I2C1, EEPROM_ADDR, I2C_Direction_Transmitter);
@@ -389,7 +429,7 @@ void I2C1_EV_IRQHandler(void)
 		break;
 
 		case STATE_START:
-			if (event & I2C_FLAG_ADDR)
+			if ( ISEV(I2C_EVENT_MASTER_TRANSMITTER_MODE_SELECTED) )
 			{
 				state = STATE_ADDRESSED1;
 				I2C_SendData(I2C1, (addr >> 8) & 0xFF);
@@ -397,7 +437,7 @@ void I2C1_EV_IRQHandler(void)
 		break;
 
 		case STATE_ADDRESSED1:
-			if (event & (I2C_FLAG_TXE | I2C_FLAG_BTF))
+			if ( ISEV(I2C_EVENT_MASTER_BYTE_TRANSMITTED) )
 			{
 				state = STATE_ADDRESSED2;
 				I2C_SendData(I2C1, addr & 0xFF);
@@ -405,7 +445,7 @@ void I2C1_EV_IRQHandler(void)
 		break;
 
 		case STATE_ADDRESSED2:
-			if (event & I2C_FLAG_BTF)
+			if ( ISEV(I2C_EVENT_MASTER_BYTE_TRANSMITTED) )
 			{
 				if (read_write)
 				{
@@ -414,72 +454,82 @@ void I2C1_EV_IRQHandler(void)
 				}
 				else
 				{
-					state = STATE_TRANSFERRING;
+					state = STATE_TRANSFER_START;
 				}
 			}
 		break;
 
 		case STATE_RESTART:
-			if (event & I2C_FLAG_SB)
+			if ( ISEV(I2C_EVENT_MASTER_MODE_SELECT) )
 			{
+				state = STATE_TRANSFER_START;
 				I2C_Send7bitAddress(I2C1, EEPROM_ADDR, I2C_Direction_Receiver);
-				state = STATE_TRANSFERRING;
 			}
 		break;
 
-		case STATE_TRANSFERRING:
+		case STATE_TRANSFER_START:
 		{
-			//if (event & I2C_FLAG_ADDR)
-			if (dmaRunning == 0)
+			if ( (event & I2C_FLAG_ADDR) || // already master, only ADDR now hence this does not work: ISEV(I2C_EVENT_MASTER_TRANSMITTER_MODE_SELECTED) ||
+				 ISEV(I2C_EVENT_MASTER_BYTE_TRANSMITTED) )
 			{
-				DMA_InitTypeDef dmaInit = g_dmaInit;
-				dmaRunning = 1;
-				//DMA_Cmd(channel, DISABLE);
-				DMA_Init(channel, &dmaInit);
+				state = STATE_TRANSFERRING;
+				DMA_Channel_TypeDef *channel = (read_write)?DMA1_Channel7:DMA1_Channel6;
+				DMA_Cmd(channel, DISABLE);
+				DMA_ClearFlag(DMA1_FLAG_TC7);
+				DMA_ClearFlag(DMA1_FLAG_TC6);
+				DMA_Init(channel, &g_dmaInit);
 				I2C_DMALastTransferCmd(I2C1, ENABLE);
 				DMA_Cmd(channel, ENABLE);
 			}
-			else if (event & I2C_FLAG_TXE)
+		}
+		break;
+		case STATE_TRANSFERRING:
+		{
+		// transfer finished hence complete write
+		if (event & I2C_FLAG_TXE)
+		{
+			state = STATE_COMPLETING;
+			I2C_GenerateSTOP(I2C1, ENABLE);
+			// wait for I2C to STOP (could do with IRQ?)
+			while(I2C_GetFlagStatus(I2C1, I2C_FLAG_BUSY));
+			I2C_GenerateSTART(I2C1, ENABLE);
+		}
+		/*
+			if (DMA_GetCurrDataCounter(DMA1_Channel6) <= 1)
 			{
-				if (DMA_GetCurrDataCounter(channel) <= 1)
-				{
-					DMA_Cmd(channel, DISABLE);
-					I2C_GenerateSTOP(I2C1, ENABLE);
-					if( read_write )
-					{
-						state = STATE_COMPLETE;
-					}
-					else
-					{
-						//state = STATE_COMPLETE;
-						state = STATE_COMPLETING;
-						while(I2C_GetFlagStatus(I2C1, I2C_FLAG_BUSY));
-						I2C_GenerateSTART(I2C1, ENABLE);
-						c = 0;
-					}
-				}
+				DMA_Cmd(DMA1_Channel6, DISABLE);
+				I2C_GenerateSTOP(I2C1, ENABLE);
+				//state = STATE_COMPLETE;
+				state = STATE_COMPLETING;
+				while(I2C_GetFlagStatus(I2C1, I2C_FLAG_BUSY));
+				I2C_GenerateSTART(I2C1, ENABLE);
 			}
+		*/
 		}
 		break;
 
 		case STATE_COMPLETING :
 		{
-			if ((event & (I2C_FLAG_MSL | I2C_FLAG_SB)) && c==0)
+			static int c = 0;
+			// addressing the eeprom sucessfully marks the end of write
+			if (ISEV(I2C_EVENT_MASTER_MODE_SELECT))
 			{
 				I2C_Send7bitAddress(I2C1, EEPROM_ADDR, I2C_Direction_Transmitter);
-				c = 1;
+				c++;
 			}
-			else if ((event & I2C_FLAG_ADDR) && c==1)
+			else if (ISEV(I2C_EVENT_MASTER_TRANSMITTER_MODE_SELECTED))
 			{
 				I2C_GenerateSTOP(I2C1, ENABLE);
 				state = STATE_COMPLETE;
+				c=0;
 			}
-			else
+			else // if( ISEV(I2C_EVENT_SLAVE_ACK_FAILURE ) )
 			{
 				I2C_ClearFlag(I2C1, I2C_FLAG_AF);
 				I2C_GenerateSTART(I2C1, ENABLE);
-				c=0;
 			}
+
+
 		}
 		break;
 
@@ -497,10 +547,12 @@ void I2C1_EV_IRQHandler(void)
   */
 void DMA1_Channel6_IRQHandler(void)
 {
-	DMA_Cmd(DMA1_Channel6, DISABLE);
+	DMA_Channel_TypeDef *channel = (read_write)?DMA1_Channel7:DMA1_Channel6;
+	DMA_Cmd(channel, DISABLE);
 	DMA_ClearFlag(DMA1_FLAG_TC6);
 	DMA_ClearITPendingBit(DMA_IT_TC);
-	//state = STATE_COMPLETE;
+	DMA_Cmd(channel, DISABLE);
+	// dma finished transferring to the I2C but the I2C did not finished yet
 }
 
 /**
