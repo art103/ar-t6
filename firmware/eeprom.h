@@ -19,11 +19,6 @@
 #include <stdint.h>
 
 void eeprom_init(void);
-void eeprom_read(uint16_t offset, uint16_t length, void *buffer);
-void eeprom_write(uint16_t offset, uint16_t length, void *buffer);
-void eeprom_wait_complete(void);
-uint16_t eeprom_calc_chksum(void *buffer, uint16_t length);
-void eeprom_process(uint32_t data);
-void eeprom_load_current_model();
+void eeprom_load_current_model_if_changed();
 
 #endif // _EEPROM_H

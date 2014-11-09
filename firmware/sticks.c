@@ -225,6 +225,7 @@ int16_t sticks_get_percent(STICK channel)
 	return val;
 }
 
+
 uint16_t sticks_get_battery(void)
 {
 	uint16_t val = sticks_get_percent(STICK_BAT) * 129 / 100;

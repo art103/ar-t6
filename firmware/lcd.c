@@ -27,7 +27,6 @@
 #include "stm32f10x.h"
 #include "tasks.h"
 #include "lcd.h"
-#include "logo.h"
 
 #include "lcd_font_medium.h"
 
@@ -62,6 +61,7 @@
 //#define KS0713_POWER_SAVE		Display off, Entire display ON.
 
 static uint8_t contrast = 0x28;
+
 uint8_t lcd_buffer[LCD_WIDTH * LCD_HEIGHT / 8];
 
 #define FONT_STRIDE				(16 * 5)
@@ -171,11 +171,8 @@ void lcd_init(void)
 	lcd_send_command(KS0713_POWER_CTRL | 0x07); 	// Control power circuit operation (VC,VR,VF on)
 	lcd_send_command(KS0713_REG_RES_SEL | 0x04); 	// Select internal resistance ratio (0x05)
 	lcd_send_command(KS0713_SET_REF_VOLTAGE); 		// Set reference voltage Mode (2-part cmd)
-	lcd_send_command(contrast); 						// Set reference voltage register
+	lcd_send_command(contrast); 					// Set reference voltage register
 	lcd_send_command(KS0713_DISP_ON_OFF | 0x01); 	// Turn on LCD panel (DON = 1)
-
-	// Put the logo into out frame buffer
-	memcpy(lcd_buffer, logo, LCD_WIDTH * LCD_HEIGHT / 8);
 
 	lcd_update();
 	lcd_backlight(TRUE);

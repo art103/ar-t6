@@ -19,7 +19,7 @@
 #define LCD_WIDTH		128
 #define LCD_HEIGHT		64
 
-#define LCD_CONTRAST_MIN	20
+#define LCD_CONTRAST_MIN	25
 #define LCD_CONTRAST_MAX	60
 
 #define CHAR_HEIGHT				7
@@ -64,5 +64,7 @@ void lcd_write_hex(uint32_t val, LCD_OP op, uint16_t flags);
 void lcd_draw_line(uint8_t x1, uint8_t y1, uint8_t x2, uint8_t y2, LCD_OP op);
 void lcd_draw_rect(uint8_t x1, uint8_t y1, uint8_t x2, uint8_t y2, LCD_OP op, uint16_t flags);
 void lcd_draw_message(const char *msg, LCD_OP op);
+
+extern uint8_t lcd_buffer[LCD_WIDTH * LCD_HEIGHT / 8];
 
 #endif // _LCD_H

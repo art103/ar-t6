@@ -1092,7 +1092,7 @@ void gui_process(uint32_t data)
 						switch (i)
 						{
 						// Model Number
-						GUI_CASE_COL( 0, 96, GUI_EDIT_INT(g_eeGeneral.currModel, 0, MAX_MODELS) )
+						GUI_CASE_COL( 0, 96, GUI_EDIT_INT(g_eeGeneral.currModel, 0, MAX_MODELS-1) )
 						GUI_CASE_COL( 1, 74, GUI_EDIT_STR(g_model.name) )
 						GUI_CASE_COL( 2, 96, GUI_EDIT_ENUM( g_model.tmrMode, 0, 5, timer_modes ))
 						GUI_CASE_COL( 3, 96, GUI_EDIT_ENUM( g_model.tmrDir, 0, 1, dir_labels ))
@@ -1101,7 +1101,6 @@ void gui_process(uint32_t data)
 						}
 					}
 				}
-				// ToDo: Implement!
 				break;
 
 				case MOD_PAGE_SETUP:

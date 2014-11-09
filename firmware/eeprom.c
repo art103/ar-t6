@@ -30,6 +30,13 @@
 #include "lcd.h"
 #include "tasks.h"
 
+// forwards
+void eeprom_wait_complete(void);
+uint16_t eeprom_calc_chksum(void *buffer, uint16_t length);
+void eeprom_process(uint32_t data);
+void eeprom_read(uint16_t offset, uint16_t length, void *buffer);
+void eeprom_write(uint16_t offset, uint16_t length, void *buffer);
+
 #define EEPROM_PAGE_SIZE 32
 #define EEPROM_PAGE_MASK 0xFFE0
 
@@ -37,8 +44,7 @@
 
 #define EEPROM_ADDR 0xA0
 
-typedef enum _state
-{
+typedef enum _state {
 	STATE_IDLE,
 	STATE_START,
 	STATE_ADDRESSED1,
@@ -51,56 +57,99 @@ typedef enum _state
 	STATE_ERROR
 } STATE;
 
+
+// locals
+
 static volatile STATE state = STATE_ERROR;
 static volatile uint8_t read_write = 1;
 static volatile uint16_t addr = 0;
 static volatile DMA_InitTypeDef g_dmaInit;
-static volatile uint8_t curModel = 0xFF;
+static volatile uint8_t currModel = 0xFF;
 
 /**
-  * @brief  compute given model's address in eeprom
-  * @note rounds up to the nearest eeprom page
-  * @param  modelNumber
-  * @retval eeprom address for model
-  */
-static uint16_t model_address(uint8_t modelNumber)
-{
-	const uint16_t modelAddressBase = ( sizeof(EEGeneral) + EEPROM_PAGE_SIZE - 1 ) & EEPROM_PAGE_MASK;
-	const uint16_t modelSizePageRoundup = ( sizeof( ModelData ) + EEPROM_PAGE_SIZE - 1 ) & EEPROM_PAGE_MASK;
-	uint16_t modelAddress = modelAddressBase + modelNumber * modelSizePageRoundup ;
+ * @brief  compute given model's address in eeprom
+ * @note rounds up to the nearest eeprom page
+ * @param  modelNumber
+ * @retval eeprom address for model
+ */
+static uint16_t model_address(uint8_t modelNumber) {
+	if( modelNumber > MAX_MODELS - 1 )
+		modelNumber = MAX_MODELS - 1;
+	const uint16_t modelAddressBase =
+			(sizeof(EEGeneral) + EEPROM_PAGE_SIZE - 1) & EEPROM_PAGE_MASK;
+	const uint16_t modelSizePageRoundup =
+			(sizeof(ModelData) + EEPROM_PAGE_SIZE - 1) & EEPROM_PAGE_MASK;
+	uint16_t modelAddress =
+			modelAddressBase + modelNumber * modelSizePageRoundup;
 	return modelAddress;
 }
 
+
 /**
-  * @brief  Read current model into global g_model
-  * @note   current models is g_eeGeneral.currModel
-  * @retval None
-  */
-void eeprom_load_current_model()
-{
-	eeprom_read( model_address( g_eeGeneral.currModel ), sizeof(g_model), (void*)&g_model);
-	uint16_t chksum = eeprom_calc_chksum((void*)&g_model, sizeof(g_model) - 2);
-	if (chksum != g_model.chkSum)
-	{
+ * @brief  Read current model into global g_model
+ * @note   current models is g_eeGeneral.currModel
+ * @retval None
+ */
+void eeprom_load_current_model() {
+	eeprom_read( model_address(g_eeGeneral.currModel), sizeof(g_model),
+			     (void*) &g_model);
+	uint16_t chksum = eeprom_calc_chksum((void*) &g_model, sizeof(g_model) - 2);
+	if (chksum != g_model.chkSum) {
 		memset(&g_model, 0, sizeof(g_model));
-		memcpy(&g_model.name, "MODEL1234", sizeof(g_model.name));
-		g_model.chkSum = eeprom_calc_chksum((void*)&g_model, sizeof(g_model) - 2);
-		eeprom_write( model_address( g_eeGeneral.currModel ), sizeof(g_model), (void*)&g_model);
+		memcpy(&g_model.name, "MODEL    ", sizeof(g_model.name));
+		g_model.name[MODEL_NAME_LEN-2] = '0' + (g_eeGeneral.currModel % 10);
+		g_model.name[MODEL_NAME_LEN-3] = '0' + (g_eeGeneral.currModel / 10);
+		// set the checksum so the empty model does not get saved
+		g_model.chkSum = eeprom_calc_chksum((void*) &g_model, sizeof(g_model) - 2);
+		/* do not save yet until use configures the model
+		eeprom_write(model_address(g_eeGeneral.currModel), sizeof(g_model),
+				(void*) &g_model);
+		*/
 	}
-	// make sure the string is terminated
-	g_model.name[sizeof(g_model.name)-1]=0;
-	curModel = g_eeGeneral.currModel;
+	// make sure the string is terminated by all means
+	g_model.name[sizeof(g_model.name) - 1] = 0;
+	currModel = g_eeGeneral.currModel;
 }
 
 
 /**
-  * @brief  Initialise the I2C bus and EEPROM.
-  * @note
-  * @param  None
-  * @retval None
-  */
-void eeprom_init(void)
-{
+ * @brief  Read current model into global g_model if g_eeGeneral.currModel changed
+ * @note   current models is g_eeGeneral.currModel
+ * @retval None
+ */
+void eeprom_load_current_model_if_changed() {
+	if( g_eeGeneral.currModel != currModel )
+		eeprom_load_current_model();
+}
+
+/**
+ * @brief  Compute simple checksum over eeprom memory
+ * @note   performs read of the memory
+ * @param  offset: EEPROM start byte address
+ * @param  length: number of bytes
+ * @retval checksum
+ */
+unsigned eeprom_checksum_memory(uint16_t offset, uint16_t length) {
+	unsigned sum = 0;
+	char buf[32];
+	while (length > 0) {
+		int thisStep = sizeof(buf) < length ? sizeof(buf) : length;
+		eeprom_read(offset, thisStep, buf);
+		offset += thisStep;
+		length -= thisStep;
+		while (thisStep > 0)
+			sum += buf[--thisStep];
+	}
+	return sum;
+}
+
+/**
+ * @brief  Initialise the I2C bus and EEPROM.
+ * @note
+ * @param  None
+ * @retval None
+ */
+void eeprom_init(void) {
 	I2C_InitTypeDef i2cInit;
 	GPIO_InitTypeDef gpioInit;
 	NVIC_InitTypeDef nvicInit;
@@ -128,14 +177,14 @@ void eeprom_init(void)
 	I2C_Cmd(I2C1, ENABLE);
 	I2C_DMACmd(I2C1, DISABLE);
 
-    // Configure the Interrupt to the lowest priority
-    nvicInit.NVIC_IRQChannelPreemptionPriority = 0x05;
-    nvicInit.NVIC_IRQChannelSubPriority = 0x00;
-    nvicInit.NVIC_IRQChannelCmd = ENABLE;
-    nvicInit.NVIC_IRQChannel = I2C1_EV_IRQn;
-    NVIC_Init(&nvicInit);
-    nvicInit.NVIC_IRQChannel = I2C1_ER_IRQn;
-    NVIC_Init(&nvicInit);
+	// Configure the Interrupt to the lowest priority
+	nvicInit.NVIC_IRQChannelPreemptionPriority = 0x05;
+	nvicInit.NVIC_IRQChannelSubPriority = 0x00;
+	nvicInit.NVIC_IRQChannelCmd = ENABLE;
+	nvicInit.NVIC_IRQChannel = I2C1_EV_IRQn;
+	NVIC_Init(&nvicInit);
+	nvicInit.NVIC_IRQChannel = I2C1_ER_IRQn;
+	NVIC_Init(&nvicInit);
 
 	// Enable the TX and RX DMA channel IRQs
 	nvicInit.NVIC_IRQChannel = DMA1_Channel6_IRQn;
@@ -146,14 +195,14 @@ void eeprom_init(void)
 	// Enable the event interrupt
 	I2C_ITConfig(I2C1, I2C_IT_EVT | I2C_IT_ERR | I2C_IT_BUF, ENABLE);
 
-    // DMA Configuration
+	// DMA Configuration
 	DMA_DeInit(DMA1_Channel6);	// TX
 	DMA_DeInit(DMA1_Channel7);	// RX
 	DMA_ITConfig(DMA1_Channel6, DMA_IT_TC, ENABLE);
 	DMA_ITConfig(DMA1_Channel7, DMA_IT_TC, ENABLE);
 
 	DMA_StructInit(&dmaInit);
-	dmaInit.DMA_PeripheralBaseAddr = (uint32_t)&I2C1->DR;
+	dmaInit.DMA_PeripheralBaseAddr = (uint32_t) &I2C1->DR;
 	dmaInit.DMA_DIR = DMA_DIR_PeripheralSRC;
 	dmaInit.DMA_PeripheralInc = DMA_PeripheralInc_Disable;
 	dmaInit.DMA_MemoryInc = DMA_MemoryInc_Enable;
@@ -172,56 +221,32 @@ void eeprom_init(void)
 
 	task_register(TASK_PROCESS_EEPROM, eeprom_process);
 
-	/* TEST EEPROM
-	if(0)
-	{
-		char s[64];
-		int addr = 1024;
-		int i,k;
-		for(k=0;k<16;k++)
-		{
-			for(i=0; i<sizeof(s); i++) s[i]=k+i;
-			eeprom_write(addr, sizeof(s), &s);
-			memset( s, 0, sizeof(s) );
-			eeprom_read(addr, sizeof(s), &s);
-			for(i=0; i<sizeof(s); i++) s[i]++;
-			eeprom_write(addr, sizeof(s), &s);
-			memset( s, 0, sizeof(s) );
-			eeprom_read(addr, sizeof(s), &s);
-			for(i=0; i<sizeof(s); i++) s[i]++;
-			eeprom_write(addr, sizeof(s), &s);
-			memset( s, 0, sizeof(s) );
-			eeprom_read(addr, sizeof(s), &s);
-		}
-		s[0]++;
-	}
-	*/
-
 	// Read the configuration data out of EEPROM.
-	eeprom_read(0, sizeof(EEGeneral), &g_eeGeneral);
-	uint16_t chksum = eeprom_calc_chksum(&g_eeGeneral, sizeof(EEGeneral) - 2);
-	if (chksum != g_eeGeneral.chkSum)
-	{
+	eeprom_read(0, sizeof(EEGeneral), (void*)&g_eeGeneral);
+	uint16_t chksum =
+			eeprom_calc_chksum((void*)&g_eeGeneral, sizeof(EEGeneral) - 2);
+	if (chksum != g_eeGeneral.chkSum) {
 		gui_popup(GUI_MSG_EEPROM_INVALID, 0);
-		g_eeGeneral.ownerName[sizeof(g_eeGeneral.ownerName)-1]=0;
+		g_eeGeneral.ownerName[sizeof(g_eeGeneral.ownerName) - 1] = 0;
+		g_eeGeneral.contrast = (LCD_CONTRAST_MIN+LCD_CONTRAST_MAX)/2;
 		// memset(&g_eeGeneral, 0, sizeof(EEGeneral));
 		// rechecksum - otherwise it will overwrite
-		g_eeGeneral.chkSum = eeprom_calc_chksum(&g_eeGeneral, sizeof(EEGeneral) - 2);
+		g_eeGeneral.chkSum =
+				eeprom_calc_chksum((void*)&g_eeGeneral, sizeof(EEGeneral) - 2);
 	}
 	eeprom_load_current_model();
 	task_schedule(TASK_PROCESS_EEPROM, 0, 1000);
 }
 
 /**
-  * @brief  Read a block of data from EEPROM.
-  * @note
-  * @param  offset: EEPROM start byte address
-  * @param  length: number of bytes
-  * @param  buffer: Destination buffer pointer
-  * @retval None
-  */
-void eeprom_read(uint16_t offset, uint16_t length, void *buffer)
-{
+ * @brief  Read a block of data from EEPROM.
+ * @note
+ * @param  offset: EEPROM start byte address
+ * @param  length: number of bytes
+ * @param  buffer: Destination buffer pointer
+ * @retval None
+ */
+void eeprom_read(uint16_t offset, uint16_t length, void *buffer) {
 	//do we care here that prev transaction erred?
 	//if (state == STATE_ERROR)
 	//return;
@@ -232,7 +257,7 @@ void eeprom_read(uint16_t offset, uint16_t length, void *buffer)
 	read_write = 1;
 
 	// Configure the DMA controller, but don't enable it yet.
-	g_dmaInit.DMA_MemoryBaseAddr = (uint32_t)buffer;
+	g_dmaInit.DMA_MemoryBaseAddr = (uint32_t) buffer;
 	g_dmaInit.DMA_BufferSize = length;
 	g_dmaInit.DMA_DIR = DMA_DIR_PeripheralSRC;
 
@@ -247,15 +272,14 @@ void eeprom_read(uint16_t offset, uint16_t length, void *buffer)
 }
 
 /**
-  * @brief  Write a block of data to EEPROM.
-  * @note
-  * @param  offset: EEPROM start byte address
-  * @param  length: number of bytes
-  * @param  buffer: Source buffer pointer
-  * @retval None
-  */
-void eeprom_write(uint16_t offset, uint16_t length, void *buffer)
-{
+ * @brief  Write a block of data to EEPROM.
+ * @note
+ * @param  offset: EEPROM start byte address
+ * @param  length: number of bytes
+ * @param  buffer: Source buffer pointer
+ * @retval None
+ */
+void eeprom_write(uint16_t offset, uint16_t length, void *buffer) {
 	uint16_t written = 0;
 
 	//do we care here that prev transaction erred?
@@ -270,27 +294,23 @@ void eeprom_write(uint16_t offset, uint16_t length, void *buffer)
 	eeprom_wait_complete();
 
 	// We have to split the transfer into page writes.
-	while( written < length )
-	{
+	while (written < length) {
 		addr = offset + written;
 		read_write = 0;
 
 		// Compute this write size but check to see if we need to round up to a page.
 		// Check only on first write when written==0
 		uint16_t towrite = EEPROM_PAGE_SIZE;
-		if (written == 0 && offset % EEPROM_PAGE_SIZE != 0)
-		{
+		if (written == 0 && offset % EEPROM_PAGE_SIZE != 0) {
 			towrite = offset % EEPROM_PAGE_SIZE;
-		}
-		else if (length - written < EEPROM_PAGE_SIZE)
-		{
+		} else if (length - written < EEPROM_PAGE_SIZE) {
 			towrite = length - written;
 		}
 
 		// Start the I2C transactions.
 		state = STATE_IDLE;
 		// Configure the DMA controller, but don't enable it yet.
-		g_dmaInit.DMA_MemoryBaseAddr = (uint32_t)buffer + written;
+		g_dmaInit.DMA_MemoryBaseAddr = (uint32_t) buffer + written;
 		g_dmaInit.DMA_BufferSize = towrite;
 		g_dmaInit.DMA_DIR = DMA_DIR_PeripheralDST;
 
@@ -298,42 +318,42 @@ void eeprom_write(uint16_t offset, uint16_t length, void *buffer)
 
 		// The rest happens in IRQ&DMA so just wait for it to COMPLETE or ERR
 		eeprom_wait_complete();
-		if( state == STATE_ERROR )
+		if (state == STATE_ERROR)
 			break;
 
 		written += towrite;
 	}
 
+	// no need to wait for completion here as it was done in the loop above
+
 	lcd_set_cursor(0, 0);
-	lcd_write_char(state==STATE_ERROR?'E':' ', LCD_OP_SET, FLAGS_NONE);
+	lcd_write_char(state == STATE_ERROR ? 'E' : ' ', LCD_OP_SET, FLAGS_NONE);
 	lcd_update();
 }
 
 /**
-  * @brief  Wait for any pending actions to complete.
-  * @note
-  * @param  None
-  * @retval None
-  */
-void eeprom_wait_complete(void)
-{
-	while (state != STATE_COMPLETE && state != STATE_ERROR);
+ * @brief  Wait for any pending actions to complete.
+ * @note
+ * @param  None
+ * @retval None
+ */
+void eeprom_wait_complete(void) {
+	while (state != STATE_COMPLETE && state != STATE_ERROR)
+		;
 }
 
 /**
-  * @brief  Calculate the data's checksum
-  * @note
-  * @param  buffer: data to sum
-  * @param  length: data length
-  * @retval checksum
-  */
-uint16_t eeprom_calc_chksum(void *buffer, uint16_t length)
-{
+ * @brief  Calculate the data's checksum
+ * @note
+ * @param  buffer: data to sum
+ * @param  length: data length
+ * @retval checksum
+ */
+uint16_t eeprom_calc_chksum(void *buffer, uint16_t length) {
 	int i;
 	uint8_t *ptr = buffer;
 	uint16_t sum = 0;
-	for (i=0; i<length; ++i)
-	{
+	for (i = 0; i < length; ++i) {
 		sum += *ptr++;
 	}
 
@@ -341,52 +361,55 @@ uint16_t eeprom_calc_chksum(void *buffer, uint16_t length)
 }
 
 /**
-  * @brief  Task to perform non time-critical EEPROM work
-  * @note
-  * @param  data: task specific data
-  * @retval None
-  */
-void eeprom_process(uint32_t data)
-{
+ * @brief  Task to perform non time-critical EEPROM work
+ * @note
+ * @param  data: task specific data
+ * @retval None
+ */
+void eeprom_process(uint32_t data) {
 	uint16_t chksum;
 
-	if (gui_get_layout() >= GUI_LAYOUT_MAIN1 && gui_get_layout() <= GUI_LAYOUT_MAIN4)
-	{
-		chksum = eeprom_calc_chksum(&g_eeGeneral, sizeof(EEGeneral) - 2);
-		if (chksum != g_eeGeneral.chkSum)
-		{
+	/* if (gui_get_layout() >= GUI_LAYOUT_MAIN1
+			&& gui_get_layout() <= GUI_LAYOUT_MAIN4) */
+					{
+		// see if general settings need to be saved
+		chksum = eeprom_calc_chksum((void*)&g_eeGeneral, sizeof(EEGeneral) - 2);
+		if (chksum != g_eeGeneral.chkSum) {
 			g_eeGeneral.chkSum = chksum;
-			eeprom_write(0, sizeof(EEGeneral), &g_eeGeneral);
+			eeprom_write(0, sizeof(EEGeneral), (void*)&g_eeGeneral);
+			// check after write
+			unsigned cs = eeprom_checksum_memory(0, sizeof(EEGeneral) - 2);
+			if (chksum != cs)
+				gui_popup(GUI_MSG_EEPROM_INVALID, 0);
 		}
-
-		chksum = eeprom_calc_chksum(&g_model, sizeof(ModelData) - 2);
-		if (chksum != g_model.chkSum)
-		{
+		// see if current model's settings need to be saved
+		chksum = eeprom_calc_chksum((void*)&g_model, sizeof(g_model) - 2);
+		if (chksum != g_model.chkSum) {
+			uint16_t modelAddress = model_address(g_eeGeneral.currModel);
 			g_model.chkSum = chksum;
-			eeprom_write( model_address( g_eeGeneral.currModel ), sizeof(ModelData), &g_model);
+			eeprom_write( modelAddress, sizeof(g_model), (void*)&g_model);
+			// check after write
+			unsigned cs = eeprom_checksum_memory(modelAddress, sizeof(g_model) - 2);
+			if (chksum != cs)
+				gui_popup(GUI_MSG_EEPROM_INVALID, 0);
 		}
 	}
-	if( curModel != g_eeGeneral.currModel )
-	{
-		curModel =  g_eeGeneral.currModel;
-		eeprom_load_current_model();
-	}
+
+	eeprom_load_current_model_if_changed();
 
 	task_schedule(TASK_PROCESS_EEPROM, 0, 1000);
 }
 
 /**
-  * @brief  I2C Error Handler
-  * @note
-  * @param  None
-  * @retval None
-  */
-void I2C1_ER_IRQHandler(void)
-{
+ * @brief  I2C Error Handler
+ * @note
+ * @param  None
+ * @retval None
+ */
+void I2C1_ER_IRQHandler(void) {
 	uint32_t event = I2C_GetLastEvent(I2C1);
 
-	if (event & (I2C_FLAG_AF | I2C_FLAG_TIMEOUT))
-	{
+	if (event & (I2C_FLAG_AF | I2C_FLAG_TIMEOUT)) {
 		I2C_ClearFlag(I2C1, I2C_FLAG_AF);
 		I2C_ClearFlag(I2C1, I2C_FLAG_TIMEOUT);
 		// I2C_AcknowledgeConfig(I2C1, DISABLE);
@@ -394,13 +417,12 @@ void I2C1_ER_IRQHandler(void)
 
 		// timeout on addressing - this is ok as we are waiting for EEPROM to complete
 		// hence restart the polling
-		if( state == STATE_COMPLETING )
-		{
+		if (state == STATE_COMPLETING) {
 			// wait for STOP
-			while(I2C_GetFlagStatus(I2C1, I2C_FLAG_BUSY));
+			while (I2C_GetFlagStatus(I2C1, I2C_FLAG_BUSY))
+				;
 			I2C_GenerateSTART(I2C1, ENABLE);
-		}
-		else // really an error
+		} else // really an error
 		{
 			state = STATE_ERROR;
 		}
@@ -408,146 +430,113 @@ void I2C1_ER_IRQHandler(void)
 }
 
 /**
-  * @brief  I2C Event Handler
-  * @note	This drives the EEPROM access logic and starts the DMA.
-  * @param  None
-  * @retval None
-  */
-void I2C1_EV_IRQHandler(void)
-{
+ * @brief  I2C Event Handler
+ * @note	This drives the EEPROM access logic and starts the DMA.
+ * @param  None
+ * @retval None
+ */
+void I2C1_EV_IRQHandler(void) {
 	uint32_t event = I2C_GetLastEvent(I2C1);
 #define ISEV(EV) ((event & EV)==EV)
 
-	switch (state)
-	{
-		case STATE_IDLE:
-			if ( ISEV(I2C_EVENT_MASTER_MODE_SELECT) )
-			{
-				state = STATE_START;
-				I2C_Send7bitAddress(I2C1, EEPROM_ADDR, I2C_Direction_Transmitter);
-			}
+	switch (state) {
+	case STATE_IDLE:
+		if (ISEV(I2C_EVENT_MASTER_MODE_SELECT)) {
+			state = STATE_START;
+			I2C_Send7bitAddress(I2C1, EEPROM_ADDR, I2C_Direction_Transmitter);
+		}
 		break;
 
-		case STATE_START:
-			if ( ISEV(I2C_EVENT_MASTER_TRANSMITTER_MODE_SELECTED) )
-			{
-				state = STATE_ADDRESSED1;
-				I2C_SendData(I2C1, (addr >> 8) & 0xFF);
-			}
+	case STATE_START:
+		if (ISEV(I2C_EVENT_MASTER_TRANSMITTER_MODE_SELECTED)) {
+			state = STATE_ADDRESSED1;
+			I2C_SendData(I2C1, (addr >> 8) & 0xFF);
+		}
 		break;
 
-		case STATE_ADDRESSED1:
-			if ( ISEV(I2C_EVENT_MASTER_BYTE_TRANSMITTED) )
-			{
-				state = STATE_ADDRESSED2;
-				I2C_SendData(I2C1, addr & 0xFF);
-			}
+	case STATE_ADDRESSED1:
+		if (ISEV(I2C_EVENT_MASTER_BYTE_TRANSMITTED)) {
+			state = STATE_ADDRESSED2;
+			I2C_SendData(I2C1, addr & 0xFF);
+		}
 		break;
 
-		case STATE_ADDRESSED2:
-			if ( ISEV(I2C_EVENT_MASTER_BYTE_TRANSMITTED) )
-			{
-				if (read_write)
-				{
-					state = STATE_RESTART;
-					I2C_GenerateSTART(I2C1, ENABLE);
-				}
-				else
-				{
-					state = STATE_TRANSFER_START;
-				}
-			}
-		break;
-
-		case STATE_RESTART:
-			if ( ISEV(I2C_EVENT_MASTER_MODE_SELECT) )
-			{
+	case STATE_ADDRESSED2:
+		if (ISEV(I2C_EVENT_MASTER_BYTE_TRANSMITTED)) {
+			if (read_write) {
+				state = STATE_RESTART;
+				I2C_GenerateSTART(I2C1, ENABLE);
+			} else {
 				state = STATE_TRANSFER_START;
-				I2C_Send7bitAddress(I2C1, EEPROM_ADDR, I2C_Direction_Receiver);
-			}
-		break;
-
-		case STATE_TRANSFER_START:
-		{
-			if ( (event & I2C_FLAG_ADDR) || // already master, only ADDR now hence this does not work: ISEV(I2C_EVENT_MASTER_TRANSMITTER_MODE_SELECTED) ||
-				 ISEV(I2C_EVENT_MASTER_BYTE_TRANSMITTED) )
-			{
-				state = STATE_TRANSFERRING;
-				DMA_Channel_TypeDef *channel = (read_write)?DMA1_Channel7:DMA1_Channel6;
-				DMA_Cmd(channel, DISABLE);
-				DMA_ClearFlag(DMA1_FLAG_TC7);
-				DMA_ClearFlag(DMA1_FLAG_TC6);
-				DMA_Init(channel, &g_dmaInit);
-				I2C_DMALastTransferCmd(I2C1, ENABLE);
-				DMA_Cmd(channel, ENABLE);
 			}
 		}
 		break;
-		case STATE_TRANSFERRING:
-		{
+
+	case STATE_RESTART:
+		if (ISEV(I2C_EVENT_MASTER_MODE_SELECT)) {
+			state = STATE_TRANSFER_START;
+			I2C_Send7bitAddress(I2C1, EEPROM_ADDR, I2C_Direction_Receiver);
+		}
+		break;
+
+	case STATE_TRANSFER_START: {
+		if ((event & I2C_FLAG_ADDR) || // already master, only ADDR now hence this does not work: ISEV(I2C_EVENT_MASTER_TRANSMITTER_MODE_SELECTED) ||
+			ISEV(I2C_EVENT_MASTER_BYTE_TRANSMITTED)) {
+			state = STATE_TRANSFERRING;
+			DMA_Channel_TypeDef *channel = (read_write) ? DMA1_Channel7 :
+														  DMA1_Channel6;
+			DMA_Cmd(channel, DISABLE);
+			DMA_ClearFlag(DMA1_FLAG_TC7);
+			DMA_ClearFlag(DMA1_FLAG_TC6);
+			DMA_Init(channel, &g_dmaInit);
+			I2C_DMALastTransferCmd(I2C1, ENABLE);
+			DMA_Cmd(channel, ENABLE);
+		}
+	}
+		break;
+	case STATE_TRANSFERRING: {
 		// transfer finished hence complete write
-		if (event & I2C_FLAG_TXE)
-		{
+		if (event & I2C_FLAG_TXE) {
 			state = STATE_COMPLETING;
 			I2C_GenerateSTOP(I2C1, ENABLE);
 			// wait for I2C to STOP (could do with IRQ?)
-			while(I2C_GetFlagStatus(I2C1, I2C_FLAG_BUSY));
+			while (I2C_GetFlagStatus(I2C1, I2C_FLAG_BUSY))
+				;
 			I2C_GenerateSTART(I2C1, ENABLE);
 		}
-		/*
-			if (DMA_GetCurrDataCounter(DMA1_Channel6) <= 1)
-			{
-				DMA_Cmd(DMA1_Channel6, DISABLE);
-				I2C_GenerateSTOP(I2C1, ENABLE);
-				//state = STATE_COMPLETE;
-				state = STATE_COMPLETING;
-				while(I2C_GetFlagStatus(I2C1, I2C_FLAG_BUSY));
-				I2C_GenerateSTART(I2C1, ENABLE);
-			}
-		*/
-		}
+	}
 		break;
 
-		case STATE_COMPLETING :
+	case STATE_COMPLETING: {
+		// addressing the eeprom successfully marks the end of write
+		if (ISEV(I2C_EVENT_MASTER_MODE_SELECT)) {
+			I2C_Send7bitAddress(I2C1, EEPROM_ADDR, I2C_Direction_Transmitter);
+		} else if (ISEV(I2C_EVENT_MASTER_TRANSMITTER_MODE_SELECTED)) {
+			I2C_GenerateSTOP(I2C1, ENABLE);
+			state = STATE_COMPLETE;
+		} else // if( ISEV(I2C_EVENT_SLAVE_ACK_FAILURE ) )
 		{
-			static int c = 0;
-			// addressing the eeprom sucessfully marks the end of write
-			if (ISEV(I2C_EVENT_MASTER_MODE_SELECT))
-			{
-				I2C_Send7bitAddress(I2C1, EEPROM_ADDR, I2C_Direction_Transmitter);
-				c++;
-			}
-			else if (ISEV(I2C_EVENT_MASTER_TRANSMITTER_MODE_SELECTED))
-			{
-				I2C_GenerateSTOP(I2C1, ENABLE);
-				state = STATE_COMPLETE;
-				c=0;
-			}
-			else // if( ISEV(I2C_EVENT_SLAVE_ACK_FAILURE ) )
-			{
-				I2C_ClearFlag(I2C1, I2C_FLAG_AF);
-				I2C_GenerateSTART(I2C1, ENABLE);
-			}
-
-
+			I2C_ClearFlag(I2C1, I2C_FLAG_AF);
+			I2C_GenerateSTART(I2C1, ENABLE);
 		}
+
+	}
 		break;
 
-		case STATE_ERROR:
-		case STATE_COMPLETE:
+	case STATE_ERROR:
+	case STATE_COMPLETE:
 		break;
 	}
 }
 
 /**
-  * @brief  I2C DMA TX Complete Handler
-  * @note
-  * @param  None
-  * @retval None
-  */
-void DMA1_Channel6_IRQHandler(void)
-{
-	DMA_Channel_TypeDef *channel = (read_write)?DMA1_Channel7:DMA1_Channel6;
+ * @brief  I2C DMA TX Complete Handler
+ * @note
+ * @param  None
+ * @retval None
+ */
+void DMA1_Channel6_IRQHandler(void) {
+	DMA_Channel_TypeDef *channel = (read_write) ? DMA1_Channel7 : DMA1_Channel6;
 	DMA_Cmd(channel, DISABLE);
 	DMA_ClearFlag(DMA1_FLAG_TC6);
 	DMA_ClearITPendingBit(DMA_IT_TC);
@@ -556,13 +545,12 @@ void DMA1_Channel6_IRQHandler(void)
 }
 
 /**
-  * @brief  I2C DMA RX Complete Handler
-  * @note
-  * @param  None
-  * @retval None
-  */
-void DMA1_Channel7_IRQHandler(void)
-{
+ * @brief  I2C DMA RX Complete Handler
+ * @note
+ * @param  None
+ * @retval None
+ */
+void DMA1_Channel7_IRQHandler(void) {
 	DMA_Cmd(DMA1_Channel7, DISABLE);
 	DMA_ClearFlag(DMA1_FLAG_TC7);
 	DMA_ClearITPendingBit(DMA_IT_TC);

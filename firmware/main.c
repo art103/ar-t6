@@ -30,6 +30,7 @@
 #include "mixer.h"
 #include "sound.h"
 #include "eeprom.h"
+#include "logo.h"
 
 volatile EEGeneral  g_eeGeneral;
 volatile ModelData  g_model;
@@ -74,8 +75,21 @@ int main(void)
 	sticks_init();
 
 	// Initialize the EEPROM
-	//delay_ms(2000);
 	eeprom_init();
+
+	// set contrast but to a reasonable value
+	uint16_t contrast = g_eeGeneral.contrast;
+	if( contrast < LCD_CONTRAST_MIN ) contrast = LCD_CONTRAST_MIN;
+	if( contrast > LCD_CONTRAST_MAX ) contrast = LCD_CONTRAST_MAX;
+	lcd_set_contrast(contrast);
+
+	if( !g_eeGeneral.disableSplashScreen )
+	{
+		// Put the logo into out frame buffer
+		memcpy(lcd_buffer, logo, LCD_WIDTH * LCD_HEIGHT / 8);
+		lcd_update();
+		delay_ms(2000);
+	}
 
 	// ToDo: Block here until all switches are set correctly.
 	//check_switches();
