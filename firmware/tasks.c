@@ -22,6 +22,7 @@
 
 #include "stm32f10x.h"
 #include "tasks.h"
+#include "string.h"
 
 volatile uint32_t system_ticks = 0;
 
@@ -30,16 +31,16 @@ static uint32_t task_data[TASK_END];
 static void (*task_fn[TASK_END])(uint32_t);
 
 /**
-  * @brief  Loop to process scheduled tasks.
-  * @note   Tasks are run round robin in numerical order.
+  * @brief  Init tasks.
+  * @note   None
   * @param  None
   * @retval None
   */
 void task_init(void)
 {
-	int i;
-	for (i=0; i<TASK_END; ++i)
-		task_fn[i] = 0;
+	memset( tasks, 0, sizeof(tasks) );
+	memset( task_data, 0, sizeof(task_data) );
+	memset( task_fn, 0, sizeof(task_fn) );
 }
 
 /**
@@ -52,7 +53,7 @@ void task_init(void)
 void task_register(Tasks task, void (*fn)(uint32_t))
 {
 	task_fn[task] = fn;
-	tasks[task] = FALSE;
+	tasks[task] = 0;
 }
 
 /**
@@ -67,8 +68,8 @@ void task_schedule(Tasks task, uint32_t data, uint32_t time_ms)
 {
 	if (tasks[task] == 0 || tasks[task] > system_ticks + time_ms)
 	{
-		tasks[task]  = system_ticks + time_ms;
 		task_data[task] = data;
+		tasks[task]  = system_ticks + time_ms;
 	}
 }
 
@@ -89,10 +90,9 @@ void task_deschedule(Tasks task)
   * @param  None
   * @retval None
   */
+static int task;
 void task_process_all(void)
 {
-	int task;
-	
 	/* Run all scheduled tasks */
 	for (task = 0; task < TASK_END; ++task)
 	{

@@ -403,49 +403,52 @@ extern uint8_t SlaveMode;
 //int8_t checkIncDec_hm0(int8_t i_val, int8_t i_max) ;
 //int16_t checkIncDec_hmu0(int16_t i_val, uint8_t i_max) ;
 //
-//#define CHECK_INCDEC_H_GENVAR( var, min, max)     \
-//    var = checkIncDec_hg(var,min,max)
-//
-//#define CHECK_INCDEC_H_GENVAR_0( var, max)     \
-//    var = checkIncDec_hg0( var, max )
-//
-//#define CHECK_INCDEC_H_MODELVAR( var, min, max)     \
-//    var = checkIncDec_hm(var,min,max)
-//
-//#define CHECK_INCDEC_H_MODELVAR_0( var, max)     \
-//    var = checkIncDec_hm0(var,max)
-//
-//#if defined(CPUM128) || defined(CPUM2561)
-//#define CHECK_INCDEC_MODELSWITCH( var, min, max) \
-//  var = checkIncDec(var,min,max,EE_MODEL|INCDEC_SWITCH)
-//
-//#define CHECK_INCDEC_GENERALSWITCH( var, min, max) \
-//  var = checkIncDec(var,min,max,EE_GENERAL|INCDEC_SWITCH)
-//#else
-//#define CHECK_INCDEC_MODELSWITCH( var, min, max) \
-//    var = checkIncDec_hm(var,min,max)
-//
-//#define CHECK_INCDEC_GENERALSWITCH( var, min, max) \
-//    var = checkIncDec_hg(var,min,max)
-//#endif
-//#define STORE_MODELVARS_TRIM   eeDirty(EE_MODEL|EE_TRIM)
-//#define STORE_MODELVARS   eeDirty(EE_MODEL)
-//#define STORE_GENERALVARS eeDirty(EE_GENERAL)
-//
-////extern uint8_t Backlight ;
-//extern volatile uint8_t LcdLock ;
-//
-//#define SPY_ON    //PORTB |=  (1<<OUT_B_LIGHT)
-//#define SPY_OFF   //PORTB &= ~(1<<OUT_B_LIGHT)
-//
-//
-//#ifdef CPUM2561
-//#define PULSEGEN_ON     TIMSK1 |=  (1<<OCIE1A)
-//#define PULSEGEN_OFF    TIMSK1 &= ~(1<<OCIE1A)
-//#else
-//#define PULSEGEN_ON     TIMSK |=  (1<<OCIE1A)
-//#define PULSEGEN_OFF    TIMSK &= ~(1<<OCIE1A)
-//#endif
+/*
+#define CHECK_INCDEC_H_GENVAR( var, min, max)     \
+    var = checkIncDec_hg(var,min,max)
+
+#define CHECK_INCDEC_H_GENVAR_0( var, max)     \
+    var = checkIncDec_hg0( var, max )
+
+#define CHECK_INCDEC_H_MODELVAR( var, min, max)     \
+    var = checkIncDec_hm(var,min,max)
+
+#define CHECK_INCDEC_H_MODELVAR_0( var, max)     \
+    var = checkIncDec_hm0(var,max)
+
+#if defined(CPUM128) || defined(CPUM2561)
+#define CHECK_INCDEC_MODELSWITCH( var, min, max) \
+  var = checkIncDec(var,min,max,EE_MODEL|INCDEC_SWITCH)
+
+#define CHECK_INCDEC_GENERALSWITCH( var, min, max) \
+  var = checkIncDec(var,min,max,EE_GENERAL|INCDEC_SWITCH)
+#else
+#define CHECK_INCDEC_MODELSWITCH( var, min, max) \
+    var = checkIncDec_hm(var,min,max)
+
+#define CHECK_INCDEC_GENERALSWITCH( var, min, max) \
+    var = checkIncDec_hg(var,min,max)
+#endif
+#define STORE_MODELVARS_TRIM   eeDirty(EE_MODEL|EE_TRIM)
+#define STORE_MODELVARS   eeDirty(EE_MODEL)
+#define STORE_GENERALVARS eeDirty(EE_GENERAL)
+
+extern uint8_t Backlight ;
+extern volatile uint8_t LcdLock ;
+
+#define SPY_ON    PORTB |=  (1<<OUT_B_LIGHT)
+#define SPY_OFF   PORTB &= ~(1<<OUT_B_LIGHT)
+
+
+#ifdef CPUM2561
+#define PULSEGEN_ON     TIMSK1 |=  (1<<OCIE1A)
+#define PULSEGEN_OFF    TIMSK1 &= ~(1<<OCIE1A)
+#else
+#define PULSEGEN_ON     TIMSK |=  (1<<OCIE1A)
+#define PULSEGEN_OFF    TIMSK &= ~(1<<OCIE1A)
+#endif
+ *
+ */
 //
 //#define BITMASK(bit) (1<<(bit))
 //

@@ -80,24 +80,27 @@ static void gui_show_timer(int x, int y);
 static void gui_update_trim(void);
 static void gui_draw_trim(int x, int y, bool h_v, int value);
 static void gui_draw_slider(int x, int y, int w, int h, int range, int value);
-static void gui_draw_stick_icon(STICK stick);
+static void gui_draw_stick_icon(STICK stick, uint8_t inverse);
 
 static void gui_string_edit(char *string, int8_t delta, uint32_t keys);
 static uint32_t gui_bitfield_edit(char *string, uint32_t field, int8_t delta, uint32_t keys, uint8_t edit);
 static int32_t gui_int_edit(int32_t data, int32_t delta, int32_t min, int32_t max);
 
-#define GUI_EDIT_INT( VAR, MIN, MAX ) \
-		if (edit) VAR = gui_int_edit(VAR, inc, MIN, MAX); \
-			lcd_write_int(VAR, op_item, FLAGS_NONE);
+#define GUI_EDIT_INT_EX( VAR, MIN, MAX, UNITS, EDITACTION ) \
+		if (edit) { VAR = gui_int_edit((int)VAR, inc, MIN, MAX); EDITACTION; } \
+		lcd_write_int((int)VAR, op_item, FLAGS_NONE); \
+		if(UNITS != 0) lcd_write_string(UNITS, op_item, FLAGS_NONE);
+
+#define GUI_EDIT_INT( VAR, MIN, MAX ) GUI_EDIT_INT_EX(VAR, MIN, MAX, 0, {})
 
 #define GUI_EDIT_ENUM( VAR, MIN, MAX, LABELS ) \
 		if (edit) VAR = gui_int_edit(VAR, inc, MIN, MAX); \
 		lcd_write_string((char*)LABELS[VAR], op_item, FLAGS_NONE);
 
 #define GUI_EDIT_STR( VAR ) \
-			prefill_string(VAR, sizeof(VAR));\
-			if (!edit) lcd_write_string(VAR, LCD_OP_SET, FLAGS_NONE); \
-			else       gui_string_edit(VAR, inc, g_key_press);
+			prefill_string((char*)VAR, sizeof(VAR));\
+			if (!edit) lcd_write_string((char*)VAR, LCD_OP_SET, FLAGS_NONE); \
+			else       gui_string_edit((char*)VAR, inc, g_key_press);
 
 #define GUI_CASE( CASE, COL, ACTION ) \
 case CASE: \
@@ -109,7 +112,6 @@ case CASE: \
 	lcd_set_cursor(COL, line); \
 	{ ACTION } \
 	break; \
-
 
 /**
   * @brief  Prefill strig with space up to length
@@ -593,47 +595,11 @@ void gui_process(uint32_t data)
 						lcd_write_string(" ", LCD_OP_SET, FLAGS_NONE);
 						switch (i)
 						{
-						case 0:	// Owner
-							if (!edit)
-								lcd_write_string(g_eeGeneral.ownerName, LCD_OP_SET, FLAGS_NONE);
-							else
-							{
-								// make sure the string is filled up to the max length
-								// TODO: this should be when the eeGeneral is initialized so perhaps not here
-								prefill_string(g_eeGeneral.ownerName, sizeof(g_eeGeneral.ownerName));
-								gui_string_edit(g_eeGeneral.ownerName, inc, g_key_press);
-							}
-							break;
-						case 1:	// Beeper
-							lcd_set_cursor(92, line);
-							if (edit)
-								g_eeGeneral.beeperVal = gui_int_edit(g_eeGeneral.beeperVal, inc, BEEPER_SILENT, BEEPER_NORMAL);
-							lcd_write_string((char*)system_menu_beeper[g_eeGeneral.beeperVal], op_item, FLAGS_NONE);
-							break;
-						case 2:	// Volume
-							lcd_set_cursor(110, line);
-							if (edit)
-							{
-								g_eeGeneral.volume = gui_int_edit(g_eeGeneral.volume, inc, 0, 10);
-								sound_set_volume(g_eeGeneral.volume);
-							}
-							lcd_write_int(g_eeGeneral.volume, op_item, FLAGS_NONE);
-							break;
-						case 3:	// Contrast
-							if (edit)
-							{
-								g_eeGeneral.contrast = gui_int_edit(g_eeGeneral.contrast, inc, LCD_CONTRAST_MIN, LCD_CONTRAST_MAX);
-								lcd_set_contrast(g_eeGeneral.contrast);
-							}
-							lcd_write_int(g_eeGeneral.contrast, op_item, FLAGS_NONE);
-							break;
-						case 4:	// Battery Warning
-							lcd_set_cursor(110, line);
-							if (edit)
-								g_eeGeneral.vBatWarn = gui_int_edit(g_eeGeneral.vBatWarn, inc, BATT_MIN, BATT_MAX);
-							lcd_write_int(g_eeGeneral.vBatWarn, op_item, FLAGS_NONE);
-							lcd_write_char('v', op_item, FLAGS_NONE);
-							break;
+						GUI_CASE_COL( 0, 74, GUI_EDIT_STR(g_eeGeneral.ownerName) )
+						GUI_CASE_COL( 1, 92, GUI_EDIT_ENUM(g_eeGeneral.beeperVal, BEEPER_SILENT, BEEPER_NORMAL, system_menu_beeper ))
+						GUI_CASE_COL( 2, 110, GUI_EDIT_INT_EX( g_eeGeneral.volume, 0, 15, NULL, sound_set_volume(g_eeGeneral.volume) ) )
+						GUI_CASE_COL( 3, 110, GUI_EDIT_INT_EX( g_eeGeneral.contrast, LCD_CONTRAST_MIN, LCD_CONTRAST_MAX, NULL, lcd_set_contrast(g_eeGeneral.contrast) ) )
+						GUI_CASE_COL( 4, 102, GUI_EDIT_INT_EX( g_eeGeneral.vBatWarn, BATT_MIN, BATT_MAX, "V", {} ) )
 						case 5:	// Inactivity Timer
 							lcd_set_cursor(110, line);
 							if (edit)
@@ -741,24 +707,25 @@ void gui_process(uint32_t data)
 							lcd_write_string((char*)menu_on_off[g_eeGeneral.enablePpmsim], op_item, FLAGS_NONE);
 							break;
 						case 21: // Channel Order & Mode
-							if (edit)
-								g_eeGeneral.stickMode = gui_int_edit(g_eeGeneral.stickMode, inc, CHAN_ORDER_ATER, CHAN_ORDER_RETA);
 							{
 								int j;
 								for (j=STICK_R_H; j<=STICK_L_H; ++j)
 								{
-									gui_draw_stick_icon(j);
+									gui_draw_stick_icon(j, j==g_eeGeneral.stickMode);
 									lcd_write_char(' ', LCD_OP_SET, FLAGS_NONE);
 								}
 							}
+							lcd_set_cursor(110, line);
+							GUI_EDIT_INT( g_eeGeneral.stickMode, CHAN_ORDER_ATER, CHAN_ORDER_RETA );
 							break;
+							/*
 						case 22: // Channel Order & Mode
 							if (edit)
 								g_eeGeneral.stickMode = gui_int_edit(g_eeGeneral.stickMode, inc, CHAN_ORDER_ATER, CHAN_ORDER_RETA);
 							lcd_write_int(g_eeGeneral.stickMode + 1, op_item, FLAGS_NONE);
 							lcd_write_string("   ", LCD_OP_SET, FLAGS_NONE);
 							break;
-
+							*/
 						}
 					}
 					break; // SYS_PAGE_SETUP
@@ -1099,6 +1066,7 @@ void gui_process(uint32_t data)
 						GUI_CASE_COL( 4, 96, GUI_EDIT_INT( g_model.tmrVal, 0, 3600 ))
 						GUI_CASE_COL( 5, 96, GUI_EDIT_ENUM( g_model.traineron, 0, 1, menu_on_off ))
 						}
+						//g_eeGeneral.currModel = (g_eeGeneral.currModel+1)%MAX_MODELS;
 					}
 				}
 				break;
@@ -1506,25 +1474,16 @@ static void gui_draw_slider(int x, int y, int w, int h, int range, int value)
   * @param  stick: The type of stick.
   * @retval None
   */
-static void gui_draw_stick_icon(STICK stick)
+static void gui_draw_stick_icon(STICK stick, uint8_t inverse)
 {
+	char* p = "\x13\x14\x15";
 	switch (stick)
 	{
-	case STICK_R_H:
-		lcd_write_string("\x0A\x0B\x0C", LCD_OP_SET, CHAR_NOSPACE);
-		break;
-	case STICK_R_V:
-		lcd_write_string("\x0D\x0E\x0F", LCD_OP_SET, CHAR_NOSPACE);
-		break;
-	case STICK_L_V:
-		lcd_write_string("\x10\x11\x12", LCD_OP_SET, CHAR_NOSPACE);
-		break;
-	case STICK_L_H:
-		lcd_write_string("\x13\x14\x15", LCD_OP_SET, CHAR_NOSPACE);
-		break;
-	default:
-		break;
+	case STICK_R_H: p = "\x0A\x0B\x0C"; break;
+	case STICK_R_V: p = "\x0D\x0E\x0F"; break;
+	case STICK_L_V: p = "\x10\x11\x12"; break;
 	}
+	lcd_write_string(p, inverse ?  LCD_OP_CLR : LCD_OP_SET , CHAR_NOSPACE);
 }
 
 

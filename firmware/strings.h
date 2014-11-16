@@ -20,7 +20,7 @@
 #define NUM_POTS		2
 #define NUM_SWITCHES	4
 
-#define SYS_MENU_LIST1_LEN	23
+#define SYS_MENU_LIST1_LEN	22
 #define MOD_MENU_LIST1_LEN	6
 
 typedef enum

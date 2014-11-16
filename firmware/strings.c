@@ -130,7 +130,6 @@ const char *system_menu_list1[SYS_MENU_LIST1_LEN] = {
 		"Alarm Warning",
 		"Enable PPMSIM",
 		"Mode",
-		"  ",
 };
 
 const char *model_menu_list1[MOD_MENU_LIST1_LEN] = {

@@ -66,6 +66,8 @@ static volatile uint16_t addr = 0;
 static volatile DMA_InitTypeDef g_dmaInit;
 static volatile uint8_t currModel = 0xFF;
 
+#define PAGE_ALIGN 1
+
 /**
  * @brief  compute given model's address in eeprom
  * @note rounds up to the nearest eeprom page
@@ -75,38 +77,69 @@ static volatile uint8_t currModel = 0xFF;
 static uint16_t model_address(uint8_t modelNumber) {
 	if( modelNumber > MAX_MODELS - 1 )
 		modelNumber = MAX_MODELS - 1;
+#if PAGE_ALIGN
 	const uint16_t modelAddressBase =
 			(sizeof(EEGeneral) + EEPROM_PAGE_SIZE - 1) & EEPROM_PAGE_MASK;
 	const uint16_t modelSizePageRoundup =
 			(sizeof(ModelData) + EEPROM_PAGE_SIZE - 1) & EEPROM_PAGE_MASK;
 	uint16_t modelAddress =
 			modelAddressBase + modelNumber * modelSizePageRoundup;
+#else
+	uint16_t modelAddress =
+			sizeof(EEGeneral) + modelNumber * sizeof(ModelData);
+#endif
 	return modelAddress;
 }
 
 
+
+
+/**
+ * @brief  Initialize model data in global g_model
+ * @note   current model is g_eeGeneral.currModel
+ * @retval None
+ */
+void eeprom_init_current_model() {
+	memset(&g_model, 0, sizeof(g_model));
+#if FRUGAL
+	g_model.name[0] = 'M';
+	g_model.name[1] = '0' + (g_eeGeneral.currModel / 10);
+	g_model.name[2] = '0' + (g_eeGeneral.currModel % 10);
+#else
+	memcpy(&g_model.name, "MODEL    ", sizeof(g_model.name));
+	g_model.name[MODEL_NAME_LEN-3] = '0' + (g_eeGeneral.currModel / 10);
+	g_model.name[MODEL_NAME_LEN-2] = '0' + (g_eeGeneral.currModel % 10);
+#endif
+	g_model.name[MODEL_NAME_LEN-1] =  0;
+	g_model.protocol = PROTO_PPM;
+	g_model.extendedLimits = TRUE;
+	g_model.ppmFrameLength = 8;
+	g_model.ppmDelay = 6;
+	g_model.ppmNCH = 8;
+	// no need to initialize to zero
+	//g_model.ppmStart = 0;
+	//g_model.pulsePol = 0;
+}
+
+
+
 /**
  * @brief  Read current model into global g_model
- * @note   current models is g_eeGeneral.currModel
+ * @note   current model is g_eeGeneral.currModel
  * @retval None
  */
 void eeprom_load_current_model() {
-	eeprom_read( model_address(g_eeGeneral.currModel), sizeof(g_model),
-			     (void*) &g_model);
+	if( g_eeGeneral.currModel >= MAX_MODELS )
+		g_eeGeneral.currModel = MAX_MODELS-1;
+	eeprom_read( model_address(g_eeGeneral.currModel), sizeof(g_model), (void*)&g_model);
 	uint16_t chksum = eeprom_calc_chksum((void*) &g_model, sizeof(g_model) - 2);
 	if (chksum != g_model.chkSum) {
-		memset(&g_model, 0, sizeof(g_model));
-		memcpy(&g_model.name, "MODEL    ", sizeof(g_model.name));
-		g_model.name[MODEL_NAME_LEN-2] = '0' + (g_eeGeneral.currModel % 10);
-		g_model.name[MODEL_NAME_LEN-3] = '0' + (g_eeGeneral.currModel / 10);
+		eeprom_init_current_model();
 		// set the checksum so the empty model does not get saved
 		g_model.chkSum = eeprom_calc_chksum((void*) &g_model, sizeof(g_model) - 2);
-		/* do not save yet until use configures the model
-		eeprom_write(model_address(g_eeGeneral.currModel), sizeof(g_model),
-				(void*) &g_model);
-		*/
+		//TODO: give user a warning
 	}
-	// make sure the string is terminated by all means
+	// make sure the string is terminated, by all means!
 	g_model.name[sizeof(g_model.name) - 1] = 0;
 	currModel = g_eeGeneral.currModel;
 }
@@ -229,13 +262,15 @@ void eeprom_init(void) {
 		gui_popup(GUI_MSG_EEPROM_INVALID, 0);
 		g_eeGeneral.ownerName[sizeof(g_eeGeneral.ownerName) - 1] = 0;
 		g_eeGeneral.contrast = (LCD_CONTRAST_MIN+LCD_CONTRAST_MAX)/2;
+		g_eeGeneral.enablePpmsim = FALSE;
+		g_eeGeneral.vBatCalib = 100;
 		// memset(&g_eeGeneral, 0, sizeof(EEGeneral));
 		// rechecksum - otherwise it will overwrite
-		g_eeGeneral.chkSum =
-				eeprom_calc_chksum((void*)&g_eeGeneral, sizeof(EEGeneral) - 2);
+		g_eeGeneral.chkSum = eeprom_calc_chksum((void*)&g_eeGeneral, sizeof(EEGeneral) - 2);
+		if( g_eeGeneral.currModel < MAX_MODELS )
+			g_eeGeneral.currModel = MAX_MODELS -1;
 	}
-	eeprom_load_current_model();
-	task_schedule(TASK_PROCESS_EEPROM, 0, 1000);
+	eeprom_process(0);
 }
 
 /**
@@ -268,7 +303,6 @@ void eeprom_read(uint16_t offset, uint16_t length, void *buffer) {
 
 	// wait for the read to complete
 	eeprom_wait_complete();
-
 }
 
 /**
@@ -371,7 +405,7 @@ void eeprom_process(uint32_t data) {
 
 	/* if (gui_get_layout() >= GUI_LAYOUT_MAIN1
 			&& gui_get_layout() <= GUI_LAYOUT_MAIN4) */
-					{
+	{
 		// see if general settings need to be saved
 		chksum = eeprom_calc_chksum((void*)&g_eeGeneral, sizeof(EEGeneral) - 2);
 		if (chksum != g_eeGeneral.chkSum) {
@@ -514,8 +548,7 @@ void I2C1_EV_IRQHandler(void) {
 		} else if (ISEV(I2C_EVENT_MASTER_TRANSMITTER_MODE_SELECTED)) {
 			I2C_GenerateSTOP(I2C1, ENABLE);
 			state = STATE_COMPLETE;
-		} else // if( ISEV(I2C_EVENT_SLAVE_ACK_FAILURE ) )
-		{
+		} else {// if( ISEV(I2C_EVENT_SLAVE_ACK_FAILURE ) )
 			I2C_ClearFlag(I2C1, I2C_FLAG_AF);
 			I2C_GenerateSTART(I2C1, ENABLE);
 		}
@@ -536,11 +569,9 @@ void I2C1_EV_IRQHandler(void) {
  * @retval None
  */
 void DMA1_Channel6_IRQHandler(void) {
-	DMA_Channel_TypeDef *channel = (read_write) ? DMA1_Channel7 : DMA1_Channel6;
-	DMA_Cmd(channel, DISABLE);
+	DMA_Cmd(DMA1_Channel6, DISABLE);
 	DMA_ClearFlag(DMA1_FLAG_TC6);
 	DMA_ClearITPendingBit(DMA_IT_TC);
-	DMA_Cmd(channel, DISABLE);
 	// dma finished transferring to the I2C but the I2C did not finished yet
 }
 
