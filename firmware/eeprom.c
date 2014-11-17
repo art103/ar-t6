@@ -116,7 +116,7 @@ void eeprom_init_current_model() {
 	g_model.ppmFrameLength = 8;
 	g_model.ppmDelay = 6;
 	g_model.ppmNCH = 8;
-	// no need to initialize to zero
+	// already initialized to zero
 	//g_model.ppmStart = 0;
 	//g_model.pulsePol = 0;
 }
@@ -131,6 +131,8 @@ void eeprom_init_current_model() {
 void eeprom_load_current_model() {
 	if( g_eeGeneral.currModel >= MAX_MODELS )
 		g_eeGeneral.currModel = MAX_MODELS-1;
+	// prevent others to use model data as it may be invalid for a moment
+	g_modelInvalid = 1;
 	eeprom_read( model_address(g_eeGeneral.currModel), sizeof(g_model), (void*)&g_model);
 	uint16_t chksum = eeprom_calc_chksum((void*) &g_model, sizeof(g_model) - 2);
 	if (chksum != g_model.chkSum) {
@@ -142,6 +144,8 @@ void eeprom_load_current_model() {
 	// make sure the string is terminated, by all means!
 	g_model.name[sizeof(g_model.name) - 1] = 0;
 	currModel = g_eeGeneral.currModel;
+	// model is now valid (sane)
+	g_modelInvalid = 0;
 }
 
 

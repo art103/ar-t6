@@ -337,6 +337,7 @@ PACK(typedef struct t_ModelData {
 
 extern volatile EEGeneral g_eeGeneral;
 extern volatile ModelData g_model;
+extern volatile uint8_t g_modelInvalid;
 
 #endif
 /*eof*/

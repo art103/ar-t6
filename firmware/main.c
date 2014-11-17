@@ -34,6 +34,7 @@
 
 volatile EEGeneral  g_eeGeneral;
 volatile ModelData  g_model;
+volatile uint8_t g_modelInvalid = 1;
 uint8_t SlaveMode;		// Trainer Slave
 
 /**
@@ -71,9 +72,6 @@ int main(void)
 	lcd_init();
 	gui_init();
 
-	// Initialize the ADC / DMA
-	sticks_init();
-
 	// Initialize the EEPROM
 	eeprom_init();
 
@@ -98,6 +96,9 @@ int main(void)
 	sound_init();
 
 	mixer_init();
+
+	// Initialize the ADC / DMA
+	sticks_init();
 
 	// Start the radio output.
 	pulses_init();

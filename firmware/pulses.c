@@ -221,12 +221,16 @@ void pulses_setup(void)
 
 /**
   * @brief  Configure the PPM pulse data from g_chans.
-  * @note
+  * @note: TODO: very high potential for data corruption due to pointer arithmetic gone wild!
   * @param  proto: The radio protocol.
   * @retval None.
   */
 void pulses_setup_ppm( uint8_t proto )
 {
+	// bail out when model is in flux (read from eeprom) to avoid miscomputation of chanel#/start and hence pointer gone wild
+	if( g_modelInvalid )
+		return;
+
 	int16_t PPM_range;
 	uint8_t startChan = g_model.ppmStart;
 	uint8_t i;
@@ -235,7 +239,8 @@ void pulses_setup_ppm( uint8_t proto )
 	// Total frame length = 22500usec
 	// each pulse is 0.5..2.5ms long including a 300us stop tail
 	uint16_t *ptr = (proto == PROTO_PPM) ? pulses_1us.pword : &pulses_1us.pword[PULSES_WORD_SIZE/2] ;
-	uint8_t p = g_model.ppmNCH ; // Channels
+	uint8_t p = g_model.ppmNCH; // Channels
+
 	int32_t gap = 22500 + g_model.ppmFrameLength * 1000; // Minimum Framelen = 22.5 ms
 
 	p += startChan;
@@ -247,7 +252,11 @@ void pulses_setup_ppm( uint8_t proto )
 	}
 
 	PPM_range = g_model.extendedLimits ? PPM_LIMIT_EXTENDED : PPM_LIMIT_NORMAL;   // range of 0.7 - 2.3ms or  0.8 - 2.2ms
-	for (i = (proto == PROTO_PPM16) ? p-8 : startChan; i < p; i++)
+	uint8_t start = (proto == PROTO_PPM16) ? p-8 : startChan;
+	// restore sanity if model got corrupt to avoid wild pointer 'ptr'
+	if( start >= NUM_CHNOUT ) start = NUM_CHNOUT-1;
+	if( p >= NUM_CHNOUT ) p = NUM_CHNOUT-1;
+	for (i = start; i < p; i++)
 	{
 		// Get the channel and limit the range.
 		int32_t v = g_chans[i];	// -1024 - 1024
@@ -258,12 +267,12 @@ void pulses_setup_ppm( uint8_t proto )
 		// Channel
 		gap -= v;
 		position += v;
-		*ptr++ = position;
+		*ptr++ = position; // DANGER! if channels # are wrong *prt would run wild
 
 		// end-of-channel
 		gap -= PPM_STOP_LEN;
 		position += PPM_STOP_LEN;
-		*ptr++ = position;
+		*ptr++ = position; // DANGER! if channels # are wrong *prt would run wild
 	}
 
 	// Make sure there is at least 9ms end-of-frame gap
@@ -281,6 +290,9 @@ void pulses_setup_ppm( uint8_t proto )
 	}
 
 	*ptr = 0;
+	if( ptr >= &pulses_1us.pword[sizeof(pulses_1us.pword)/sizeof(pulses_1us.pword[0])])
+		// error, and now it's too late! this here is just so you can put a breakpoint
+		return;
 }
 
 /**

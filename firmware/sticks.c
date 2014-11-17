@@ -116,6 +116,7 @@ void sticks_init(void)
 	DMA_ITConfig(DMA1_Channel1, DMA_IT_TC, ENABLE);
 
 	task_register(TASK_PROCESS_STICKS, sticks_process);
+	task_schedule(TASK_PROCESS_STICKS, 0, 20);
 }
 
 /**
@@ -126,45 +127,13 @@ void sticks_init(void)
   */
 void sticks_process(uint32_t data)
 {
-	int i;
-
-	if (cal_state != CAL_OFF)
-	{
-		if (cal_state == CAL_LIMITS)
-		{
-			for (i=0; i<STICK_INPUT_CHANNELS; ++i)
-			{
-				if (adc_data[i] < g_eeGeneral.calData[i].min) g_eeGeneral.calData[i].min = adc_data[i];
-				if (adc_data[i] > g_eeGeneral.calData[i].max) g_eeGeneral.calData[i].max = adc_data[i];
-			}
-		}
-		else if (cal_state == CAL_CENTER)
-		{
-			// Set the stick centres.
-			for (i=0; i<STICKS_TO_CALIBRATE; ++i)
-			{
-				g_eeGeneral.calData[i].centre = adc_data[i];
-			}
-
-			// Set the remaining centres.
-			for (i=STICKS_TO_CALIBRATE; i<STICK_INPUT_CHANNELS; ++i)
-			{
-				g_eeGeneral.calData[i].centre = g_eeGeneral.calData[i].min + ((g_eeGeneral.calData[i].max - g_eeGeneral.calData[i].min) / 2);
-			}
-		}
-	}
-
-	gui_update(UPDATE_STICKS);
-
 	// Schedule another update.
+	// TODO: this should run in independent timer, say @ 50Hz or so (20ms)
+	// and not on a task that may be of jittered timing
 	ADC_SoftwareStartConvCmd(ADC1, ENABLE);
 
-	// Don't run the mixer if we're calibrating
-	if (cal_state == CAL_OFF)
-	{
-		// Run the mixer.
-		mixer_update();
-	}
+	gui_update(UPDATE_STICKS);
+	task_schedule(TASK_PROCESS_STICKS, 0, 20);
 }
 
 /**
@@ -267,5 +236,37 @@ void DMA1_Channel1_IRQHandler(void)
 		}
 	}
 
-	task_schedule(TASK_PROCESS_STICKS, 0, 20);
+	// Don't run the mixer if we're calibrating
+	if (cal_state == CAL_OFF)
+	{
+		if( !g_modelInvalid )
+			// Run the mixer.
+			mixer_update();
+	}
+	else // if (cal_state != CAL_OFF)
+	{
+		int i;
+		if (cal_state == CAL_LIMITS)
+		{
+			for (i=0; i<STICK_INPUT_CHANNELS; ++i)
+			{
+				if (adc_data[i] < g_eeGeneral.calData[i].min) g_eeGeneral.calData[i].min = adc_data[i];
+				if (adc_data[i] > g_eeGeneral.calData[i].max) g_eeGeneral.calData[i].max = adc_data[i];
+			}
+		}
+		else if (cal_state == CAL_CENTER)
+		{
+			// Set the stick centres.
+			for (i=0; i<STICKS_TO_CALIBRATE; ++i)
+			{
+				g_eeGeneral.calData[i].centre = adc_data[i];
+			}
+
+			// Set the remaining centres.
+			for (i=STICKS_TO_CALIBRATE; i<STICK_INPUT_CHANNELS; ++i)
+			{
+				g_eeGeneral.calData[i].centre = g_eeGeneral.calData[i].min + ((g_eeGeneral.calData[i].max - g_eeGeneral.calData[i].min) / 2);
+			}
+		}
+	}
 }
