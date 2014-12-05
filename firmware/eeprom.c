@@ -407,8 +407,10 @@ uint16_t eeprom_calc_chksum(void *buffer, uint16_t length) {
 void eeprom_process(uint32_t data) {
 	uint16_t chksum;
 
-	/* if (gui_get_layout() >= GUI_LAYOUT_MAIN1
-			&& gui_get_layout() <= GUI_LAYOUT_MAIN4) */
+	/* do not update eeprom when cal is in progress
+	 * it's changing the data on the fly (IRQ) and will cause spurious error messages
+	 */
+	if(gui_get_layout() != GUI_LAYOUT_STICK_CALIBRATION)
 	{
 		// see if general settings need to be saved
 		chksum = eeprom_calc_chksum((void*)&g_eeGeneral, sizeof(EEGeneral) - 2);
