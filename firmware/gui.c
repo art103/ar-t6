@@ -27,6 +27,7 @@
 #include "pulses.h"
 #include "gui.h"
 #include "myeeprom.h"
+#include "eeprom.h"
 #include "art6.h"
 #include "icons.h"
 #include "sound.h"
@@ -155,7 +156,7 @@ void gui_process(uint32_t data)
 {
 	bool full = FALSE;
 
-	// If we are currently displayig a popup,
+	// If we are currently displaying a popup,
 	// check the time and schedule a re-check.
 	// Also check keys to cancel the popup.
 	if (g_current_msg)
@@ -1023,6 +1024,7 @@ void gui_process(uint32_t data)
 				 */
 
 				lcd_write_string((char*)msg[GUI_HDG_MODELSEL + page], LCD_OP_CLR, FLAGS_NONE);
+				if( page == MOD_PAGE_SETUP ) lcd_write_int(g_eeGeneral.currModel, LCD_OP_CLR, FLAGS_NONE);
 				lcd_set_cursor(104, 0);
 				lcd_write_int(page+1, (g_menu_mode == MENU_MODE_PAGE)?LCD_OP_CLR:LCD_OP_SET, ALIGN_RIGHT);
 				lcd_set_cursor(110, 0);
@@ -1036,6 +1038,38 @@ void gui_process(uint32_t data)
 				{
 				case MOD_PAGE_SELECT:
 				{
+					list_limit = MAX_MODELS-1;
+					for (i=list_top; (i<list_top + LIST_ROWS) && (i <= list_limit); ++i)
+					{
+						const uint8_t line = (i-list_top+1) * 8;
+						LCD_OP op_list = LCD_OP_SET;
+						if ((g_menu_mode == MENU_MODE_LIST) && (i == list))
+						{
+							op_list = LCD_OP_CLR;
+						}
+						lcd_set_cursor(0, line);
+						lcd_write_string( g_eeGeneral.currModel == i ? "* " : "  ", op_list, FLAGS_NONE);
+						char name[MODEL_NAME_LEN];
+						name[0]='0' + i / 10;
+						name[1]='0' + i % 10;
+						name[2]=' ';
+						name[3]=0;
+						lcd_write_string(name, op_list, FLAGS_NONE);
+						eeprom_read_model_name(i, name);
+						lcd_write_string(name, op_list, FLAGS_NONE);
+						lcd_write_string(" ", LCD_OP_SET, FLAGS_NONE);
+					}
+					if (g_menu_mode == MENU_MODE_EDIT &&
+						(g_key_press & (KEY_OK|KEY_SEL)))
+					{
+						g_eeGeneral.currModel = list;
+						g_menu_mode = MENU_MODE_PAGE;
+						gui_navigate(GUI_LAYOUT_MODEL_MENU);
+					}
+				}
+				break;
+
+				case MOD_PAGE_SETUP:
 					list_limit = MOD_MENU_LIST1_LEN-1;
 					for (i=list_top; (i<list_top + LIST_ROWS) && (i <= list_limit); ++i)
 					{
@@ -1058,21 +1092,13 @@ void gui_process(uint32_t data)
 						lcd_write_string(" ", LCD_OP_SET, FLAGS_NONE);
 						switch (i)
 						{
-						// Model Number
-						GUI_CASE_COL( 0, 96, GUI_EDIT_INT(g_eeGeneral.currModel, 0, MAX_MODELS-1) )
-						GUI_CASE_COL( 1, 74, GUI_EDIT_STR(g_model.name) )
-						GUI_CASE_COL( 2, 96, GUI_EDIT_ENUM( g_model.tmrMode, 0, 5, timer_modes ))
-						GUI_CASE_COL( 3, 96, GUI_EDIT_ENUM( g_model.tmrDir, 0, 1, dir_labels ))
-						GUI_CASE_COL( 4, 96, GUI_EDIT_INT( g_model.tmrVal, 0, 3600 ))
-						GUI_CASE_COL( 5, 96, GUI_EDIT_ENUM( g_model.traineron, 0, 1, menu_on_off ))
+						GUI_CASE_COL( 0, 74, GUI_EDIT_STR(g_model.name) )
+						GUI_CASE_COL( 1, 96, GUI_EDIT_ENUM( g_model.tmrMode, 0, 5, timer_modes ))
+						GUI_CASE_COL( 2, 96, GUI_EDIT_ENUM( g_model.tmrDir, 0, 1, dir_labels ))
+						GUI_CASE_COL( 3, 96, GUI_EDIT_INT( g_model.tmrVal, 0, 3600 ))
+						GUI_CASE_COL( 4, 96, GUI_EDIT_ENUM( g_model.traineron, 0, 1, menu_on_off ))
 						}
-						//g_eeGeneral.currModel = (g_eeGeneral.currModel+1)%MAX_MODELS;
 					}
-				}
-				break;
-
-				case MOD_PAGE_SETUP:
-					// ToDo: Implement!
 					break;
 
 				case MOD_PAGE_HELI_SETUP:

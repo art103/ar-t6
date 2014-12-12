@@ -92,8 +92,6 @@ static uint16_t model_address(uint8_t modelNumber) {
 }
 
 
-
-
 /**
  * @brief  Initialize model data in global g_model
  * @note   current model is g_eeGeneral.currModel
@@ -121,8 +119,6 @@ void eeprom_init_current_model() {
 	//g_model.pulsePol = 0;
 }
 
-
-
 /**
  * @brief  Read current model into global g_model
  * @note   current model is g_eeGeneral.currModel
@@ -148,6 +144,17 @@ void eeprom_load_current_model() {
 	g_modelInvalid = 0;
 }
 
+/**
+ * @brief  Read given model's name into supplied buffer
+ * @param model - model number, 0..MAX_MODELS-1
+ * @param buf - buffer to read model into
+ * @retval None
+ */
+void eeprom_read_model_name(char model, char buf[MODEL_NAME_LEN]) {
+	 model = model < MAX_MODELS ? model : MAX_MODELS-1;
+	 eeprom_read( model_address(model)+offsetof(ModelData, name), MODEL_NAME_LEN, buf );
+	 buf[MODEL_NAME_LEN-1]=0;
+}
 
 /**
  * @brief  Read current model into global g_model if g_eeGeneral.currModel changed

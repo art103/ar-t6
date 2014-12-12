@@ -21,5 +21,6 @@
 void eeprom_init(void);
 void eeprom_load_current_model_if_changed();
 void eeprom_init_current_model();
+void eeprom_read_model_name(char model, char buf[]);
 
 #endif // _EEPROM_H

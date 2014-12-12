@@ -94,7 +94,7 @@ const char *msg[GUI_MSG_MAX] = {
 
 		// Headings (Model)
 		"MODELSEL",
-		"SETUP nn",
+		"SETUP ",
 		"HELI SETUP",
 		"EXPO/DR",
 		"MIXER",
@@ -133,7 +133,7 @@ const char *system_menu_list1[SYS_MENU_LIST1_LEN] = {
 };
 
 const char *model_menu_list1[MOD_MENU_LIST1_LEN] = {
-		"Model Number",
+//		"Model Number",
 		"Model Name",
 		"Timer Mode",
 		"Timer Direction",
