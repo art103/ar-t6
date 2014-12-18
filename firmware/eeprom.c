@@ -98,7 +98,7 @@ static uint16_t model_address(uint8_t modelNumber) {
  * @retval None
  */
 void eeprom_init_current_model() {
-	memset(&g_model, 0, sizeof(g_model));
+	memset((void*)&g_model, 0, sizeof(g_model));
 #if FRUGAL
 	g_model.name[0] = 'M';
 	g_model.name[1] = '0' + (g_eeGeneral.currModel / 10);
@@ -535,7 +535,7 @@ void I2C1_EV_IRQHandler(void) {
 			DMA_Cmd(channel, DISABLE);
 			DMA_ClearFlag(DMA1_FLAG_TC7);
 			DMA_ClearFlag(DMA1_FLAG_TC6);
-			DMA_Init(channel, &g_dmaInit);
+			DMA_Init(channel, (DMA_InitTypeDef*)&g_dmaInit);
 			I2C_DMALastTransferCmd(I2C1, ENABLE);
 			DMA_Cmd(channel, ENABLE);
 		}

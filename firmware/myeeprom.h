@@ -98,15 +98,22 @@ PACK(typedef struct t_EEGeneral {
     uint8_t   vBatCalib;
     int8_t    lightSw;
     TrainerData trainer;
+    uint8_t   stickMode;
+    uint8_t   inactivityTimer;
+    uint8_t   lightAutoOff;
+    int8_t    PPM_Multiplier;		// Used to increase PPM-IN resolution in x0.1 steps: (10+n)/10.
+    uint8_t   switchWarningStates;
+    int8_t		volume;
 //    uint8_t   view;
+    char      ownerName[GENERAL_OWNER_NAME_LEN];
+
+    //=== BEG == bit fields keep together for better packing
     uint8_t   disableThrottleWarning:1;
     uint8_t   disableSwitchWarning:1;
     uint8_t   disableMemoryWarning:1;
     uint8_t   beeperVal:3;
 //    uint8_t   reverseWarning:1;
     uint8_t   disableAlarmWarning:1;
-    uint8_t   stickMode;
-    uint8_t   inactivityTimer;
     uint8_t   throttleReversed:1;
     uint8_t   minuteBeep:1;
     uint8_t   preBeep:1;
@@ -115,9 +122,7 @@ PACK(typedef struct t_EEGeneral {
 //    uint8_t   disablePotScroll:1;
 //    uint8_t   disableBG:1;
 //    uint8_t   spare_filter ;		// No longer needed, left for eepe compatibility for now
-    uint8_t   lightAutoOff;
 //    uint8_t   templateSetup;  		//RETA order according to chout_ar array
-    int8_t    PPM_Multiplier;		// Used to increase PPM-IN resolution in x0.1 steps: (10+n)/10.
 //    uint8_t   unused1;
 //    uint8_t   unused2:4;
 //    uint8_t   hideNameOnSplash:1;
@@ -128,9 +133,6 @@ PACK(typedef struct t_EEGeneral {
 //    uint8_t   hapticStrength;
 //    uint8_t   speakerMode;
     uint8_t   lightOnStickMove:1;
-    char      ownerName[GENERAL_OWNER_NAME_LEN];
-    uint8_t   switchWarningStates;
-    int8_t		volume;
 //    uint8_t   res[3];
 //    uint8_t   crosstrim:1 ;
 //    uint8_t   rotateScreen:1 ;
@@ -138,6 +140,8 @@ PACK(typedef struct t_EEGeneral {
 //    uint8_t   SSD1306:1 ;
 //    uint8_t   spare1:3 ;
 //		uint8_t		stickReverse ;
+    //=== END === bit fields keep together for better packing
+
     uint16_t  chkSum;
 }) EEGeneral;
 
@@ -158,8 +162,8 @@ PACK(typedef struct t_ExpoData {
 PACK(typedef struct t_LimitData {
     int8_t  min;
     int8_t  max;
-    bool    reverse;
-    int16_t  offset;
+    bool    reverse:1;
+    int16_t  offset:15;
 }) LimitData;
 
 #define MLTPX_ADD  0
@@ -167,11 +171,13 @@ PACK(typedef struct t_LimitData {
 #define MLTPX_REP  2
 
 PACK(typedef struct t_MixData {
-    uint8_t destCh;            //        1..NUM_CHNOUT
     uint8_t srcRaw;            //
     int8_t  weight;
-    int8_t  swtch;
-    int8_t curve;             //0=symmetrisch 1=no neg 2=no pos
+    int8_t  sOffset;
+    /// keep the bitfields together for better packing
+    uint8_t destCh:4;            //        1..NUM_CHNOUT
+    int8_t  swtch:4;            // A,B,C,D - switch bitmask
+    int8_t  curve:4;             //0=symmetrisch 1=no neg 2=no pos,...6 then MAX_CURVES==4
     uint8_t delayUp:4;
     uint8_t delayDown:4;
     uint8_t speedUp:4;         // Servogeschwindigkeit aus Tabelle (10ms Cycle)
@@ -186,8 +192,7 @@ PACK(typedef struct t_MixData {
     uint8_t spareenableFmTrim:1;
 #endif
     uint8_t differential:1;
-    int8_t  sOffset;
-		uint8_t modeControl:5 ;
+	uint8_t modeControl:5 ;
     uint8_t res:3 ;
 }) MixData;
 
@@ -202,8 +207,8 @@ PACK(typedef struct t_CSwData { // Custom Switches data
 PACK(typedef struct t_CxSwData { // Extra Custom Switches data
     int8_t  v1; //input
     int8_t  v2; //offset
-    uint8_t func ;
-    int8_t andsw ;
+    uint8_t func:4;
+    int8_t andsw:4;
 }) CxSwData ;
 
 PACK(typedef struct t_SafetySwData { // Custom Switches data
@@ -212,13 +217,13 @@ PACK(typedef struct t_SafetySwData { // Custom Switches data
 		struct ss
 		{	
 	    int8_t  swtch:6;
-			uint8_t mode:2;
+		uint8_t mode:2;
     	int8_t  val;
 		} ss ;
 		struct vs
 		{
   		uint8_t vswtch:5 ;
-			uint8_t vmode:3 ; // ON, OFF, BOTH, 15Secs, 30Secs, 60Secs, Varibl
+		uint8_t vmode:3 ; // ON, OFF, BOTH, 15Secs, 30Secs, 60Secs, Varibl
     	uint8_t vval;
 		} vs ;
 	} opt ;
@@ -274,29 +279,33 @@ PACK(typedef struct t_ModelData {
 //    uint8_t   reserved_spare;  //used to be MDVERS - now depreciated
 //    uint8_t   modelVoice ;		// Index to model name voice (260+value)
     int8_t    tmrMode;              // timer trigger source -> off, abs, stk, stk%, sw/!sw, !m_sw/!m_sw
+    uint16_t  tmrVal;
+    int8_t    ppmNCH;
+    int8_t    ppmDelay;
+    int8_t    trimSw;
+    uint8_t   beepANACenter;        // 1<<0->A1.. 1<<6->A7
+
+    //=== BEG == bit fields keep together for better packing
     uint8_t   tmrDir:1;    //0=>Count Down, 1=>Count Up
     uint8_t   traineron:1;  // 0 disable trainer, 1 allow trainer
     uint8_t   t2throttle:1 ;  // Start timer2 using throttle
-    uint16_t  tmrVal;
     uint8_t   protocol:2;
 //    uint8_t   country:2 ;
 //    uint8_t   sub_protocol:2 ;
-    int8_t    ppmNCH;
     uint8_t   thrTrim:1;            // Enable Throttle Trim
 	uint8_t   xnumBlades:2;					// RPM scaling
 	uint8_t   mixTime:1 ;						// Scaling for slow/delay
     uint8_t   thrExpo:1;            // Enable Throttle Expo
 	uint8_t   ppmStart:3 ;					// Start channel for PPM
-    int8_t    trimInc;              // Trim Increments (0-4)
-    int8_t    ppmDelay;
-    int8_t    trimSw;
-    uint8_t   beepANACenter;        // 1<<0->A1.. 1<<6->A7
+    int8_t    trimInc:3;              // Trim Increments (0-4)
     uint8_t   pulsePol:1;
     uint8_t   extendedLimits:1;
     uint8_t   swashInvertELE:1;
     uint8_t   swashInvertAIL:1;
     uint8_t   swashInvertCOL:1;
     uint8_t   swashType:3;
+    //=== END == bit fields keep together for better packing
+
     uint8_t   swashCollectiveSource;
     uint8_t   swashRingValue;
     int8_t    ppmFrameLength;    		//0=22.5  (10msec-30msec) 0.5msec increments

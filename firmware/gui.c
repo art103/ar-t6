@@ -197,7 +197,7 @@ void gui_process(uint32_t data)
 
 			// Model Name
 			lcd_set_cursor(8, 0);
-			lcd_write_string(g_model.name, LCD_OP_SET, CHAR_2X);
+			lcd_write_string((char*)g_model.name, LCD_OP_SET, CHAR_2X);
 		}
 
 		full = TRUE;
@@ -1508,6 +1508,7 @@ static void gui_draw_stick_icon(STICK stick, uint8_t inverse)
 	case STICK_R_H: p = "\x0A\x0B\x0C"; break;
 	case STICK_R_V: p = "\x0D\x0E\x0F"; break;
 	case STICK_L_V: p = "\x10\x11\x12"; break;
+	default: break;
 	}
 	lcd_write_string(p, inverse ?  LCD_OP_CLR : LCD_OP_SET , CHAR_NOSPACE);
 }

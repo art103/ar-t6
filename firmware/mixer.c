@@ -222,12 +222,12 @@ int16_t expo(int16_t x, int16_t k)
     return neg? -y:y;
 }
 
-inline int16_t calc100toRESX(int8_t x)
+static inline int16_t calc100toRESX(int8_t x)
 {
     return ((x*41)>>2) - x/64;
 }
 
-inline int16_t calc1000toRESX(int16_t x)  // improve calc time by Pat MacKenzie
+static inline int16_t calc1000toRESX(int16_t x)  // improve calc time by Pat MacKenzie
 {
     int16_t y = x>>5;
     x+=y;
