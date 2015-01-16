@@ -114,6 +114,13 @@ void eeprom_init_current_model() {
 	g_model.ppmFrameLength = 8;
 	g_model.ppmDelay = 6;
 	g_model.ppmNCH = 8;
+	for(int mx=0; mx < 4; mx++)
+	{
+		MixData* md = &g_model.mixData[mx];
+		md->destCh = mx+1;
+		md->srcRaw = mx+1;
+		md->mltpx = MLTPX_REP;
+	}
 	// already initialized to zero
 	//g_model.ppmStart = 0;
 	//g_model.pulsePol = 0;
@@ -267,9 +274,9 @@ void eeprom_init(void) {
 
 	// Read the configuration data out of EEPROM.
 	eeprom_read(0, sizeof(EEGeneral), (void*)&g_eeGeneral);
-	uint16_t chksum =
-			eeprom_calc_chksum((void*)&g_eeGeneral, sizeof(EEGeneral) - 2);
-	if (chksum != g_eeGeneral.chkSum) {
+	uint16_t chksum = eeprom_calc_chksum((void*)&g_eeGeneral, sizeof(EEGeneral) - 2);
+	if (chksum != g_eeGeneral.chkSum)
+	{
 		gui_popup(GUI_MSG_EEPROM_INVALID, 0);
 		g_eeGeneral.ownerName[sizeof(g_eeGeneral.ownerName) - 1] = 0;
 		g_eeGeneral.contrast = (LCD_CONTRAST_MIN+LCD_CONTRAST_MAX)/2;

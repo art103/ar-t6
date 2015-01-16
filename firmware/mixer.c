@@ -517,7 +517,7 @@ static void perOut(volatile int16_t *chanOut, uint8_t att)
         uint8_t swTog;
 
         //swOn[i]=false;
-        if(!keypad_get_switch(md->swtch)){ // switch on?  if no switch selected => on
+        if(md->swtch && !keypad_get_switch(md->swtch)){ // switch on?  if no switch selected => on
             swTog = swOn[i];
             swOn[i] = 0;
             //            if(md->srcRaw==MIX_MAX) act[i] = 0;// MAX back to 0 for slow up
@@ -671,15 +671,15 @@ static void perOut(volatile int16_t *chanOut, uint8_t att)
 
         //========== MULTIPLEX ===============
         int32_t dv = (int32_t)v*md->weight;
-				int32_t *ptr ;			// Save calculating address several times
-				ptr = &chans[md->destCh-1] ;
+        // Save calculating address several times
+        int32_t *ptr = &chans[md->destCh-1] ;
         switch((uint8_t)md->mltpx){
         case MLTPX_REP:
             *ptr = dv;
             break;
         case MLTPX_MUL:
-						dv /= 100 ;
-						dv *= *ptr ;
+        	dv /= 100 ;
+			dv *= *ptr ;
             dv /= RESXl;
             *ptr = dv ;
 //            chans[md->destCh-1] *= dv/100l;
