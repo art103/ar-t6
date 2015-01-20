@@ -40,7 +40,7 @@
 // Message Popup
 #define MSG_X	6
 #define MSG_Y	8
-#define MSG_H	40
+#define MSG_H	46
 
 // Stick boxes
 #define BOX_W	22
@@ -66,6 +66,13 @@ static volatile GUI_LAYOUT g_new_layout = GUI_LAYOUT_NONE;
 static GUI_LAYOUT g_current_layout = GUI_LAYOUT_SPLASH;
 static volatile GUI_MSG g_new_msg = GUI_MSG_NONE;
 static GUI_MSG g_current_msg = GUI_MSG_NONE;
+
+static char g_popup_selected_line = 0;
+static char g_popup_lines = 0;
+#define GUI_POPUP_RESULT_NONE 0
+#define GUI_POPUP_RESULT_CANCEL -1
+static char g_popup_result = GUI_POPUP_RESULT_NONE;
+
 static volatile uint32_t g_key_press = KEY_NONE;
 static volatile uint32_t g_gui_timeout = 0;
 static volatile uint8_t g_update_type = 0;
@@ -157,12 +164,37 @@ void gui_process(uint32_t data) {
 	// check the time and schedule a re-check.
 	// Also check keys to cancel the popup.
 	if (g_current_msg) {
-		if ((g_gui_timeout != 0 && system_ticks >= g_gui_timeout)
-				|| (g_key_press & (KEY_OK | KEY_CANCEL | KEY_SEL))) {
+		char closeit = (g_gui_timeout != 0 && system_ticks >= g_gui_timeout);
+		char update = g_gui_timeout != 0;
+		if( g_update_type & UPDATE_KEYPRESS )
+		{
+			if( g_popup_selected_line && (g_key_press & (KEY_LEFT|KEY_RIGHT)) )
+			{
+				if( g_key_press & KEY_LEFT ) g_popup_selected_line--;
+				if( g_key_press & KEY_RIGHT ) g_popup_selected_line++;
+				if( g_popup_selected_line < 1 ) g_popup_selected_line = 1;
+				if( g_popup_selected_line > g_popup_lines ) g_popup_selected_line = g_popup_lines;
+				g_new_msg = g_current_msg;
+				g_current_msg = 0;
+				update = 1;
+				g_key_press = KEY_NONE;
+			}
+			if ( (g_key_press & (KEY_OK | KEY_CANCEL | KEY_SEL)) )
+			{
+				closeit = 1;
+				if( g_key_press & KEY_CANCEL )
+					g_popup_result = GUI_POPUP_RESULT_CANCEL;
+				else
+					g_popup_result = g_popup_selected_line ? g_popup_selected_line : 1;
+			}
+		}
+		if( closeit )
+		{
 			g_gui_timeout = 0;
 			g_current_msg = 0;
 			g_new_layout = g_current_layout;
-		} else {
+		}
+		else {
 			task_schedule(TASK_PROCESS_GUI, UPDATE_MSG, 40);
 			return;
 		}
@@ -210,7 +242,8 @@ void gui_process(uint32_t data) {
 				MSG_Y + MSG_H - 2, LCD_OP_SET, FLAGS_NONE);
 		// Draw the message
 		lcd_set_cursor(MSG_X + 4, MSG_Y + 4);
-		lcd_draw_message(msg[g_new_msg], LCD_OP_SET);
+		g_popup_lines = lcd_draw_message(msg[g_new_msg], LCD_OP_SET, LCD_OP_CLR,
+				                         g_popup_selected_line);
 
 		g_new_msg = GUI_MSG_NONE;
 
@@ -469,7 +502,7 @@ void gui_process(uint32_t data) {
 
 		// Clear the screen.
 		lcd_draw_rect(0, 0, LCD_WIDTH - 1, LCD_HEIGHT - 1, LCD_OP_CLR,
-				RECT_FILL);
+				      RECT_FILL);
 		lcd_set_cursor(0, 0);
 
 		if (g_key_press & KEY_LEFT) {
@@ -1045,7 +1078,7 @@ void gui_process(uint32_t data) {
 
 			case SYS_PAGE_CAL:
 				lcd_set_cursor(5, 16);
-				lcd_draw_message(msg[GUI_MSG_CAL_OK_START], LCD_OP_SET);
+				lcd_draw_message(msg[GUI_MSG_CAL_OK_START], LCD_OP_SET, 0, 0);
 
 				if (g_update_type & UPDATE_STICKS) {
 					gui_show_sticks();
@@ -1088,7 +1121,6 @@ void gui_process(uint32_t data) {
 			 */
 			switch (page) {
 			case MOD_PAGE_SELECT: {
-				static enum { STATE_SELECT, STATE_RESET } state = STATE_SELECT;
 				list_limit = MAX_MODELS - 1;
 				for (i = list_top;
 						(i < list_top + LIST_ROWS) && (i <= list_limit); ++i)
@@ -1111,36 +1143,34 @@ void gui_process(uint32_t data) {
 					lcd_write_string(name, op_list, FLAGS_NONE);
 					lcd_write_string(" ", LCD_OP_SET, FLAGS_NONE);
 				}
-				if( state == STATE_SELECT )
+				// check if popup was finished, if so the result would show up
+				char popupRes = gui_popup_get_result();
+				if( popupRes )
 				{
-					if( g_menu_mode == MENU_MODE_EDIT )
+					// "preset" popup was answered "OK" so preset the model
+					if( popupRes > 0 )
 					{
-						if( g_key_press & KEY_OK )
+						g_eeGeneral.currModel = list;
+						eeprom_init_current_model();
+					}
+				}
+				else
+				{
+					if( g_key_press & KEY_MENU )
+					{
+						g_eeGeneral.currModel = list;
+						gui_popup(GUI_MSG_OK_TO_RESET_MODEL,0);
+					}
+					else if( g_menu_mode == MENU_MODE_EDIT )
+					{
+						// select the model to use
+						if( g_key_press & (KEY_SEL|KEY_OK) )
 						{
 							g_eeGeneral.currModel = list;
 							g_menu_mode = MENU_MODE_PAGE;
 							gui_navigate(GUI_LAYOUT_MODEL_MENU);
 						}
-						else if( g_key_press & KEY_MENU )
-						{
-							state = STATE_RESET;
-							gui_popup(GIO_MSG_OK_TO_RESET_MODEL,0);
-						}
 					}
-				}
-				else
-				{
-					if( g_key_press & KEY_OK )
-					{
-						g_eeGeneral.currModel = list;
-						eeprom_init_current_model();
-						state=STATE_SELECT;
-					}
-					else if( g_key_press & KEY_CANCEL )
-					{
-						state=STATE_SELECT;
-					}
-
 				}
 			}
 			break;
@@ -1188,6 +1218,8 @@ void gui_process(uint32_t data) {
 				break;
 
 			case MOD_PAGE_MIXER:
+			{
+				static enum { STATE_SELECT, STATE_POPUP } state = STATE_SELECT;
 				list_limit = MAX_MODELS - 1;
 				for (i = list_top;
 						(i < list_top + LIST_ROWS) && (i <= list_limit); ++i)
@@ -1215,7 +1247,31 @@ void gui_process(uint32_t data) {
 					lcd_write_string(" ", op_list, FLAGS_NONE);
 					lcd_write_int(g_model.mixData[i].srcRaw,op_list,FLAGS_NONE);
 				}
-				break;
+				// if we were in the popup then the result would show up once
+				char popupRes = gui_popup_get_result();
+				if( popupRes )
+				{
+					if( popupRes > 0 )
+					{
+						// todo - handle selected line: Insert,Delete,Copy,Paste
+					}
+					//state = STATE_SELECT;
+					//g_menu_mode = MENU_MODE_LIST;
+					//gui_navigate(GUI_LAYOUT_MODEL_MENU);
+				}
+				else
+				{
+					if( g_menu_mode == MENU_MODE_EDIT )
+					{
+						if( g_key_press & KEY_MENU )
+						{
+							state = STATE_POPUP;
+							gui_popup_select(GUI_MSG_ROW_MENU);
+						}
+					}
+				}
+			}
+			break;
 
 			case MOD_PAGE_LIMITS:
 				// ToDo: Implement!
@@ -1265,7 +1321,7 @@ void gui_process(uint32_t data) {
 			state = CAL_LIMITS;
 			sticks_calibrate(state);
 			lcd_set_cursor(5, 0);
-			lcd_draw_message(msg[GUI_MSG_CAL_MOVE_EXTENTS], LCD_OP_SET);
+			lcd_draw_message(msg[GUI_MSG_CAL_MOVE_EXTENTS], LCD_OP_SET, 0, 0);
 		}
 
 		if ((g_update_type & UPDATE_STICKS) != 0) {
@@ -1279,11 +1335,11 @@ void gui_process(uint32_t data) {
 				if (state == CAL_LIMITS) {
 					state = CAL_CENTER;
 					sticks_calibrate(CAL_CENTER);
-					lcd_draw_message(msg[GUI_MSG_CAL_CENTRE], LCD_OP_SET);
+					lcd_draw_message(msg[GUI_MSG_CAL_CENTRE], LCD_OP_SET,0,0);
 				} else if (state == CAL_CENTER) {
 					state = CAL_OFF;
 					sticks_calibrate(CAL_OFF);
-					lcd_draw_message(msg[GUI_MSG_OK_CANCEL], LCD_OP_SET);
+					lcd_draw_message(msg[GUI_MSG_OK_CANCEL], LCD_OP_SET,0,0);
 				} else {
 					// ToDo: Write the calibration data into EEPROM.
 					// eeprom_set_data(EEPROM_ADC_CAL, cal_data);
@@ -1351,12 +1407,66 @@ void gui_navigate(GUI_LAYOUT layout) {
 void gui_popup(GUI_MSG msg, int16_t timeout) {
 	g_new_msg = msg;
 	g_current_msg = 0;
+	g_popup_selected_line = 0;
+	g_popup_result = GUI_POPUP_RESULT_NONE;
 	if (timeout == 0)
 		g_gui_timeout = 0;
 	else
 		g_gui_timeout = system_ticks + timeout;
 
 	task_schedule(TASK_PROCESS_GUI, UPDATE_MSG, 0);
+}
+
+
+/**
+ * @brief  Display the requested message as multiple line, one to be selected..
+ * @note   The location and translation will be specific to the current state.
+ * @retval None
+ */
+void gui_popup_select(GUI_MSG msg) {
+	g_new_msg = msg;
+	g_current_msg = 0;
+	g_popup_selected_line = 1;
+	g_popup_result = GUI_POPUP_RESULT_NONE;
+	g_gui_timeout = 0;
+	task_schedule(TASK_PROCESS_GUI, UPDATE_MSG, 0);
+}
+
+/**
+ * @brief  Returns result of a popup and clears the result (single time use)
+ * @note   Call only once as it will set the result the NONE
+ * @retval result of GUI popup - NONE(0); CANCEL(-1), 1 or selected line # for popup_select
+ */
+char gui_popup_get_result() {
+	char res = g_popup_result;
+	g_popup_result = GUI_POPUP_RESULT_NONE;
+	return res;
+}
+
+/**
+ * @brief  Display the requested message as multiple line, one to be selected..
+ * @note   The location and translation will be specific to the current state.
+ * @param  selectedLine line - initial selected line
+ * @retval None
+ */
+char gui_popup_select_onkeypress(GUI_MSG msg) {
+	if( g_key_press & (KEY_OK|KEY_SEL) )
+	{
+		return g_popup_selected_line;
+	}
+	if( g_key_press & KEY_CANCEL )
+	{
+		return -1;
+	}
+	if( g_key_press & KEY_LEFT ) g_popup_selected_line--;
+	if( g_key_press & KEY_RIGHT ) g_popup_selected_line++;
+	if( g_popup_selected_line < 1 ) g_popup_selected_line = 1;
+	if( g_popup_selected_line > g_popup_lines ) g_popup_selected_line = g_popup_lines;
+	g_new_msg = msg;
+	g_current_msg = 0;
+	g_gui_timeout = 0;
+	task_schedule(TASK_PROCESS_GUI, UPDATE_MSG, 0);
+	return 0;
 }
 
 /**

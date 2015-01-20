@@ -554,55 +554,49 @@ void lcd_draw_rect(uint8_t x1, uint8_t y1, uint8_t x2, uint8_t y2, LCD_OP op, ui
   * @note	Starts at the cursor and uses the x offset as a margin.
   * @param  msg: ASCII message to write
   * @param  op: LCD_OP
-  * @retval None
+  * @param: op2: LCD_OP for selected line if any
+  * @param: selected line or 0 for none
+  * @retval lines drawed
   */
-void lcd_draw_message(const char *msg, LCD_OP op)
+char lcd_draw_message(const char *msg, LCD_OP op, LCD_OP op2, char selectedLine)
 {
-	int width = (LCD_WIDTH - 2*cursor_x) / (CHAR_WIDTH + 1);
-	char line_buffer[LCD_WIDTH / 6];
+	char line = 1;
+	const int width = (LCD_WIDTH - 2*cursor_x) / (CHAR_WIDTH + 1);
+	char line_buffer[LCD_WIDTH / (CHAR_WIDTH + 1)];
 	int nchars;
 	const char *ptr = msg;
-	const char *needle1 = ptr;
-	const char *needle2;
 	int x = cursor_x;
 
-	// Iterate through the string to find wrap points.
-	while (ptr < msg + strlen(msg))
+	// Iterate through the string to print it
+	while (*ptr)
 	{
-		needle2 = ptr;
-		for (needle1 = ptr; needle2 != 0; )
+		const char *p;
+		const char *pspace = 0;
+		// find next wrap point
+		for (p = ptr; *p ; ++p )
 		{
-			needle2 = strchr(needle1, ' ');
-			if (needle2)
+			// remember last place with space
+			if( *p == ' ' ) pspace = p;
+			// out of width so it's a break place
+			if( p-ptr > width )
 			{
-				if (needle2 - ptr < width)
-				{
-					needle1 = needle2 + 1;
-				}
-				else
-					break;
+				p = pspace ? pspace : p;
+				break;
 			}
-			else
+			// new line - must break
+			if( *p == '\n' )
 			{
-				if (msg + strlen(msg) - ptr < width)
-				{
-					needle1 = msg + strlen(msg);
-				}
 				break;
 			}
 		}
-
-		// Draw the line.
-		nchars = needle1 - ptr;
-		// Discard the trailing space if present
-		if (*(needle1-1) == ' ')
-			nchars--;
+		nchars = p - ptr;
 		memcpy(line_buffer, ptr, nchars);
 		line_buffer[nchars] = 0;
 		cursor_x = x + (width - nchars) * (CHAR_WIDTH + 1) / 2;
-		lcd_write_string(line_buffer, op, FLAGS_NONE);
+		lcd_write_string(line_buffer, line == selectedLine ? op2 : op, FLAGS_NONE);
 		cursor_y += (CHAR_HEIGHT + 1);
-
-		ptr = needle1;
+		line++;
+		ptr = *p ? p+1 : p;
 	}
+	return line-1;
 }

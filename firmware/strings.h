@@ -23,8 +23,7 @@
 #define SYS_MENU_LIST1_LEN	22
 #define MOD_MENU_LIST1_LEN	5
 
-typedef enum
-{
+typedef enum {
 	GUI_MSG_NONE = 0,
 	GUI_MSG_CAL_OK_START,
 	GUI_MSG_CAL_MOVE_EXTENTS,
@@ -34,7 +33,8 @@ typedef enum
 	GUI_MSG_OK_CANCEL,
 	GUI_MSG_ZERO_THROTTLE,
 	GUI_MSG_EEPROM_INVALID,
-	GIO_MSG_OK_TO_RESET_MODEL,
+	GUI_MSG_OK_TO_RESET_MODEL,
+	GUI_MSG_ROW_MENU,
 
 	// Headings (System Menu)
 	GUI_HDG_RADIO_SETUP,
@@ -58,20 +58,14 @@ typedef enum
 	GUI_HDG_EDIT_MIX,
 	GUI_HDG_CURVE_EDIT,
 
-
 	GUI_MSG_MAX,
 } GUI_MSG;
 
-typedef enum _menu_mode
-{
-	MENU_MODE_PAGE = 0,
-	MENU_MODE_LIST,
-	MENU_MODE_EDIT,
-	MENU_MODE_EDIT_S
+typedef enum _menu_mode {
+	MENU_MODE_PAGE = 0, MENU_MODE_LIST, MENU_MODE_EDIT, MENU_MODE_EDIT_S
 } MENU_MODE;
 
-enum _menu_page
-{
+enum _menu_page {
 	SYS_PAGE_SETUP = 0,
 	SYS_PAGE_TRAINER,
 	SYS_PAGE_VERSION,
@@ -80,8 +74,7 @@ enum _menu_page
 	SYS_PAGE_CAL,
 };
 
-enum _model_page
-{
+enum _model_page {
 	MOD_PAGE_SELECT = 0,
 	MOD_PAGE_SETUP,
 	MOD_PAGE_HELI_SETUP,
@@ -96,8 +89,7 @@ enum _model_page
 	MOD_PAGE_CURVE_EDIT,
 };
 
-enum _mix_mode
-{
+enum _mix_mode {
 	MIX_MODE_OFF,
 	MIX_MODE_ADD,
 	MIX_MODE_MULTIPLY,
@@ -105,19 +97,11 @@ enum _mix_mode
 	MIX_MODE_MAX
 };
 
-enum _sources
-{
-	SRC_HALF = 0,
-	SRC_FULL,
-	SRC_CYC,
-	SRC_PPM,
-	SRC_MIX,
-	SRC_TRN,
-	SRC_MAX
+enum _sources {
+	SRC_HALF = 0, SRC_FULL, SRC_CYC, SRC_PPM, SRC_MIX, SRC_TRN, SRC_MAX
 };
 
-enum _chan_order
-{
+enum _chan_order {
 	CHAN_ORDER_ATER = 0,
 	CHAN_ORDER_AETR,
 	CHAN_ORDER_RTEA,
@@ -125,15 +109,11 @@ enum _chan_order
 	CHAN_ORDER_MAX,
 };
 
-enum _menu_beeper
-{
-	BEEPER_SILENT = 0,
-	BEEPER_NOKEY,
-	BEEPER_NORMAL,
-	BEEPER_MAX
+enum _menu_beeper {
+	BEEPER_SILENT = 0, BEEPER_NOKEY, BEEPER_NORMAL, BEEPER_MAX
 };
 
-extern const char *switches[NUM_SWITCHES+1];
+extern const char *switches[NUM_SWITCHES + 1];
 extern const char *sticks[NUM_STICKS];
 extern const char *pots[NUM_POTS];
 extern const char *sources[SRC_MAX];

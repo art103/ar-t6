@@ -63,7 +63,7 @@ void lcd_write_int(int32_t val, LCD_OP op, uint16_t flags);
 void lcd_write_hex(uint32_t val, LCD_OP op, uint16_t flags);
 void lcd_draw_line(uint8_t x1, uint8_t y1, uint8_t x2, uint8_t y2, LCD_OP op);
 void lcd_draw_rect(uint8_t x1, uint8_t y1, uint8_t x2, uint8_t y2, LCD_OP op, uint16_t flags);
-void lcd_draw_message(const char *msg, LCD_OP op);
+char lcd_draw_message(const char *msg, LCD_OP op, LCD_OP op2, char selectedLine);
 
 extern uint8_t lcd_buffer[LCD_WIDTH * LCD_HEIGHT / 8];
 

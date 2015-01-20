@@ -83,7 +83,8 @@ const char *msg[GUI_MSG_MAX] = {
 		"OK:Save Cancel:Abort",
 		"Please zero throttle to continue.",
 		"Calibration data invalid, please calibrate the sticks.",
-		"OK to reset the model?",
+		"OK to preset the model?",
+		"Preset\nInsert\nDelete\nCopy\nPaste\n",
 
 		// Headings (System)
 		"RADIO SETUP",
