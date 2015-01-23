@@ -80,6 +80,7 @@ static volatile uint8_t g_update_type = 0;
 static GUI_LAYOUT g_main_layout = GUI_LAYOUT_MAIN1;
 static MENU_MODE g_menu_mode = MENU_MODE_PAGE;
 static int8_t g_menu_mode_dir = 1;
+static int8_t g_edit_item = 0;
 
 static void gui_show_sticks(void);
 static void gui_show_switches(void);
@@ -1219,11 +1220,121 @@ void gui_process(uint32_t data) {
 
 			case MOD_PAGE_MIXER:
 			{
-				static enum { STATE_SELECT, STATE_POPUP } state = STATE_SELECT;
-				list_limit = MAX_MODELS - 1;
+				list_limit = MAX_MIXERS - 1;
 				for (i = list_top;
 						(i < list_top + LIST_ROWS) && (i <= list_limit); ++i)
 				{
+					const MixData* const mx = &g_model.mixData[i];
+					const uint8_t line = (i - list_top + 1) * 8;
+					lcd_set_cursor(0, line);
+					LCD_OP op_list = LCD_OP_SET;
+					LCD_OP op_item = LCD_OP_SET;
+					uint8_t edit = 0;
+					if ((g_menu_mode == MENU_MODE_LIST) && (i == list)) {
+						op_list = LCD_OP_CLR;
+					} else if ((g_menu_mode == MENU_MODE_EDIT
+							|| g_menu_mode == MENU_MODE_EDIT_S)
+							&& (i == list)) {
+						edit = 1;
+						op_item = LCD_OP_CLR;
+					}
+					if(i==0 || mx->destCh && g_model.mixData[i-1].destCh!=mx->destCh )
+					{
+						char s[4];
+						s[0] = 'C';
+						s[1] = 'H';
+						s[2] = '0' + mx->destCh;
+						s[3] = 0;
+						lcd_write_string(s, op_list, FLAGS_NONE);
+					}
+					else
+					{
+						lcd_write_string(mix_mode[mx->destCh ? mx->mltpx : 0], op_list, FLAGS_NONE);
+					}
+					lcd_set_cursor(4*6, line);
+
+					lcd_write_int(mix_src[mx->srcRaw], op_list, FLAGS_NONE);
+					lcd_write_string(" ", op_list, FLAGS_NONE);
+					lcd_write_int(mx->weight,op_list,FLAGS_NONE);
+					lcd_write_string(" ", op_list, FLAGS_NONE);
+					lcd_write_string(switches[mx->swtch], op_list, FLAGS_NONE);
+				}
+				// if we were in the popup then the result would show up, once
+				char popupRes = gui_popup_get_result();
+				if( popupRes )
+				{
+					static char g_copyRow = -1;
+					// todo - handle selected line: Preset, Insert, Delete, Copy, Paste
+					switch( popupRes )
+					{
+					// preset
+					case 1:
+
+						break;
+					// insert (duplicate?)
+					case 2:
+						memmove(&g_model.mixData[list+1],&g_model.mixData[list],(MAX_MIXERS-list-1)*sizeof(MixData));
+						/*
+						for(int n = MAX_MIXERS-2; n>i; --n)
+						{
+							g_model.mixData[n+1] = g_model.mixData[n];
+						}
+						*/
+						break;
+					// delete
+					case 3:
+						memmove(&g_model.mixData[list],&g_model.mixData[list+1],(MAX_MIXERS-list-1)*sizeof(MixData));
+						/*
+						for(int n = list; n <= MAX_MIXERS-2; ++n)
+						{
+							g_model.mixData[n] = g_model.mixData[n+1];
+						}
+						*/
+						break;
+						// copy
+					case 4:
+						g_copyRow = list;
+						break;
+						// paste
+					case 5:
+						if( g_copyRow >=0 )
+						{
+							g_model.mixData[list] = g_model.mixData[g_copyRow];
+						}
+						break;
+					default:
+						// canceled
+						break;
+					}
+				}
+				else
+				{
+					if( g_menu_mode == MENU_MODE_EDIT )
+					{
+						if( g_key_press & KEY_MENU )
+						{
+							gui_popup_select(GUI_MSG_ROW_MENU);
+						}
+						if( g_key_press & KEY_OK )
+						{
+							g_edit_item = list;
+							g_menu_mode = MENU_MODE_LIST;
+							page = MOD_PAGE_MIX_EDIT;
+							list = 0;
+							list_top = 0;
+						}
+					}
+				}
+			}
+			break;
+
+			case MOD_PAGE_LIMITS:
+				// ToDo: Implement edit
+				list_limit = NUM_CHNOUT - 1;
+				for (i = list_top;
+						(i < list_top + LIST_ROWS) && (i <= list_limit); ++i)
+				{
+					const LimitData* const p = &g_model.limitData[i];
 					const uint8_t line = (i - list_top + 1) * 8;
 					lcd_set_cursor(0, line);
 					LCD_OP op_list = LCD_OP_SET;
@@ -1238,47 +1349,57 @@ void gui_process(uint32_t data) {
 						op_item = LCD_OP_CLR;
 					}
 					char s[4];
-					s[0] = '0' + i / 10;
-					s[1] = '0' + i % 10;
-					s[2] = ' ';
+					s[0] = 'C';
+					s[1] = 'H';
+					s[2] = '1' + i;
 					s[3] = 0;
 					lcd_write_string(s, op_list, FLAGS_NONE);
-					lcd_write_int(g_model.mixData[i].destCh,op_list,FLAGS_NONE);
 					lcd_write_string(" ", op_list, FLAGS_NONE);
-					lcd_write_int(g_model.mixData[i].srcRaw,op_list,FLAGS_NONE);
+					lcd_write_int(p->offset,op_list,FLAGS_NONE);
+					lcd_write_string(" ", op_list, FLAGS_NONE);
+					lcd_write_int(p->min,op_list,FLAGS_NONE);
+					lcd_write_string(" ", op_list, FLAGS_NONE);
+					lcd_write_int(p->max,op_list,FLAGS_NONE);
+					lcd_write_string(" ", op_list, FLAGS_NONE);
+					lcd_write_string(p->reverse?"INV":"---", op_list, FLAGS_NONE);
 				}
-				// if we were in the popup then the result would show up once
-				char popupRes = gui_popup_get_result();
-				if( popupRes )
-				{
-					if( popupRes > 0 )
-					{
-						// todo - handle selected line: Insert,Delete,Copy,Paste
-					}
-					//state = STATE_SELECT;
-					//g_menu_mode = MENU_MODE_LIST;
-					//gui_navigate(GUI_LAYOUT_MODEL_MENU);
-				}
-				else
-				{
-					if( g_menu_mode == MENU_MODE_EDIT )
-					{
-						if( g_key_press & KEY_MENU )
-						{
-							state = STATE_POPUP;
-							gui_popup_select(GUI_MSG_ROW_MENU);
-						}
-					}
-				}
-			}
-			break;
-
-			case MOD_PAGE_LIMITS:
-				// ToDo: Implement!
 				break;
 
 			case MOD_PAGE_CURVES:
-				// ToDo: Implement!
+				// ToDo: Implement Edit
+				list_limit = MAX_CURVE5 + MAX_CURVE9 - 1;
+				for (i = list_top;
+					 (i < list_top + LIST_ROWS) && (i <= list_limit); ++i)
+				{
+					const uint8_t line = (i - list_top + 1) * 8;
+					lcd_set_cursor(0, line);
+					LCD_OP op_list = LCD_OP_SET;
+					LCD_OP op_item = LCD_OP_SET;
+					uint8_t edit = 0;
+					if ((g_menu_mode == MENU_MODE_LIST) && (i == list)) {
+						op_list = LCD_OP_CLR;
+					} else if ((g_menu_mode == MENU_MODE_EDIT
+							|| g_menu_mode == MENU_MODE_EDIT_S)
+							&& (i == list)) {
+						edit = 1;
+						op_item = LCD_OP_CLR;
+					}
+					char s[5];
+					s[0] = 'C';
+					s[1] = 'V';
+					if( i < 10 )
+					{
+						s[2] = '1' + i;
+						s[3] = 0;
+					}
+					else
+					{
+						s[2] = '1' + i / 10;
+						s[3] = '1' + i % 10;
+						s[4] = 0;
+					}
+					lcd_write_string(s, op_list, FLAGS_NONE);
+				}
 				break;
 
 			case MOD_PAGE_CUST_SW:
@@ -1297,6 +1418,41 @@ void gui_process(uint32_t data) {
 
 			case MOD_PAGE_MIX_EDIT:
 				// ToDo: Implement!
+				list_limit = MIXER_EDIT_LIST1_LEN - 1;
+				for (i = list_top;
+						(i < list_top + LIST_ROWS) && (i <= list_limit); ++i) {
+					const uint8_t line = (i - list_top + 1) * 8;
+					LCD_OP op_list = LCD_OP_SET;
+					LCD_OP op_item = LCD_OP_SET;
+					uint8_t edit = 0;
+					if ((g_menu_mode == MENU_MODE_LIST) && (i == list)) {
+						op_list = LCD_OP_CLR;
+					} else if ((g_menu_mode == MENU_MODE_EDIT
+							|| g_menu_mode == MENU_MODE_EDIT_S)
+							&& (i == list)) {
+						edit = 1;
+						op_item = LCD_OP_CLR;
+					}
+					lcd_set_cursor(0, line);
+					lcd_write_string((char*) mixer_edit_list1[i], op_list, FLAGS_NONE);
+					lcd_write_string(" ", LCD_OP_SET, FLAGS_NONE);
+					MixData* const mx = &g_model.mixData[g_edit_item];
+					switch (i) {
+						GUI_CASE_COL(0, 96, GUI_EDIT_ENUM( mx->srcRaw, 0, MIX_SRC_MAX-1, mix_src ));
+						GUI_CASE_COL(1, 96, GUI_EDIT_INT( mx->sOffset, -125, 125 ));
+						GUI_CASE_COL(2, 96, GUI_EDIT_INT( mx->weight, -125, 125 ));
+						GUI_CASE_COL(3, 96, GUI_EDIT_ENUM( mx->carryTrim, 0, 1, menu_on_off ));
+						// curve
+						GUI_CASE_COL(5, 96, GUI_EDIT_ENUM( mx->swtch, 0, 4, switches ));
+						// phase
+						GUI_CASE_COL(7, 96, GUI_EDIT_ENUM( mx->mixWarn, 0, 1, menu_on_off ));
+						GUI_CASE_COL(8, 96, GUI_EDIT_ENUM( mx->mltpx, 0, 3, mix_mode ));
+						GUI_CASE_COL(9, 96, GUI_EDIT_INT( mx->delayUp, 0, 255 ));
+						GUI_CASE_COL(10, 96, GUI_EDIT_INT( mx->delayDown, 0, 255 ));
+						GUI_CASE_COL(11, 96, GUI_EDIT_INT( mx->speedUp, 0, 255 ));
+						GUI_CASE_COL(12, 96, GUI_EDIT_INT( mx->speedDown, 0, 255 ));
+					}
+				}
 				break;
 			case MOD_PAGE_CURVE_EDIT:
 				// ToDo: Implement!
@@ -1441,32 +1597,6 @@ char gui_popup_get_result() {
 	char res = g_popup_result;
 	g_popup_result = GUI_POPUP_RESULT_NONE;
 	return res;
-}
-
-/**
- * @brief  Display the requested message as multiple line, one to be selected..
- * @note   The location and translation will be specific to the current state.
- * @param  selectedLine line - initial selected line
- * @retval None
- */
-char gui_popup_select_onkeypress(GUI_MSG msg) {
-	if( g_key_press & (KEY_OK|KEY_SEL) )
-	{
-		return g_popup_selected_line;
-	}
-	if( g_key_press & KEY_CANCEL )
-	{
-		return -1;
-	}
-	if( g_key_press & KEY_LEFT ) g_popup_selected_line--;
-	if( g_key_press & KEY_RIGHT ) g_popup_selected_line++;
-	if( g_popup_selected_line < 1 ) g_popup_selected_line = 1;
-	if( g_popup_selected_line > g_popup_lines ) g_popup_selected_line = g_popup_lines;
-	g_new_msg = msg;
-	g_current_msg = 0;
-	g_gui_timeout = 0;
-	task_schedule(TASK_PROCESS_GUI, UPDATE_MSG, 0);
-	return 0;
 }
 
 /**

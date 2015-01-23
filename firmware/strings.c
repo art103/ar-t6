@@ -45,6 +45,47 @@ const char *sources[SRC_MAX] = {
 		"ch"	// Trainer SRC
 };
 
+const char * mix_warm[MIX_WARN_MAX] = {
+		"off"
+		"W1",
+		"W2",
+		"W3",
+};
+
+const char * mix_src[MIX_SRC_MAX] = {
+		"off",
+		"AIL",
+		"ELE",
+		"THR",
+		"RUD",
+		"VRA",
+		"VRB",
+		"??",
+		"??",
+		"MAX", // 9
+		"FULL", // 10
+		"CYC1", // 11
+		"CYC2", // 12
+		"CYC3",	// 13
+		"PPM1",
+		"PPM2",
+		"PPM3",
+		"PPM4",
+		"PPM5",
+		"PPM6",
+		"PPM7",
+		"PPM8",
+		"CH1", // CHAN_BASE
+		"CH2",
+		"CH3",
+		"CH4",
+		"CH5",
+		"CH6",
+		"CH7",
+		"CH8",
+		// CHOUT_BASE
+};
+
 const char *mix_mode_hdr = "mode";
 const char *mix_mode[MIX_MODE_MAX] = {
 		"off",
@@ -141,6 +182,23 @@ const char *model_menu_list1[MOD_MENU_LIST1_LEN] = {
 		"Timer Direction",
 		"Timer Value",
 		"Trainer Ok",
+};
+
+const char *mixer_edit_list1[MIXER_EDIT_LIST1_LEN] = {
+		"Source",
+		"Weight",
+		"Offset",
+		"Trim ON",
+		"Curve",
+		"Switch",
+		"Phase",
+		"Warning",
+		"Multpx",
+		"Delay Up",
+		"Delay Dn",
+		"Slow Up",
+		"Slow Dn"
+
 };
 
 

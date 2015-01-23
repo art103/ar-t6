@@ -510,14 +510,27 @@ static void perOut(volatile int16_t *chanOut, uint8_t att)
     for(i=0; i<MAX_MIXERS; i++){
         MixData *md = &g_model.mixData[i];
 
+        // first unused entry (channel==0) marks an end
         if((md->destCh==0) || (md->destCh>NUM_CHNOUT)) break;
+
+        /* srcRaw
+        STK1..STK4
+        VRA, VRB
+        ???
+		MIX_MAX   8
+		MIX_FULL  9
+		MIX_CYC1  10
+		MIX_CYC2  11
+		MIX_CYC3  12
+		CH1...CH8
+		*/
 
         //Notice 0 = NC switch means not used -> always on line
         int16_t v  = 0;
         uint8_t swTog;
 
         //swOn[i]=false;
-        if(md->swtch && !keypad_get_switch(md->swtch)){ // switch on?  if no switch selected => on
+        if(!keypad_get_switch(md->swtch)) { // switch on?  if no switch selected => on
             swTog = swOn[i];
             swOn[i] = 0;
             //            if(md->srcRaw==MIX_MAX) act[i] = 0;// MAX back to 0 for slow up
@@ -533,7 +546,7 @@ static void perOut(volatile int16_t *chanOut, uint8_t att)
             swOn[i] = 1;
             uint8_t k = md->srcRaw-1;
             v = anas[k]; //Switch is on. MAX=FULL=512 or value.
-            if(k>=CHOUT_BASE && (k<i)) v = chans[k]; // if we've already calculated the value - take it instead // anas[i+CHOUT_BASE] = chans[i]
+            if(k>=CHOUT_BASE && (k<i)) v = chans[k-CHOUT_BASE]; // if we've already calculated the value - take it instead // anas[i+CHOUT_BASE] = chans[i]
             if(md->mixWarn) mixWarning |= 1<<(md->mixWarn-1); // Mix warning
 #ifdef FMODE_TRIM
             if ( md->enableFmTrim )

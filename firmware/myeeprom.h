@@ -175,9 +175,9 @@ PACK(typedef struct t_MixData {
     int8_t  weight;
     int8_t  sOffset;
     /// keep the bitfields together for better packing
-    uint8_t destCh:4;            //        1..NUM_CHNOUT
-    int8_t  swtch:4;            // A,B,C,D - switch bitmask
-    int8_t  curve:4;             //0=symmetrisch 1=no neg 2=no pos,...6 then MAX_CURVES==4
+    uint8_t destCh:4;          // 1..NUM_CHNOUT
+    int8_t  swtch:4;           // A,B,C,D - switch bitmask
+    int8_t  curve:4;           //0=symmetrisch 1=no neg 2=no pos,...6 then MAX_CURVES==4
     uint8_t delayUp:4;
     uint8_t delayDown:4;
     uint8_t speedUp:4;         // Servogeschwindigkeit aus Tabelle (10ms Cycle)

@@ -120,7 +120,17 @@ void eeprom_init_current_model() {
 		md->destCh = mx+1;
 		md->srcRaw = mx+1;
 		md->mltpx = MLTPX_REP;
+		md->weight = 100;
 	}
+	for(int l=0; l < sizeof(g_model.limitData)/sizeof(g_model.limitData[0]); l++)
+	{
+		LimitData *p = &g_model.limitData[l];
+		//p->min = 0;
+		p->max = 100;
+		//p->offset = 0;
+		p->reverse = 0;
+	}
+
 	// already initialized to zero
 	//g_model.ppmStart = 0;
 	//g_model.pulsePol = 0;

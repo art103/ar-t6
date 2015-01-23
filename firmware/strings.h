@@ -22,6 +22,9 @@
 
 #define SYS_MENU_LIST1_LEN	22
 #define MOD_MENU_LIST1_LEN	5
+#define MIXER_EDIT_LIST1_LEN 13
+#define MIX_SRC_MAX 29
+#define MIX_WARN_MAX 4
 
 typedef enum {
 	GUI_MSG_NONE = 0,
@@ -97,6 +100,7 @@ enum _mix_mode {
 	MIX_MODE_MAX
 };
 
+
 enum _sources {
 	SRC_HALF = 0, SRC_FULL, SRC_CYC, SRC_PPM, SRC_MIX, SRC_TRN, SRC_MAX
 };
@@ -119,12 +123,15 @@ extern const char *pots[NUM_POTS];
 extern const char *sources[SRC_MAX];
 extern const char *mix_mode_hdr;
 extern const char *mix_mode[MIX_MODE_MAX];
+extern const char *mix_src[MIX_SRC_MAX];
+extern const char *mix_warn[MIX_WARN_MAX];
 extern const char *menu_on_off[4];
 const char *channel_order[CHAN_ORDER_MAX];
 extern const char *system_menu_beeper[BEEPER_MAX];
 extern const char *msg[GUI_MSG_MAX];
 extern const char *system_menu_list1[SYS_MENU_LIST1_LEN];
 extern const char *model_menu_list1[MOD_MENU_LIST1_LEN];
+extern const char *mixer_edit_list1[MIXER_EDIT_LIST1_LEN];
 extern const char *timer_modes[];
 extern const char *dir_labels[];
 

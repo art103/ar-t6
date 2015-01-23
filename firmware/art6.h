@@ -487,14 +487,14 @@ extern volatile uint8_t LcdLock ;
 //bool eeModelExists(uint8_t id);
 //
 #define NUM_PPM     8
-//number of real outputchannels CH1-CH16
+//number of real output channels CH1-CH8
 #define NUM_CHNOUT  8
 ///number of real input channels (1-9) plus virtual input channels X1-X4
-#define PPM_BASE    MIX_CYC3
-#define CHOUT_BASE  (PPM_BASE+NUM_PPM)
+#define PPM_BASE    MIX_CYC3 // 12
+#define CHOUT_BASE  (PPM_BASE+NUM_PPM) // 20
 //
 //
-#define NUM_XCHNRAW (CHOUT_BASE+NUM_CHNOUT) // NUMCH + P1P2P3+ AIL/RUD/ELE/THR + MAX/FULL + CYC1/CYC2/CYC3
+#define NUM_XCHNRAW (CHOUT_BASE+NUM_CHNOUT) // NUMCH + P1P2P3+ AIL/RUD/ELE/THR + MAX/FULL + CYC1/CYC2/CYC3 ==28
 ////#define NUM_XCHNRAW (CHOUT_BASE+NUM_CHNOUT+1) // NUMCH + P1P2P3+ AIL/RUD/ELE/THR + MAX/FULL + CYC1/CYC2/CYC3 +3POS
 /////number of real output channels (CH1-CH8) plus virtual output channels X1-X4
 #define NUM_XCHNOUT (NUM_CHNOUT) //(NUM_CHNOUT)//+NUM_VIRT)
