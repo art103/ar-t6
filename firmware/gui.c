@@ -81,6 +81,7 @@ static GUI_LAYOUT g_main_layout = GUI_LAYOUT_MAIN1;
 static MENU_MODE g_menu_mode = MENU_MODE_PAGE;
 static int8_t g_menu_mode_dir = 1;
 static int8_t g_edit_item = 0;
+static uint8_t g_menu_return_page = 0;
 
 static void gui_show_sticks(void);
 static void gui_show_switches(void);
@@ -100,6 +101,11 @@ static int32_t gui_int_edit(int32_t data, int32_t delta, int32_t min,
 #define GUI_EDIT_INT_EX( VAR, MIN, MAX, UNITS, EDITACTION ) \
 		if (edit) { VAR = gui_int_edit((int)VAR, inc, MIN, MAX); EDITACTION; } \
 		lcd_write_int((int)VAR, op_item, FLAGS_NONE); \
+		if(UNITS != 0) lcd_write_string(UNITS, op_item, FLAGS_NONE);
+
+#define GUI_EDIT_INT_EX2( VAR, MIN, MAX, UNITS, FLAGS, EDITACTION ) \
+		if (edit) { VAR = gui_int_edit((int)VAR, inc, MIN, MAX); EDITACTION; } \
+		lcd_write_int((int)VAR, op_item, FLAGS); \
 		if(UNITS != 0) lcd_write_string(UNITS, op_item, FLAGS_NONE);
 
 #define GUI_EDIT_INT( VAR, MIN, MAX ) GUI_EDIT_INT_EX(VAR, MIN, MAX, 0, {})
@@ -487,7 +493,7 @@ void gui_process(uint32_t data) {
 			lcd_draw_rect(72, 57, 104, 58, LCD_OP_SET, RECT_FILL);
 		}
 	}
-		break; // GUI_LAYOUT_MENU
+	break; // GUI_LAYOUT_MENU
 
 		/**********************************************************************
 		 * Common Menu key handling
@@ -547,15 +553,21 @@ void gui_process(uint32_t data) {
 				break;
 			}
 		} else if (g_key_press & KEY_CANCEL) {
-			if (g_menu_mode > 0)
-				g_menu_mode--;
-			else {
-				page = 0;
-				list = 0;
-				list_top = 0;
-				gui_navigate(g_main_layout);
+			if( g_menu_return_page )
+				page = g_menu_return_page;
+			else
+			{
+				if (g_menu_mode > 0)
+					g_menu_mode--;
+				else {
+					page = 0;
+					list = 0;
+					list_top = 0;
+					gui_navigate(g_main_layout);
+				}
 			}
 		}
+		g_menu_return_page = 0;
 
 		if (list < list_top)
 			list_top = list;
@@ -614,7 +626,7 @@ void gui_process(uint32_t data) {
 					GUI_CASE_COL(3, 110,
 							GUI_EDIT_INT_EX( g_eeGeneral.contrast, LCD_CONTRAST_MIN, LCD_CONTRAST_MAX, NULL, lcd_set_contrast(g_eeGeneral.contrast) ))
 					GUI_CASE_COL(4, 102,
-							GUI_EDIT_INT_EX( g_eeGeneral.vBatWarn, BATT_MIN, BATT_MAX, "V", {} ))
+							GUI_EDIT_INT_EX2( g_eeGeneral.vBatWarn, BATT_MIN, BATT_MAX, "V", INT_DIV10, {} ))
 					case 5:	// Inactivity Timer
 						lcd_set_cursor(110, line);
 						if (edit)
@@ -1240,7 +1252,7 @@ void gui_process(uint32_t data) {
 					}
 					if(i==0 || mx->destCh && g_model.mixData[i-1].destCh!=mx->destCh )
 					{
-						char s[4];
+						char s[4] = "CH0";
 						s[0] = 'C';
 						s[1] = 'H';
 						s[2] = '0' + mx->destCh;
@@ -1253,7 +1265,7 @@ void gui_process(uint32_t data) {
 					}
 					lcd_set_cursor(4*6, line);
 
-					lcd_write_int(mix_src[mx->srcRaw], op_list, FLAGS_NONE);
+					lcd_write_string(mix_src[mx->srcRaw], op_list, FLAGS_NONE);
 					lcd_write_string(" ", op_list, FLAGS_NONE);
 					lcd_write_int(mx->weight,op_list,FLAGS_NONE);
 					lcd_write_string(" ", op_list, FLAGS_NONE);
@@ -1273,23 +1285,21 @@ void gui_process(uint32_t data) {
 						break;
 					// insert (duplicate?)
 					case 2:
-						memmove(&g_model.mixData[list+1],&g_model.mixData[list],(MAX_MIXERS-list-1)*sizeof(MixData));
-						/*
-						for(int n = MAX_MIXERS-2; n>i; --n)
+						// make sure we are not pushing out the last row of the last outchan
+						if( g_model.mixData[MAX_MIXERS - 1].destCh  == 0 ||
+							g_model.mixData[MAX_MIXERS - 1].destCh ==  g_model.mixData[MAX_MIXERS - 2].destCh )
 						{
-							g_model.mixData[n+1] = g_model.mixData[n];
+							memmove(&g_model.mixData[list+1],&g_model.mixData[list],(MAX_MIXERS-list-1)*sizeof(MixData));
 						}
-						*/
 						break;
 					// delete
 					case 3:
-						memmove(&g_model.mixData[list],&g_model.mixData[list+1],(MAX_MIXERS-list-1)*sizeof(MixData));
-						/*
-						for(int n = list; n <= MAX_MIXERS-2; ++n)
+						// delete only if not removing the last of rows for given output channel (at least one must stay)
+						if(g_model.mixData[list].destCh==g_model.mixData[list+1].destCh||
+						   list > 0 && g_model.mixData[list-1].destCh==g_model.mixData[list].destCh)
 						{
-							g_model.mixData[n] = g_model.mixData[n+1];
+							memmove(&g_model.mixData[list], &g_model.mixData[list+1],(MAX_MIXERS-list-1)*sizeof(MixData));
 						}
-						*/
 						break;
 						// copy
 					case 4:
@@ -1299,7 +1309,10 @@ void gui_process(uint32_t data) {
 					case 5:
 						if( g_copyRow >=0 )
 						{
+							// copy the "copy" row but retain the destCh
+							int ch = g_model.mixData[list].destCh;
 							g_model.mixData[list] = g_model.mixData[g_copyRow];
+							g_model.mixData[list].destCh = ch;
 						}
 						break;
 					default:
@@ -1439,12 +1452,12 @@ void gui_process(uint32_t data) {
 					MixData* const mx = &g_model.mixData[g_edit_item];
 					switch (i) {
 						GUI_CASE_COL(0, 96, GUI_EDIT_ENUM( mx->srcRaw, 0, MIX_SRC_MAX-1, mix_src ));
-						GUI_CASE_COL(1, 96, GUI_EDIT_INT( mx->sOffset, -125, 125 ));
-						GUI_CASE_COL(2, 96, GUI_EDIT_INT( mx->weight, -125, 125 ));
+						GUI_CASE_COL(1, 96, GUI_EDIT_INT( mx->weight, -125, 125 ));
+						GUI_CASE_COL(2, 96, GUI_EDIT_INT( mx->sOffset, -125, 125 ));
 						GUI_CASE_COL(3, 96, GUI_EDIT_ENUM( mx->carryTrim, 0, 1, menu_on_off ));
-						// curve
+						// #4 curve
 						GUI_CASE_COL(5, 96, GUI_EDIT_ENUM( mx->swtch, 0, 4, switches ));
-						// phase
+						// #6 phase
 						GUI_CASE_COL(7, 96, GUI_EDIT_ENUM( mx->mixWarn, 0, 1, menu_on_off ));
 						GUI_CASE_COL(8, 96, GUI_EDIT_ENUM( mx->mltpx, 0, 3, mix_mode ));
 						GUI_CASE_COL(9, 96, GUI_EDIT_INT( mx->delayUp, 0, 255 ));

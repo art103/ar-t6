@@ -372,6 +372,8 @@ void lcd_write_string(char *s, LCD_OP op, uint16_t flags)
 
 	for (ptr = s; n > 0; ptr++, n--)
 		lcd_write_char(*ptr, op, flags);
+	if( flags & TRAILING_SPACE )
+		lcd_write_char(" ", op, flags);
 }
 
 

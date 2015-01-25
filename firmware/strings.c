@@ -60,8 +60,8 @@ const char * mix_src[MIX_SRC_MAX] = {
 		"RUD",
 		"VRA",
 		"VRB",
-		"??",
-		"??",
+		"???",
+		"???",
 		"MAX", // 9
 		"FULL", // 10
 		"CYC1", // 11

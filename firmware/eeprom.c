@@ -114,7 +114,7 @@ void eeprom_init_current_model() {
 	g_model.ppmFrameLength = 8;
 	g_model.ppmDelay = 6;
 	g_model.ppmNCH = 8;
-	for(int mx=0; mx < 4; mx++)
+	for(int mx=0; mx < NUM_CHNOUT; mx++)
 	{
 		MixData* md = &g_model.mixData[mx];
 		md->destCh = mx+1;

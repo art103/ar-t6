@@ -49,6 +49,7 @@ typedef enum {
 	CHAR_NOSPACE = 0x1000,
 
 	ALIGN_RIGHT = 0x2000,
+	TRAILING_SPACE = 0x4000,
 } LCD_FLAGS;
 
 void lcd_init(void);
