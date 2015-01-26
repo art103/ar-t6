@@ -173,11 +173,17 @@ static int8_t *TrimPtr[4] =
     &g_model.trim[3]
 };
 
-#define GET_DR_STATE(x) (!keypad_get_switch(g_model.expoData[x].drSw1) ?   \
-    DR_HIGH :                                  \
-    !keypad_get_switch(g_model.expoData[x].drSw2)?   \
-    DR_MID : DR_LOW);
-
+// DR - double rate sticks
+// dwSw1 dwSw2
+//   1     x	HIGH
+//   0     1    MID
+//   0     0    LOW
+#define GET_DR_STATE(x) (\
+    !keypad_get_switch(g_model.expoData[x].drSw1) ?   \
+		DR_HIGH :                                     \
+		!keypad_get_switch(g_model.expoData[x].drSw2)?\
+				DR_MID : 							  \
+				DR_LOW);
 
 static uint16_t isqrt32(uint32_t n)
 {
@@ -200,6 +206,7 @@ uint16_t expou(uint16_t x, uint16_t k)
     // k*x*x*x + (1-k)*x
     return ((unsigned long)x*x*x/0x10000*k/(RESXul*RESXul/0x10000) + (RESKul-k)*x+RESKul/2)/RESKul;
 }
+
 // expo-funktion:
 // ---------------
 // kmplot
@@ -410,6 +417,7 @@ static void perOut(volatile int16_t *chanOut, uint8_t att)
         if(((bpanaCenter ^ anaCenter) & anaCenter)) sound_play_tune(AU_POT_STICK_MIDDLE);
         bpanaCenter = anaCenter;
 
+        //===========setup rest of ANAS (input to mixer)================
         anas[MIX_MAX-1]  = RESX;     // MAX
         anas[MIX_FULL-1] = RESX;     // FULL
         for(i=0; i<STICK_INPUT_CHANNELS; i++) 		anas[i+PPM_BASE] = (g_ppmIns[i] - g_eeGeneral.trainer.calib[i])*2; //add ppm channels
@@ -733,8 +741,8 @@ static void perOut(volatile int16_t *chanOut, uint8_t att)
         ex_chans[i] = chans[i]; //for getswitch
 
         int16_t ofs = g_model.limitData[i].offset;
-        int16_t lim_p = 10*(g_model.limitData[i].max+100);
-        int16_t lim_n = 10*(g_model.limitData[i].min-100); //multiply by 10 to get same range as ofs (-1000..1000)
+        int16_t lim_p = 10*(g_model.limitData[i].max);//+100);
+        int16_t lim_n = 10*(g_model.limitData[i].min);//-100); //multiply by 10 to get same range as ofs (-1000..1000)
         if(ofs>lim_p) ofs = lim_p;
         if(ofs<lim_n) ofs = lim_n;
 

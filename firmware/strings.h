@@ -21,7 +21,7 @@
 #define NUM_SWITCHES	4
 
 #define SYS_MENU_LIST1_LEN	22
-#define MOD_MENU_LIST1_LEN	5
+#define MOD_MENU_LIST1_LEN	9
 #define MIXER_EDIT_LIST1_LEN 13
 #define MIX_SRC_MAX 29
 #define MIX_WARN_MAX 4

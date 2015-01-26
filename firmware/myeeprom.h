@@ -153,7 +153,7 @@ PACK(typedef struct t_EEGeneral {
 //expo[3][2][2] //[Norm/Dr][expo/weight][R/L]
 
 PACK(typedef struct t_ExpoData {
-    int8_t  expo[3][2][2];
+    int8_t  expo[3][2][2]; // [HIGH|MID|LOW][EXPO|WEIGHT][RIGHT/LEFT]
     int8_t  drSw1;
     int8_t  drSw2;
 }) ExpoData;
@@ -275,29 +275,27 @@ PACK(typedef struct t_scale
 }) ScaleData ;
 
 PACK(typedef struct t_ModelData {
-    char      name[MODEL_NAME_LEN];             // 10 must be first for eeLoadModelName
-//    uint8_t   reserved_spare;  //used to be MDVERS - now depreciated
-//    uint8_t   modelVoice ;		// Index to model name voice (260+value)
+    char      name[MODEL_NAME_LEN]; // 10 must be first for eeLoadModelName
     int8_t    tmrMode;              // timer trigger source -> off, abs, stk, stk%, sw/!sw, !m_sw/!m_sw
     uint16_t  tmrVal;
     int8_t    ppmNCH;
     int8_t    ppmDelay;
     int8_t    trimSw;
-    uint8_t   beepANACenter;        // 1<<0->A1.. 1<<6->A7
+    uint8_t   beepANACenter;// 1<<0->A1.. 1<<6->A7
 
     //=== BEG == bit fields keep together for better packing
-    uint8_t   tmrDir:1;    //0=>Count Down, 1=>Count Up
+    uint8_t   tmrDir:1;     //0=>Count Down, 1=>Count Up
     uint8_t   traineron:1;  // 0 disable trainer, 1 allow trainer
-    uint8_t   t2throttle:1 ;  // Start timer2 using throttle
+    uint8_t   t2throttle:1 ;// Start timer2 using throttle
     uint8_t   protocol:2;
 //    uint8_t   country:2 ;
 //    uint8_t   sub_protocol:2 ;
-    uint8_t   thrTrim:1;            // Enable Throttle Trim
-	uint8_t   xnumBlades:2;					// RPM scaling
-	uint8_t   mixTime:1 ;						// Scaling for slow/delay
-    uint8_t   thrExpo:1;            // Enable Throttle Expo
-	uint8_t   ppmStart:3 ;					// Start channel for PPM
-    int8_t    trimInc:3;              // Trim Increments (0-4)
+    uint8_t   thrTrim:1;    // Enable Throttle Trim
+	uint8_t   xnumBlades:2;	// RPM scaling
+	uint8_t   mixTime:1 ;	// Scaling for slow/delay
+    uint8_t   thrExpo:1;    // Enable Throttle Expo
+	uint8_t   ppmStart:3 ;	// Start channel for PPM
+    int8_t    trimInc:3;    // Trim Increments (0-4)
     uint8_t   pulsePol:1;
     uint8_t   extendedLimits:1;
     uint8_t   swashInvertELE:1;

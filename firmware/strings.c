@@ -176,12 +176,15 @@ const char *system_menu_list1[SYS_MENU_LIST1_LEN] = {
 };
 
 const char *model_menu_list1[MOD_MENU_LIST1_LEN] = {
-//		"Model Number",
 		"Model Name",
 		"Timer Mode",
-		"Timer Direction",
+		"Timer Dir",
 		"Timer Value",
 		"Trainer Ok",
+		"Thro Trim",
+		"Thro Expo",
+		"Thrim Incr"
+		"Ext Limits"
 };
 
 const char *mixer_edit_list1[MIXER_EDIT_LIST1_LEN] = {

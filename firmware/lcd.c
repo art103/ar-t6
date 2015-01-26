@@ -309,6 +309,7 @@ void lcd_write_char(uint8_t c, LCD_OP op, uint16_t flags)
 		op_clr = LCD_OP_NONE;
 	}
 
+	// condenced chars overlap so do not erase or prev char gets damaged, use CHAR_NOSPACE alternatively
 	if (flags & CHAR_CONDENSED)
 		op_clr = LCD_OP_NONE;
 
@@ -357,21 +358,19 @@ void lcd_write_char(uint8_t c, LCD_OP op, uint16_t flags)
   * @param  flags: LCD_FLAGS (CHAR_*)
   * @retval None
   */
-void lcd_write_string(char *s, LCD_OP op, uint16_t flags)
+void lcd_write_string(const char *s, LCD_OP op, uint16_t flags)
 {
-	char *ptr = s;
+	const char *ptr = s;
 	uint8_t n = strlen(s);
 
 	if (flags & ALIGN_RIGHT)
 	{
-		if (flags & CHAR_CONDENSED)
-			cursor_x -= n * CHAR_WIDTH;
-		else
-			cursor_x -= n * (CHAR_WIDTH + 1);
+		cursor_x -= n * ((flags & CHAR_CONDENSED) ? CHAR_WIDTH : (CHAR_WIDTH + 1));
 	}
 
 	for (ptr = s; n > 0; ptr++, n--)
 		lcd_write_char(*ptr, op, flags);
+
 	if( flags & TRAILING_SPACE )
 		lcd_write_char(" ", op, flags);
 }
@@ -442,6 +441,8 @@ void lcd_write_int(int32_t val, LCD_OP op, uint16_t flags)
 		lcd_write_char('.', op, flags);
 
 	lcd_write_char(u + '0', op, flags);
+	if( flags & TRAILING_SPACE )
+		lcd_write_char(' ', op, flags);
 }
 
 /**

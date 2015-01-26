@@ -125,10 +125,12 @@ void eeprom_init_current_model() {
 	for(int l=0; l < sizeof(g_model.limitData)/sizeof(g_model.limitData[0]); l++)
 	{
 		LimitData *p = &g_model.limitData[l];
-		//p->min = 0;
-		p->max = 100;
+		// in mixer.c there was +/- 100 on limits which I have removed
+		// so now the min/max are true values (no offsets)
+		p->min = -100;
+		p->max =  100;
 		//p->offset = 0;
-		p->reverse = 0;
+		//p->reverse = 0;
 	}
 
 	// already initialized to zero
