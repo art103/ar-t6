@@ -64,9 +64,6 @@ typedef enum {
 	GUI_MSG_MAX,
 } GUI_MSG;
 
-typedef enum _menu_mode {
-	MENU_MODE_PAGE = 0, MENU_MODE_LIST, MENU_MODE_EDIT, MENU_MODE_EDIT_S
-} MENU_MODE;
 
 enum _menu_page {
 	SYS_PAGE_SETUP = 0,
