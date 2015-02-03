@@ -177,10 +177,14 @@ static void prepare_context_for_list_row(MenuContext* pCtx, uint8_t row)
 	pCtx->op_item = LCD_OP_SET;
 	if(row == pCtx->list) {
 		if (g_menu_mode == MENU_MODE_LIST ||
-			g_menu_mode == MENU_MODE_COL) {
+			g_menu_mode == MENU_MODE_COL)
+		{
 			pCtx->op_list = LCD_OP_CLR;
-		} else if (g_menu_mode == MENU_MODE_EDIT ||
-				   g_menu_mode == MENU_MODE_EDIT_S)
+			if(g_menu_mode == MENU_MODE_COL)
+				pCtx->op_item = LCD_OP_CLR;
+		}
+		else if (g_menu_mode == MENU_MODE_EDIT ||
+		         g_menu_mode == MENU_MODE_EDIT_S)
 		{
 			pCtx->edit = 1;
 			pCtx->op_item = LCD_OP_CLR;
@@ -872,7 +876,7 @@ void gui_process(uint32_t data) {
 
 			case SYS_PAGE_TRAINER:
 				context.list_limit = 6;
-				context.col_limit = context.line != 5 ? 3 : 0;
+				context.col_limit = context.list != 5 ? 3 : 0;
 				for (i = context.list_top;
 						(i < context.list_top + LIST_ROWS) && (i <= context.list_limit); ++i) {
 
@@ -899,8 +903,7 @@ void gui_process(uint32_t data) {
 							switch(context.col) {
 							case 0:
 								g_eeGeneral.trainer.mix[i - 1].mode = gui_int_edit(
-									g_eeGeneral.trainer.mix[i - 1].mode, context.inc, 0,
-									3);
+									g_eeGeneral.trainer.mix[i - 1].mode, context.inc, 0, 3);
 								break;
 							case 1:
 								g_eeGeneral.trainer.mix[i - 1].studWeight =
@@ -921,24 +924,23 @@ void gui_process(uint32_t data) {
 							}
 
 
-						lcd_write_string((char*) sticks[i - 1], context.op_list,
-								FLAGS_NONE);
+						lcd_write_string((char*) sticks[i - 1], context.op_list, FLAGS_NONE);
 						lcd_write_string(" ", LCD_OP_SET, FLAGS_NONE);
 						lcd_write_string(
 								(char*) mix_mode[g_eeGeneral.trainer.mix[i - 1].mode],
-								(context.col == 0) ? LCD_OP_CLR : context.op_item,
+								(context.col == 0) ? context.op_item : LCD_OP_SET,
 								FLAGS_NONE);
 
 						lcd_set_cursor(66, context.line);
 						lcd_write_int(g_eeGeneral.trainer.mix[i - 1].studWeight,
-								(context.col == 1) ? LCD_OP_CLR : context.op_item,
+								(context.col == 1) ? context.op_item : LCD_OP_SET,
 								ALIGN_RIGHT);
 
 						// Source
 						lcd_set_cursor(78, context.line);
 						lcd_write_string("ch", LCD_OP_SET, FLAGS_NONE);
 						lcd_write_int(g_eeGeneral.trainer.mix[i - 1].srcChn + 1,
-								(context.col == 2) ? LCD_OP_CLR : context.op_item,
+								(context.col == 2) ? context.op_item : LCD_OP_SET,
 								FLAGS_NONE);
 
 						// Switch
@@ -951,7 +953,7 @@ void gui_process(uint32_t data) {
 							}
 							lcd_write_string((char*) switches[sw],
 									(context.col == 3) ?
-											LCD_OP_CLR : context.op_item,
+											context.op_item : LCD_OP_SET ,
 									FLAGS_NONE);
 						}
 						break;
