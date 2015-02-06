@@ -131,5 +131,6 @@ extern const char *model_menu_list1[MOD_MENU_LIST1_LEN];
 extern const char *mixer_edit_list1[MIXER_EDIT_LIST1_LEN];
 extern const char *timer_modes[];
 extern const char *dir_labels[];
+extern const char *inverse_labels[];
 
 #endif // _STRINGS_H

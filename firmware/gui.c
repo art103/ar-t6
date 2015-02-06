@@ -115,6 +115,22 @@ static uint32_t gui_bitfield_edit(char *string, uint32_t field, int8_t delta,
 static int32_t gui_int_edit(int32_t data, int32_t delta, int32_t min,
 		int32_t max);
 
+
+#define FOREACH_ROW(BODY) \
+for (int row = context.list_top;\
+		(row < context.list_top + LIST_ROWS) && (row <= context.list_limit);  \
+		++row) {\
+			prepare_context_for_list_rowcol(&context, row, -1);\
+			BODY;\
+		}
+
+#define FOREACH_COL(BODY)\
+for(int col = 0; col < context.col_limit; ++col ) {\
+	prepare_context_for_list_rowcol(&context, row, col);\
+	BODY;\
+}
+
+
 #define GUI_EDIT_INT_EX2( VAR, MIN, MAX, UNITS, FLAGS, EDITACTION ) \
 		if (context.edit) { VAR = gui_int_edit((int)VAR, context.inc, MIN, MAX); EDITACTION; } \
 		lcd_write_int((int)VAR, context.op_item, FLAGS); \
@@ -139,11 +155,13 @@ case CASE: \
 	{ ACTION } \
 	break; \
 
-#define GUI_CASE_COL( CASE, COL, ACTION ) \
+#define GUI_CASE_OFS( CASE, OFFSET, ACTION ) \
 case CASE: \
-	lcd_set_cursor(COL, context.line); \
+	lcd_set_cursor(OFFSET, context.line); \
 	{ ACTION } \
 	break; \
+
+
 
 /**
  * @brief  Prefill strig with space up to length
@@ -167,33 +185,56 @@ static char* prefill_string(char* str, int len) {
  * @brief  sets up menu context parameters for menu and given list row
  * @note
  * @param  pCtx pointer to menu context
- * @param  i list row we are working on
+ * @param  row list row we are working on
+ * @param  col list col we are working on
+ * @retval None
+ */
+static void prepare_context_for_list_rowcol(MenuContext* pCtx, uint8_t row, uint8_t col)
+{
+	if( pCtx->col_limit == 0 ) pCtx->col = 0;
+	pCtx->line = (row - pCtx->list_top + 1) * 8;
+	pCtx->op_list = LCD_OP_SET;
+	pCtx->op_item = LCD_OP_SET;
+	pCtx->edit = 0;
+	if(row == pCtx->list)
+	{
+		switch(g_menu_mode)
+		{
+		case MENU_MODE_LIST:
+			pCtx->op_list = LCD_OP_CLR;
+			break;
+		case MENU_MODE_COL:
+			if(pCtx->col == col)
+				pCtx->op_item = LCD_OP_CLR;
+			break;
+		case MENU_MODE_EDIT:
+		case MENU_MODE_EDIT_S:
+			if( pCtx->col == col )
+			{
+				pCtx->edit = 1;
+				pCtx->op_item = LCD_OP_CLR;
+			}
+			break;
+		default:
+			break;
+		}
+	}
+
+	lcd_set_cursor(0, pCtx->line);
+}
+
+
+/**
+ * @brief  sets up menu context parameters for menu and given list row in no col context
+ * @note
+ * @param  pCtx pointer to menu context
+ * @param  row list row we are working on
  * @retval None
  */
 static void prepare_context_for_list_row(MenuContext* pCtx, uint8_t row)
 {
-	pCtx->line = (row - pCtx->list_top + 1) * 8;
-	pCtx->op_list = LCD_OP_SET;
-	pCtx->op_item = LCD_OP_SET;
-	if(row == pCtx->list) {
-		if (g_menu_mode == MENU_MODE_LIST ||
-			g_menu_mode == MENU_MODE_COL)
-		{
-			pCtx->op_list = LCD_OP_CLR;
-			if(g_menu_mode == MENU_MODE_COL)
-				pCtx->op_item = LCD_OP_CLR;
-		}
-		else if (g_menu_mode == MENU_MODE_EDIT ||
-		         g_menu_mode == MENU_MODE_EDIT_S)
-		{
-			pCtx->edit = 1;
-			pCtx->op_item = LCD_OP_CLR;
-		}
-	}
-	else
-		pCtx->edit = 0;
-
-	lcd_set_cursor(0, pCtx->line);
+	pCtx->col_limit = 0;
+	prepare_context_for_list_rowcol(pCtx,row,0);
 }
 
 /**
@@ -552,8 +593,6 @@ void gui_process(uint32_t data) {
 
 		static MenuContext context = {0};
 
-		uint8_t i;
-
 		// Clear the screen.
 		lcd_draw_rect(0, 0, LCD_WIDTH - 1, LCD_HEIGHT - 1, LCD_OP_CLR,
 				      RECT_FILL);
@@ -674,23 +713,23 @@ void gui_process(uint32_t data) {
 			case SYS_PAGE_SETUP:
 				context.list_limit = SYS_MENU_LIST1_LEN - 1;
 				context.col_limit = 0;
-				for (i = context.list_top;
-					 (i < context.list_top + LIST_ROWS) && (i <= context.list_limit); ++i) {
+				for (uint8_t row = context.list_top;
+					 (row < context.list_top + LIST_ROWS) && (row <= context.list_limit); ++row) {
 
-					prepare_context_for_list_row(&context, i);
+					prepare_context_for_list_row(&context, row);
 
-					lcd_write_string((char*) system_menu_list1[i], context.op_list,
+					lcd_write_string((char*) system_menu_list1[row], context.op_list,
 							FLAGS_NONE);
 					lcd_write_string(" ", LCD_OP_SET, FLAGS_NONE);
-					switch (i) {
-					GUI_CASE_COL(0, 74, GUI_EDIT_STR(g_eeGeneral.ownerName))
-					GUI_CASE_COL(1, 92,
+					switch (row) {
+					GUI_CASE_OFS(0, 74, GUI_EDIT_STR(g_eeGeneral.ownerName))
+					GUI_CASE_OFS(1, 92,
 							GUI_EDIT_ENUM(g_eeGeneral.beeperVal, BEEPER_SILENT, BEEPER_NORMAL, system_menu_beeper ))
-					GUI_CASE_COL(2, 110,
+					GUI_CASE_OFS(2, 110,
 							GUI_EDIT_INT_EX( g_eeGeneral.volume, 0, 15, NULL, sound_set_volume(g_eeGeneral.volume) ))
-					GUI_CASE_COL(3, 110,
+					GUI_CASE_OFS(3, 110,
 							GUI_EDIT_INT_EX( g_eeGeneral.contrast, LCD_CONTRAST_MIN, LCD_CONTRAST_MAX, NULL, lcd_set_contrast(g_eeGeneral.contrast) ))
-					GUI_CASE_COL(4, 102,
+					GUI_CASE_OFS(4, 102,
 							GUI_EDIT_INT_EX2( g_eeGeneral.vBatWarn, BATT_MIN, BATT_MAX, "V", INT_DIV10, {} ))
 					case 5:	// Inactivity Timer
 						lcd_set_cursor(110, context.line);
@@ -877,16 +916,16 @@ void gui_process(uint32_t data) {
 			case SYS_PAGE_TRAINER:
 				context.list_limit = 6;
 				context.col_limit = context.list != 5 ? 3 : 0;
-				for (i = context.list_top;
-						(i < context.list_top + LIST_ROWS) && (i <= context.list_limit); ++i) {
+				for (uint8_t row = context.list_top;
+						(row < context.list_top + LIST_ROWS) && (row <= context.list_limit); ++row) {
 
 					// First row isn't editable
 					if (context.list == 0)
 						context.list = 1;
 
-					prepare_context_for_list_row(&context, i);
+					prepare_context_for_list_row(&context, row);
 
-					switch (i) {
+					switch (row) {
 					case 0:
 						lcd_set_cursor(24, context.line);
 						lcd_write_string((char*) mix_mode_hdr, LCD_OP_SET,
@@ -902,50 +941,50 @@ void gui_process(uint32_t data) {
 						if (context.edit)
 							switch(context.col) {
 							case 0:
-								g_eeGeneral.trainer.mix[i - 1].mode = gui_int_edit(
-									g_eeGeneral.trainer.mix[i - 1].mode, context.inc, 0, 3);
+								g_eeGeneral.trainer.mix[row - 1].mode = gui_int_edit(
+									g_eeGeneral.trainer.mix[row - 1].mode, context.inc, 0, 3);
 								break;
 							case 1:
-								g_eeGeneral.trainer.mix[i - 1].studWeight =
+								g_eeGeneral.trainer.mix[row - 1].studWeight =
 										gui_int_edit(
-												g_eeGeneral.trainer.mix[i - 1].studWeight,
+												g_eeGeneral.trainer.mix[row - 1].studWeight,
 												context.inc, -100, 100);
 								break;
 							case 2:
-								g_eeGeneral.trainer.mix[i - 1].srcChn =
+								g_eeGeneral.trainer.mix[row - 1].srcChn =
 										gui_int_edit(
-												g_eeGeneral.trainer.mix[i - 1].srcChn,
+												g_eeGeneral.trainer.mix[row - 1].srcChn,
 												context.inc, 0, 7);
 								break;
 							case 3:
-								g_eeGeneral.trainer.mix[i - 1].swtch = gui_int_edit(
-										g_eeGeneral.trainer.mix[i - 1].swtch, context.inc,
+								g_eeGeneral.trainer.mix[row - 1].swtch = gui_int_edit(
+										g_eeGeneral.trainer.mix[row - 1].swtch, context.inc,
 										-NUM_SWITCHES, NUM_SWITCHES);
 							}
 
 
-						lcd_write_string((char*) sticks[i - 1], context.op_list, FLAGS_NONE);
+						lcd_write_string((char*) sticks[row - 1], context.op_list, FLAGS_NONE);
 						lcd_write_string(" ", LCD_OP_SET, FLAGS_NONE);
 						lcd_write_string(
-								(char*) mix_mode[g_eeGeneral.trainer.mix[i - 1].mode],
+								(char*) mix_mode[g_eeGeneral.trainer.mix[row - 1].mode],
 								(context.col == 0) ? context.op_item : LCD_OP_SET,
 								FLAGS_NONE);
 
 						lcd_set_cursor(66, context.line);
-						lcd_write_int(g_eeGeneral.trainer.mix[i - 1].studWeight,
+						lcd_write_int(g_eeGeneral.trainer.mix[row - 1].studWeight,
 								(context.col == 1) ? context.op_item : LCD_OP_SET,
 								ALIGN_RIGHT);
 
 						// Source
 						lcd_set_cursor(78, context.line);
 						lcd_write_string("ch", LCD_OP_SET, FLAGS_NONE);
-						lcd_write_int(g_eeGeneral.trainer.mix[i - 1].srcChn + 1,
+						lcd_write_int(g_eeGeneral.trainer.mix[row - 1].srcChn + 1,
 								(context.col == 2) ? context.op_item : LCD_OP_SET,
 								FLAGS_NONE);
 
 						// Switch
 						{
-							int8_t sw = g_eeGeneral.trainer.mix[i - 1].swtch;
+							int8_t sw = g_eeGeneral.trainer.mix[row - 1].swtch;
 							lcd_set_cursor(102, context.line);
 							if (sw < 0) {
 								lcd_write_char('!', LCD_OP_SET, FLAGS_NONE);
@@ -1018,6 +1057,7 @@ void gui_process(uint32_t data) {
 
 			case SYS_PAGE_DIAG: {
 				uint8_t sw = keypad_get_switches();
+				uint8_t i;
 				for (i = 0; i < NUM_SWITCHES; ++i) {
 					lcd_set_cursor(6 * 6, (2 + i) * 8);
 					lcd_write_string((char*) switches[i + 1], LCD_OP_SET,
@@ -1101,7 +1141,7 @@ void gui_process(uint32_t data) {
 					context.op_list = LCD_OP_CLR;
 				}
 
-				for (i = 0; i < STICK_ADC_CHANNELS; ++i) {
+				for (uint8_t i = 0; i < STICK_ADC_CHANNELS; ++i) {
 					lcd_set_cursor(24, (i + 1) * 8);
 					lcd_write_char('A', LCD_OP_SET, FLAGS_NONE);
 					lcd_write_int(i, LCD_OP_SET, FLAGS_NONE);
@@ -1168,20 +1208,20 @@ void gui_process(uint32_t data) {
 			case MOD_PAGE_SELECT: {
 				context.list_limit = MAX_MODELS - 1;
 				context.col_limit = 0;
-				for (i = context.list_top;
-						(i < context.list_top + LIST_ROWS) && (i <= context.list_limit); ++i)
+				for (uint8_t row = context.list_top;
+						(row < context.list_top + LIST_ROWS) && (row <= context.list_limit); ++row)
 				{
-					prepare_context_for_list_row(&context, i);
+					prepare_context_for_list_row(&context, row);
 
-					lcd_write_string(g_eeGeneral.currModel == i ? "* " : "  ",
+					lcd_write_string(g_eeGeneral.currModel == row ? "* " : "  ",
 							context.op_list, FLAGS_NONE);
 					char name[MODEL_NAME_LEN];
-					name[0] = '0' + i / 10;
-					name[1] = '0' + i % 10;
+					name[0] = '0' + row / 10;
+					name[1] = '0' + row % 10;
 					name[2] = ' ';
 					name[3] = 0;
 					lcd_write_string(name, context.op_list, FLAGS_NONE);
-					eeprom_read_model_name(i, name);
+					eeprom_read_model_name(row, name);
 					lcd_write_string(name, context.op_list, FLAGS_NONE);
 					lcd_write_string(" ", LCD_OP_SET, FLAGS_NONE);
 				}
@@ -1220,29 +1260,29 @@ void gui_process(uint32_t data) {
 			case MOD_PAGE_SETUP:
 				context.list_limit = MOD_MENU_LIST1_LEN - 1;
 				context.col_limit = 0;
-				for (i = context.list_top;
-						(i < context.list_top + LIST_ROWS) && (i <= context.list_limit); ++i) {
+				for (uint8_t row = context.list_top;
+						(row < context.list_top + LIST_ROWS) && (row <= context.list_limit); ++row) {
 
-					prepare_context_for_list_row(&context, i);
+					prepare_context_for_list_row(&context, row);
 
-					lcd_write_string((char*) model_menu_list1[i], context.op_list,
+					lcd_write_string((char*) model_menu_list1[row], context.op_list,
 							FLAGS_NONE);
 					lcd_write_string(" ", LCD_OP_SET, FLAGS_NONE);
-					switch (i) {
-					GUI_CASE_COL(0, 74, GUI_EDIT_STR(g_model.name))
-					GUI_CASE_COL(1, 96,
+					switch (row) {
+					GUI_CASE_OFS(0, 74, GUI_EDIT_STR(g_model.name))
+					GUI_CASE_OFS(1, 96,
 							GUI_EDIT_ENUM( g_model.tmrMode, 0, 5, timer_modes ))
-					GUI_CASE_COL(2, 96,
+					GUI_CASE_OFS(2, 96,
 							GUI_EDIT_ENUM( g_model.tmrDir, 0, 1, dir_labels ))
-					GUI_CASE_COL(3, 96, GUI_EDIT_INT( g_model.tmrVal, 0, 3600 ))
-					GUI_CASE_COL(4, 96,
+					GUI_CASE_OFS(3, 96, GUI_EDIT_INT( g_model.tmrVal, 0, 3600 ))
+					GUI_CASE_OFS(4, 96,
 							GUI_EDIT_ENUM( g_model.traineron, 0, 1, menu_on_off ))
-					GUI_CASE_COL(5, 96,
+					GUI_CASE_OFS(5, 96,
 							GUI_EDIT_ENUM( g_model.thrTrim, 0, 1, menu_on_off ))
-					GUI_CASE_COL(6, 96,
+					GUI_CASE_OFS(6, 96,
 							GUI_EDIT_ENUM( g_model.thrExpo, 0, 1, menu_on_off ))
-					GUI_CASE_COL(7, 96, GUI_EDIT_INT( g_model.trimInc, 0, 7 ))
-					GUI_CASE_COL(8, 96,
+					GUI_CASE_OFS(7, 96, GUI_EDIT_INT( g_model.trimInc, 0, 7 ))
+					GUI_CASE_OFS(8, 96,
 							GUI_EDIT_ENUM( g_model.extendedLimits, 0, 1, menu_on_off ))
 					}
 				}
@@ -1256,12 +1296,12 @@ void gui_process(uint32_t data) {
 				// ToDo: Implement context.edit
 				context.list_limit = 3;
 				context.col_limit = 0;
-				for (i = context.list_top;
-						(i < context.list_top + LIST_ROWS) && (i <= context.list_limit); ++i)
+				for (uint8_t row = context.list_top;
+						(row < context.list_top + LIST_ROWS) && (row <= context.list_limit); ++row)
 				{
-					prepare_context_for_list_row(&context, i);
-					lcd_write_string(sticks[i], context.op_list, TRAILING_SPACE);
-					ExpoData* ed = &g_model.expoData[i];
+					prepare_context_for_list_row(&context, row);
+					lcd_write_string(sticks[row], context.op_list, TRAILING_SPACE);
+					ExpoData* ed = &g_model.expoData[row];
 					lcd_write_string(switches[ed->drSw1], context.op_list, TRAILING_SPACE);
 					lcd_write_string(switches[ed->drSw2], context.op_list, TRAILING_SPACE);
 				}
@@ -1271,13 +1311,13 @@ void gui_process(uint32_t data) {
 			{
 				context.list_limit = MAX_MIXERS - 1;
 				context.col_limit = 0;
-				for (i = context.list_top;
-						(i < context.list_top + LIST_ROWS) && (i <= context.list_limit); ++i)
+				for (uint8_t row = context.list_top;
+						(row < context.list_top + LIST_ROWS) && (row <= context.list_limit); ++row)
 				{
-					prepare_context_for_list_row(&context, i);
+					prepare_context_for_list_row(&context, row);
 
-					const MixData* const mx = &g_model.mixData[i];
-					if(i==0 || (mx->destCh && g_model.mixData[i-1].destCh!=mx->destCh) )
+					const MixData* const mx = &g_model.mixData[row];
+					if(row==0 || (mx->destCh && g_model.mixData[row-1].destCh!=mx->destCh) )
 					{
 						char s[4] = "CH0";
 						s[2] += mx->destCh;
@@ -1370,45 +1410,48 @@ void gui_process(uint32_t data) {
 			case MOD_PAGE_LIMITS:
 				// ToDo: Implement context.edit
 				context.list_limit = NUM_CHNOUT - 1;
-				for (i = context.list_top;
-						(i < context.list_top + LIST_ROWS) && (i <= context.list_limit); ++i)
-				{
-					prepare_context_for_list_row(&context, i);
+				context.col_limit = 4;
+				FOREACH_ROW(
 
-					const LimitData* const p = &g_model.limitData[i];
 					char s[4] = "CH1";
-					s[2] += i;
-					lcd_write_string(s, context.op_list, TRAILING_SPACE|CHAR_NOSPACE);
-					lcd_write_string("     ", context.op_list, FLAGS_NONE);
-					lcd_set_cursor((3+6-1)*6+2, context.line);
-					lcd_write_int(p->offset,context.op_list,INT_DIV10|ALIGN_RIGHT|TRAILING_SPACE);
-					lcd_set_cursor((3+6+4-1)*6+2, context.line);
-					lcd_write_int(p->min,context.op_list,ALIGN_RIGHT|TRAILING_SPACE);
-					lcd_set_cursor((3+6+4+4-1)*6+2, context.line);
-					lcd_write_int(p->max,context.op_list,ALIGN_RIGHT|TRAILING_SPACE);
-					lcd_write_string(p->reverse?"INV":"---", context.op_list, CHAR_NOSPACE);
-				}
+					s[2] += row;
+					lcd_write_string(s, context.op_list, CHAR_NOSPACE);
+
+					LimitData* const p = &g_model.limitData[row];
+
+					FOREACH_COL(
+
+							switch(col)
+							{
+								GUI_CASE_OFS( 0, (3+6-1)*6+2, GUI_EDIT_INT_EX2(p->offset,-100, 100, 0 , INT_DIV10|ALIGN_RIGHT, {}))
+								GUI_CASE_OFS( 1, (3+6+4-1)*6+2, GUI_EDIT_INT_EX2(p->min, -100, 100,0, ALIGN_RIGHT, {}))
+								GUI_CASE_OFS( 2, (3+6+4+4-1)*6+2, GUI_EDIT_INT_EX2(p->max, -100, 100,0, ALIGN_RIGHT,{}))
+								GUI_CASE_OFS( 3, (3+6+4+4+2-1)*6+2, GUI_EDIT_ENUM(p->reverse, 0, 1, inverse_labels))
+							}
+					)
+
+				)
 				break;
 
 			case MOD_PAGE_CURVES:
 				// ToDo: Implement context.edit
 				context.list_limit = MAX_CURVE5 + MAX_CURVE9 - 1;
-				for (i = context.list_top;
-					 (i < context.list_top + LIST_ROWS) && (i <= context.list_limit); ++i)
+				for (uint8_t row = context.list_top;
+					 (row < context.list_top + LIST_ROWS) && (row <= context.list_limit); ++row)
 				{
-					prepare_context_for_list_row(&context, i);
+					prepare_context_for_list_row(&context, row);
 					char s[5];
 					s[0] = 'C';
 					s[1] = 'V';
-					if( i < 10 )
+					if( row < 10 )
 					{
-						s[2] = '1' + i;
+						s[2] = '1' + row;
 						s[3] = 0;
 					}
 					else
 					{
-						s[2] = '1' + i / 10;
-						s[3] = '1' + i % 10;
+						s[2] = '1' + row / 10;
+						s[3] = '1' + row % 10;
 						s[4] = 0;
 					}
 					lcd_write_string(s, context.op_list, FLAGS_NONE);
@@ -1432,30 +1475,26 @@ void gui_process(uint32_t data) {
 			case MOD_PAGE_MIX_EDIT:
 				// ToDo: Implement!
 				context.list_limit = MIXER_EDIT_LIST1_LEN - 1;
-				for (i = context.list_top;
-						(i < context.list_top + LIST_ROWS) && (i <= context.list_limit); ++i)
-				{
-					prepare_context_for_list_row(&context, i);
-
-					lcd_write_string((char*) mixer_edit_list1[i], context.op_list, FLAGS_NONE);
+				FOREACH_ROW(
+					lcd_write_string((char*) mixer_edit_list1[row], context.op_list, FLAGS_NONE);
 					lcd_write_string(" ", LCD_OP_SET, FLAGS_NONE);
 					MixData* const mx = &g_model.mixData[g_edit_item];
-					switch (i) {
-						GUI_CASE_COL(0, 96, GUI_EDIT_ENUM( mx->srcRaw, 0, MIX_SRC_MAX-1, mix_src ));
-						GUI_CASE_COL(1, 96, GUI_EDIT_INT( mx->weight, -125, 125 ));
-						GUI_CASE_COL(2, 96, GUI_EDIT_INT( mx->sOffset, -125, 125 ));
-						GUI_CASE_COL(3, 96, GUI_EDIT_ENUM( mx->carryTrim, 0, 1, menu_on_off ));
+					switch (row) {
+						GUI_CASE_OFS(0, 96, GUI_EDIT_ENUM( mx->srcRaw, 0, MIX_SRC_MAX-1, mix_src ));
+						GUI_CASE_OFS(1, 96, GUI_EDIT_INT( mx->weight, -125, 125 ));
+						GUI_CASE_OFS(2, 96, GUI_EDIT_INT( mx->sOffset, -125, 125 ));
+						GUI_CASE_OFS(3, 96, GUI_EDIT_ENUM( mx->carryTrim, 0, 1, menu_on_off ));
 						// #4 curve
-						GUI_CASE_COL(5, 96, GUI_EDIT_ENUM( mx->swtch, 0, 4, switches ));
+						GUI_CASE_OFS(5, 96, GUI_EDIT_ENUM( mx->swtch, 0, 4, switches ));
 						// #6 phase
-						GUI_CASE_COL(7, 96, GUI_EDIT_ENUM( mx->mixWarn, 0, 1, menu_on_off ));
-						GUI_CASE_COL(8, 96, GUI_EDIT_ENUM( mx->mltpx, 0, 3, mix_mode ));
-						GUI_CASE_COL(9, 96, GUI_EDIT_INT( mx->delayUp, 0, 255 ));
-						GUI_CASE_COL(10, 96, GUI_EDIT_INT( mx->delayDown, 0, 255 ));
-						GUI_CASE_COL(11, 96, GUI_EDIT_INT( mx->speedUp, 0, 255 ));
-						GUI_CASE_COL(12, 96, GUI_EDIT_INT( mx->speedDown, 0, 255 ));
+						GUI_CASE_OFS(7, 96, GUI_EDIT_ENUM( mx->mixWarn, 0, 1, menu_on_off ));
+						GUI_CASE_OFS(8, 96, GUI_EDIT_ENUM( mx->mltpx, 0, 3, mix_mode ));
+						GUI_CASE_OFS(9, 96, GUI_EDIT_INT( mx->delayUp, 0, 255 ));
+						GUI_CASE_OFS(10, 96, GUI_EDIT_INT( mx->delayDown, 0, 255 ));
+						GUI_CASE_OFS(11, 96, GUI_EDIT_INT( mx->speedUp, 0, 255 ));
+						GUI_CASE_OFS(12, 96, GUI_EDIT_INT( mx->speedDown, 0, 255 ));
 					}
-				}
+				)
 				break;
 			case MOD_PAGE_CURVE_EDIT:
 				// ToDo: Implement!

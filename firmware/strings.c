@@ -218,3 +218,9 @@ const char* dir_labels[] = {
 		"Down",
 		"Up",
 };
+
+
+const char* inverse_labels[] = {
+		"---",
+		"INV"
+};
