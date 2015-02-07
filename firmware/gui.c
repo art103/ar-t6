@@ -1293,18 +1293,15 @@ void gui_process(uint32_t data) {
 				break;
 
 			case MOD_PAGE_EXPODR:
-				// ToDo: Implement context.edit
+				// ToDo: Implement edit
 				context.list_limit = 3;
 				context.col_limit = 0;
-				for (uint8_t row = context.list_top;
-						(row < context.list_top + LIST_ROWS) && (row <= context.list_limit); ++row)
-				{
-					prepare_context_for_list_row(&context, row);
+				FOREACH_ROW(
 					lcd_write_string(sticks[row], context.op_list, TRAILING_SPACE);
 					ExpoData* ed = &g_model.expoData[row];
 					lcd_write_string(switches[ed->drSw1], context.op_list, TRAILING_SPACE);
-					lcd_write_string(switches[ed->drSw2], context.op_list, TRAILING_SPACE);
-				}
+					lcd_write_string(switches[ed->drSw2], context.op_list, FLAGS_NONE);
+				)
 				break;
 
 			case MOD_PAGE_MIXER:
@@ -1424,38 +1421,34 @@ void gui_process(uint32_t data) {
 							switch(col)
 							{
 								GUI_CASE_OFS( 0, (3+6-1)*6+2, GUI_EDIT_INT_EX2(p->offset,-100, 100, 0 , INT_DIV10|ALIGN_RIGHT, {}))
-								GUI_CASE_OFS( 1, (3+6+4-1)*6+2, GUI_EDIT_INT_EX2(p->min, -100, 100,0, ALIGN_RIGHT, {}))
-								GUI_CASE_OFS( 2, (3+6+4+4-1)*6+2, GUI_EDIT_INT_EX2(p->max, -100, 100,0, ALIGN_RIGHT,{}))
+								GUI_CASE_OFS( 1, (3+6+4-1)*6+2, GUI_EDIT_INT_EX2(p->min, -100, 100, 0, ALIGN_RIGHT, {}))
+								GUI_CASE_OFS( 2, (3+6+4+4-1)*6+2, GUI_EDIT_INT_EX2(p->max, -100, 100, 0, ALIGN_RIGHT,{}))
 								GUI_CASE_OFS( 3, (3+6+4+4+2-1)*6+2, GUI_EDIT_ENUM(p->reverse, 0, 1, inverse_labels))
 							}
 					)
-
 				)
 				break;
 
 			case MOD_PAGE_CURVES:
 				// ToDo: Implement context.edit
 				context.list_limit = MAX_CURVE5 + MAX_CURVE9 - 1;
-				for (uint8_t row = context.list_top;
-					 (row < context.list_top + LIST_ROWS) && (row <= context.list_limit); ++row)
-				{
-					prepare_context_for_list_row(&context, row);
+				FOREACH_ROW(
 					char s[5];
 					s[0] = 'C';
 					s[1] = 'V';
+					s[3] = 0;
+					s[4] = 0;
 					if( row < 10 )
 					{
 						s[2] = '1' + row;
-						s[3] = 0;
 					}
 					else
 					{
 						s[2] = '1' + row / 10;
 						s[3] = '1' + row % 10;
-						s[4] = 0;
 					}
 					lcd_write_string(s, context.op_list, FLAGS_NONE);
-				}
+				)
 				break;
 
 			case MOD_PAGE_CUST_SW:
@@ -1464,6 +1457,27 @@ void gui_process(uint32_t data) {
 
 			case MOD_PAGE_SAFE_SW:
 				// ToDo: Implement!
+				// ToDo: Implement edit
+				context.list_limit = DIM(g_model.safetySw)-1;
+				context.col_limit = 3;
+				FOREACH_ROW(
+					char s[4];
+					s[0] = 'C';
+					s[1] = 'H';
+					s[2] = '1'+row;
+					s[3] = 0;
+					lcd_write_string(s, context.op_list, TRAILING_SPACE);
+					FOREACH_COL(
+							SafetySwData* d = &g_model.safetySw[row];
+							switch(col)
+							{
+								GUI_CASE_OFS( 0, 4*6, GUI_EDIT_ENUM(d->opt.ss.swtch, 0, 4, switches) )
+								GUI_CASE_OFS( 1, 9*6, GUI_EDIT_ENUM(d->opt.ss.mode, 0, 3, safety_switch_mode_labels ) )
+								GUI_CASE_OFS( 2, 13*6, GUI_EDIT_INT(d->opt.ss.val, -100, 100) )
+							}
+					)
+				)
+
 				break;
 
 			case MOD_PAGE_TEMPLATES:

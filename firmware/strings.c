@@ -224,3 +224,13 @@ const char* inverse_labels[] = {
 		"---",
 		"INV"
 };
+
+
+// TODO: what are they?
+const char* safety_switch_mode_labels[] = {
+		"M0?",
+		"M1?",
+		"M2?",
+		"M3?"
+};
+

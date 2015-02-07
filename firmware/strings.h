@@ -132,5 +132,6 @@ extern const char *mixer_edit_list1[MIXER_EDIT_LIST1_LEN];
 extern const char *timer_modes[];
 extern const char *dir_labels[];
 extern const char *inverse_labels[];
+extern const char* safety_switch_mode_labels[];
 
 #endif // _STRINGS_H
