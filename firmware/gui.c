@@ -78,12 +78,12 @@ static volatile uint32_t g_gui_timeout = 0;
 static volatile uint8_t g_update_type = 0;
 
 static GUI_LAYOUT g_main_layout = GUI_LAYOUT_MAIN1;
-static MENU_MODE g_menu_mode = MENU_MODE_PAGE;
 static int8_t g_menu_mode_dir = 1;
 static int8_t g_edit_item = 0;
 static uint8_t g_menu_return_page = 0;
 
-typedef struct  {
+// MenuContext used for Page/Subpage edits (System&Model)
+typedef struct {
 	uint8_t page; // current page
 	uint8_t list; // current selected row
 	uint8_t list_top;  // current top row (scroll offset)
@@ -92,10 +92,11 @@ typedef struct  {
 	int8_t col;  // current column (0 for single column row)
 	int8_t col_limit; // # of columns in this row
 	int8_t copy_row; // row # of last "copy" (to be used in next "paste")
-	uint8_t edit:1; // 1 if this line is in active "edit" mode; 0 otherwise
-	int8_t inc:2; // -1,0,1
-	LCD_OP op_list:2; // opacity of text currently being printed in a row (used mainly for row heading)
-	LCD_OP op_item:2; // opacity of text of item currently being printed
+	MENU_MODE menu_mode :3;
+	uint8_t edit :1; // 1 if this line is in active "edit" mode; 0 otherwise
+	int8_t inc :2; // -1,0,1
+	LCD_OP op_list :2; // opacity of text currently being printed in a row (used mainly for row heading)
+	LCD_OP op_item :2; // opacity of text of item currently being printed
 } MenuContext;
 
 //static MenuContext g_menuContext = {0};
@@ -109,12 +110,11 @@ static void gui_draw_trim(int x, int y, bool h_v, int value);
 static void gui_draw_slider(int x, int y, int w, int h, int range, int value);
 static void gui_draw_stick_icon(STICK stick, uint8_t inverse);
 
-static void gui_string_edit(char *string, int8_t delta, uint32_t keys);
-static uint32_t gui_bitfield_edit(char *string, uint32_t field, int8_t delta,
-		uint32_t keys, uint8_t edit);
+static void gui_string_edit(MenuContext* pCtx, char *string, uint32_t keys);
+static uint32_t gui_bitfield_edit(MenuContext* pCtx, char *string,
+		uint32_t field, int8_t delta, uint32_t keys);
 static int32_t gui_int_edit(int32_t data, int32_t delta, int32_t min,
 		int32_t max);
-
 
 #define FOREACH_ROW(BODY) \
 for (int row = context.list_top;\
@@ -129,7 +129,6 @@ for(int col = 0; col < context.col_limit; ++col ) {\
 	prepare_context_for_list_rowcol(&context, row, col);\
 	BODY;\
 }
-
 
 #define GUI_EDIT_INT_EX2( VAR, MIN, MAX, UNITS, FLAGS, EDITACTION ) \
 		if (context.edit) { VAR = gui_int_edit((int)VAR, context.inc, MIN, MAX); EDITACTION; } \
@@ -148,7 +147,7 @@ for(int col = 0; col < context.col_limit; ++col ) {\
 #define GUI_EDIT_STR( VAR ) \
 			prefill_string((char*)VAR, sizeof(VAR));\
 			if (!context.edit) lcd_write_string((char*)VAR, LCD_OP_SET, FLAGS_NONE); \
-			else       gui_string_edit((char*)VAR, context.inc, g_key_press);
+			else       gui_string_edit(&context, (char*)VAR, g_key_press);
 
 #define GUI_CASE( CASE, COL, ACTION ) \
 case CASE: \
@@ -160,7 +159,6 @@ case CASE: \
 	lcd_set_cursor(OFFSET, context.line); \
 	{ ACTION } \
 	break; \
-
 
 
 /**
@@ -180,7 +178,6 @@ static char* prefill_string(char* str, int len) {
 	return str;
 }
 
-
 /**
  * @brief  sets up menu context parameters for menu and given list row
  * @note
@@ -189,28 +186,25 @@ static char* prefill_string(char* str, int len) {
  * @param  col list col we are working on
  * @retval None
  */
-static void prepare_context_for_list_rowcol(MenuContext* pCtx, uint8_t row, uint8_t col)
-{
-	if( pCtx->col_limit == 0 ) pCtx->col = 0;
+static void prepare_context_for_list_rowcol(MenuContext* pCtx, uint8_t row, uint8_t col) {
+	if (pCtx->col_limit == 0)
+		pCtx->col = 0;
 	pCtx->line = (row - pCtx->list_top + 1) * 8;
 	pCtx->op_list = LCD_OP_SET;
 	pCtx->op_item = LCD_OP_SET;
 	pCtx->edit = 0;
-	if(row == pCtx->list)
-	{
-		switch(g_menu_mode)
-		{
+	if (row == pCtx->list) {
+		switch (pCtx->menu_mode) {
 		case MENU_MODE_LIST:
 			pCtx->op_list = LCD_OP_CLR;
 			break;
 		case MENU_MODE_COL:
-			if(pCtx->col == col)
+			if (pCtx->col == col)
 				pCtx->op_item = LCD_OP_CLR;
 			break;
 		case MENU_MODE_EDIT:
 		case MENU_MODE_EDIT_S:
-			if( pCtx->col == col )
-			{
+			if (pCtx->col == col) {
 				pCtx->edit = 1;
 				pCtx->op_item = LCD_OP_CLR;
 			}
@@ -223,7 +217,6 @@ static void prepare_context_for_list_rowcol(MenuContext* pCtx, uint8_t row, uint
 	lcd_set_cursor(0, pCtx->line);
 }
 
-
 /**
  * @brief  sets up menu context parameters for menu and given list row in no col context
  * @note
@@ -231,10 +224,9 @@ static void prepare_context_for_list_rowcol(MenuContext* pCtx, uint8_t row, uint
  * @param  row list row we are working on
  * @retval None
  */
-static void prepare_context_for_list_row(MenuContext* pCtx, uint8_t row)
-{
+static void prepare_context_for_list_row(MenuContext* pCtx, uint8_t row) {
 	pCtx->col_limit = 0;
-	prepare_context_for_list_rowcol(pCtx,row,0);
+	prepare_context_for_list_rowcol(pCtx, row, 0);
 }
 
 /**
@@ -263,35 +255,36 @@ void gui_process(uint32_t data) {
 	if (g_current_msg) {
 		char closeit = (g_gui_timeout != 0 && system_ticks >= g_gui_timeout);
 		char update = g_gui_timeout != 0;
-		if( g_update_type & UPDATE_KEYPRESS )
-		{
-			if( g_popup_selected_line && (g_key_press & (KEY_LEFT|KEY_RIGHT)) )
-			{
-				if( g_key_press & KEY_LEFT ) g_popup_selected_line--;
-				if( g_key_press & KEY_RIGHT ) g_popup_selected_line++;
-				if( g_popup_selected_line < 1 ) g_popup_selected_line = 1;
-				if( g_popup_selected_line > g_popup_lines ) g_popup_selected_line = g_popup_lines;
+		if (g_update_type & UPDATE_KEYPRESS) {
+			if (g_popup_selected_line
+					&& (g_key_press & (KEY_LEFT | KEY_RIGHT))) {
+				if (g_key_press & KEY_LEFT)
+					g_popup_selected_line--;
+				if (g_key_press & KEY_RIGHT)
+					g_popup_selected_line++;
+				if (g_popup_selected_line < 1)
+					g_popup_selected_line = 1;
+				if (g_popup_selected_line > g_popup_lines)
+					g_popup_selected_line = g_popup_lines;
 				g_new_msg = g_current_msg;
 				g_current_msg = 0;
 				update = 1;
 				g_key_press = KEY_NONE;
 			}
-			if ( (g_key_press & (KEY_OK | KEY_CANCEL | KEY_SEL)) )
-			{
+			if ((g_key_press & (KEY_OK | KEY_CANCEL | KEY_SEL))) {
 				closeit = 1;
-				if( g_key_press & KEY_CANCEL )
+				if (g_key_press & KEY_CANCEL)
 					g_popup_result = GUI_POPUP_RESULT_CANCEL;
 				else
-					g_popup_result = g_popup_selected_line ? g_popup_selected_line : 1;
+					g_popup_result =
+							g_popup_selected_line ? g_popup_selected_line : 1;
 			}
 		}
-		if( closeit )
-		{
+		if (closeit) {
 			g_gui_timeout = 0;
 			g_current_msg = 0;
 			g_new_layout = g_current_layout;
-		}
-		else {
+		} else {
 			task_schedule(TASK_PROCESS_GUI, UPDATE_MSG, 40);
 			return;
 		}
@@ -336,11 +329,11 @@ void gui_process(uint32_t data) {
 		lcd_draw_rect(MSG_X, MSG_Y, LCD_WIDTH - MSG_X, MSG_Y + MSG_H,
 				LCD_OP_SET, FLAGS_NONE);
 		lcd_draw_rect(MSG_X + 2, MSG_Y + 2, LCD_WIDTH - MSG_X - 2,
-				MSG_Y + MSG_H - 2, LCD_OP_SET, FLAGS_NONE);
+		MSG_Y + MSG_H - 2, LCD_OP_SET, FLAGS_NONE);
 		// Draw the message
 		lcd_set_cursor(MSG_X + 4, MSG_Y + 4);
 		g_popup_lines = lcd_draw_message(msg[g_new_msg], LCD_OP_SET, LCD_OP_CLR,
-				                         g_popup_selected_line);
+				g_popup_selected_line);
 
 		g_new_msg = GUI_MSG_NONE;
 
@@ -414,9 +407,9 @@ void gui_process(uint32_t data) {
 	case GUI_LAYOUT_MAIN2:
 		if ((g_update_type & UPDATE_STICKS) != 0) {
 			const int top = 40;
-			int scale =
-					(g_model.extendedLimits == TRUE) ?
-							PPM_LIMIT_EXTENDED : PPM_LIMIT_NORMAL;
+			int scale = (g_model.extendedLimits == TRUE) ?
+			PPM_LIMIT_EXTENDED :
+															PPM_LIMIT_NORMAL;
 
 			// Left 4 sliders
 			gui_draw_slider(11, top, 48, 3, 2 * scale, scale + g_chans[0]);
@@ -450,9 +443,9 @@ void gui_process(uint32_t data) {
 		int top = 40;
 		int left = 12;
 		const int spacing = 28;
-		int scale =
-				(g_model.extendedLimits == TRUE) ?
-						PPM_LIMIT_EXTENDED : PPM_LIMIT_NORMAL;
+		int scale = (g_model.extendedLimits == TRUE) ?
+		PPM_LIMIT_EXTENDED :
+														PPM_LIMIT_NORMAL;
 
 		lcd_draw_rect(left, top, left + spacing * 4 - 4, top + 16, LCD_OP_CLR,
 				RECT_FILL);
@@ -583,7 +576,7 @@ void gui_process(uint32_t data) {
 			lcd_draw_rect(72, 57, 104, 58, LCD_OP_SET, RECT_FILL);
 		}
 	}
-	break; // GUI_LAYOUT_MENU
+		break; // GUI_LAYOUT_MENU
 
 		/**********************************************************************
 		 * Common Menu key handling
@@ -591,88 +584,86 @@ void gui_process(uint32_t data) {
 	case GUI_LAYOUT_SYSTEM_MENU:
 	case GUI_LAYOUT_MODEL_MENU: {
 
-		static MenuContext context = {0};
+		static MenuContext context = { 0 };
 
 		// Clear the screen.
 		lcd_draw_rect(0, 0, LCD_WIDTH - 1, LCD_HEIGHT - 1, LCD_OP_CLR,
-				      RECT_FILL);
+				RECT_FILL);
 		lcd_set_cursor(0, 0);
 
 		context.edit = 0;
 		context.inc = 0;
 		if (g_key_press & KEY_LEFT) {
-			if (g_menu_mode == MENU_MODE_PAGE) {
-				if(context.page > 0) {
+			if (context.menu_mode == MENU_MODE_PAGE) {
+				if (context.page > 0) {
 					context.page--;
 					context.list = 0;
 					context.list_top = 0;
 				}
-			} else if (g_menu_mode == MENU_MODE_LIST) {
+			} else if (context.menu_mode == MENU_MODE_LIST) {
 				if (context.list > 0) {
 					context.list--;
 				}
-			} else if (g_menu_mode == MENU_MODE_COL) {
+			} else if (context.menu_mode == MENU_MODE_COL) {
 				if (context.col > 0) {
 					context.col--;
 				}
 			} else
 				context.inc = -1;
 		} else if (g_key_press & KEY_RIGHT) {
-			if (g_menu_mode == MENU_MODE_PAGE) {
-				if(context.page < PAGE_LIMIT) {
+			if (context.menu_mode == MENU_MODE_PAGE) {
+				if (context.page < PAGE_LIMIT) {
 					context.page++;
 					context.list = 0;
 					context.list_top = 0;
 				}
-			} else if (g_menu_mode == MENU_MODE_LIST) {
-				if(context.list < context.list_limit) {
+			} else if (context.menu_mode == MENU_MODE_LIST) {
+				if (context.list < context.list_limit) {
 					context.list++;
 				}
-			} else if (g_menu_mode == MENU_MODE_COL) {
+			} else if (context.menu_mode == MENU_MODE_COL) {
 				if (context.col < context.col_limit) {
 					context.col++;
 				}
 			} else
 				context.inc = 1;
 		} else if (g_key_press & (KEY_SEL | KEY_OK)) {
-			switch (g_menu_mode) {
+			switch (context.menu_mode) {
 			case MENU_MODE_PAGE:
-				g_menu_mode = MENU_MODE_LIST;
+				context.menu_mode = MENU_MODE_LIST;
 				g_menu_mode_dir = 1;
 				break;
 			case MENU_MODE_LIST:
-				if(context.col_limit==0)
-					g_menu_mode = MENU_MODE_EDIT;
-				else
-				{
-					g_menu_mode = MENU_MODE_COL;
+				if (context.col_limit == 0)
+					context.menu_mode = MENU_MODE_EDIT;
+				else {
+					context.menu_mode = MENU_MODE_COL;
 				}
 				break;
 			case MENU_MODE_COL:
-				g_menu_mode = MENU_MODE_EDIT;
+				context.menu_mode = MENU_MODE_EDIT;
 				break;
 			case MENU_MODE_EDIT:
-				if(context.col_limit==0)
-					g_menu_mode = MENU_MODE_LIST;
+				if (context.col_limit == 0)
+					context.menu_mode = MENU_MODE_LIST;
 				else
-					g_menu_mode = MENU_MODE_COL;
+					context.menu_mode = MENU_MODE_COL;
 				break;
 			default:
 				break;
 			}
 		} else if (g_key_press & KEY_CANCEL) {
-			if( g_menu_return_page )
+			if (g_menu_return_page) {
 				context.page = g_menu_return_page;
-			else
-			{
-				if (g_menu_mode > 0) {
-					g_menu_mode--;
-					if(context.col_limit==0 && g_menu_mode==MENU_MODE_COL)
-					{
-						g_menu_mode = MENU_MODE_LIST;
+				g_menu_return_page = 0;
+			} else {
+				if (context.menu_mode > 0) {
+					context.menu_mode--;
+					if (context.col_limit == 0
+							&& context.menu_mode == MENU_MODE_COL) {
+						context.menu_mode = MENU_MODE_LIST;
 					}
-				}
-				else {
+				} else {
 					context.page = 0;
 					context.list = 0;
 					context.list_top = 0;
@@ -680,13 +671,11 @@ void gui_process(uint32_t data) {
 				}
 			}
 		}
-		g_menu_return_page = 0;
 
 		if (context.list < context.list_top)
 			context.list_top = context.list;
 		if (context.list >= context.list_top + LIST_ROWS)
 			context.list_top++;
-
 
 		if (g_current_layout == GUI_LAYOUT_SYSTEM_MENU) {
 			/**********************************************************************
@@ -700,10 +689,10 @@ void gui_process(uint32_t data) {
 					LCD_OP_CLR, FLAGS_NONE);
 			lcd_set_cursor(110, 0);
 			lcd_write_int(context.page + 1,
-					(g_menu_mode == MENU_MODE_PAGE) ? LCD_OP_CLR : LCD_OP_SET,
+					(context.menu_mode == MENU_MODE_PAGE) ? LCD_OP_CLR : LCD_OP_SET,
 					FLAGS_NONE);
 			lcd_write_string("/6",
-					(g_menu_mode == MENU_MODE_PAGE) ? LCD_OP_CLR : LCD_OP_SET,
+					(context.menu_mode == MENU_MODE_PAGE) ? LCD_OP_CLR : LCD_OP_SET,
 					FLAGS_NONE);
 
 			/**********************************************************************
@@ -714,12 +703,13 @@ void gui_process(uint32_t data) {
 				context.list_limit = SYS_MENU_LIST1_LEN - 1;
 				context.col_limit = 0;
 				for (uint8_t row = context.list_top;
-					 (row < context.list_top + LIST_ROWS) && (row <= context.list_limit); ++row) {
+						(row < context.list_top + LIST_ROWS)
+								&& (row <= context.list_limit); ++row) {
 
 					prepare_context_for_list_row(&context, row);
 
-					lcd_write_string((char*) system_menu_list1[row], context.op_list,
-							FLAGS_NONE);
+					lcd_write_string((char*) system_menu_list1[row],
+							context.op_list, FLAGS_NONE);
 					lcd_write_string(" ", LCD_OP_SET, FLAGS_NONE);
 					switch (row) {
 					GUI_CASE_OFS(0, 74, GUI_EDIT_STR(g_eeGeneral.ownerName))
@@ -735,16 +725,18 @@ void gui_process(uint32_t data) {
 						lcd_set_cursor(110, context.line);
 						if (context.edit)
 							g_eeGeneral.inactivityTimer = gui_int_edit(
-									g_eeGeneral.inactivityTimer, context.inc, 0, 250);
-						lcd_write_int(g_eeGeneral.inactivityTimer, context.op_item,
-								FLAGS_NONE);
+									g_eeGeneral.inactivityTimer, context.inc, 0,
+									250);
+						lcd_write_int(g_eeGeneral.inactivityTimer,
+								context.op_item, FLAGS_NONE);
 						lcd_write_char('m', context.op_item, FLAGS_NONE);
 						break;
 					case 6:	// Throttle Reverse
 						lcd_set_cursor(110, context.line);
 						if (context.edit)
 							g_eeGeneral.throttleReversed = gui_int_edit(
-									g_eeGeneral.throttleReversed, context.inc, 0, 1);
+									g_eeGeneral.throttleReversed, context.inc,
+									0, 1);
 						lcd_write_string(
 								(char*) menu_on_off[g_eeGeneral.throttleReversed],
 								context.op_item, FLAGS_NONE);
@@ -782,7 +774,8 @@ void gui_process(uint32_t data) {
 						lcd_set_cursor(104, context.line);
 						if (context.edit) {
 							g_eeGeneral.lightSw = gui_int_edit(
-									g_eeGeneral.lightSw, context.inc, -NUM_SWITCHES,
+									g_eeGeneral.lightSw, context.inc,
+									-NUM_SWITCHES,
 									NUM_SWITCHES);
 						}
 						if (sw < 0) {
@@ -806,7 +799,8 @@ void gui_process(uint32_t data) {
 						lcd_set_cursor(104, context.line);
 						if (context.edit)
 							g_eeGeneral.lightAutoOff = gui_int_edit(
-									g_eeGeneral.lightAutoOff, context.inc, 0, 255);
+									g_eeGeneral.lightAutoOff, context.inc, 0,
+									255);
 						lcd_write_int(g_eeGeneral.lightAutoOff, context.op_item,
 								FLAGS_NONE);
 						lcd_write_char('s', context.op_item, FLAGS_NONE);
@@ -815,7 +809,8 @@ void gui_process(uint32_t data) {
 						lcd_set_cursor(110, context.line);
 						if (context.edit)
 							g_eeGeneral.lightOnStickMove = gui_int_edit(
-									g_eeGeneral.lightOnStickMove, context.inc, 0, 1);
+									g_eeGeneral.lightOnStickMove, context.inc,
+									0, 1);
 						lcd_write_string(
 								(char*) menu_on_off[g_eeGeneral.lightOnStickMove],
 								context.op_item, FLAGS_NONE);
@@ -824,7 +819,8 @@ void gui_process(uint32_t data) {
 						lcd_set_cursor(110, context.line);
 						if (context.edit)
 							g_eeGeneral.disableSplashScreen = gui_int_edit(
-									g_eeGeneral.disableSplashScreen, context.inc, 0, 1);
+									g_eeGeneral.disableSplashScreen,
+									context.inc, 0, 1);
 						lcd_write_string(
 								(char*) menu_on_off[1
 										- g_eeGeneral.disableSplashScreen],
@@ -834,8 +830,8 @@ void gui_process(uint32_t data) {
 						lcd_set_cursor(110, context.line);
 						if (context.edit)
 							g_eeGeneral.disableThrottleWarning = gui_int_edit(
-									g_eeGeneral.disableThrottleWarning, context.inc, 0,
-									1);
+									g_eeGeneral.disableThrottleWarning,
+									context.inc, 0, 1);
 						lcd_write_string(
 								(char*) menu_on_off[1
 										- g_eeGeneral.disableThrottleWarning],
@@ -845,8 +841,8 @@ void gui_process(uint32_t data) {
 						lcd_set_cursor(110, context.line);
 						if (context.edit)
 							g_eeGeneral.disableSwitchWarning = gui_int_edit(
-									g_eeGeneral.disableSwitchWarning, context.inc, 0,
-									1);
+									g_eeGeneral.disableSwitchWarning,
+									context.inc, 0, 1);
 						lcd_write_string(
 								(char*) menu_on_off[1
 										- g_eeGeneral.disableSwitchWarning],
@@ -854,16 +850,16 @@ void gui_process(uint32_t data) {
 						break;
 					case 17: // Default Sw
 						lcd_set_cursor(104, context.line);
-						g_eeGeneral.switchWarningStates = gui_bitfield_edit(
-								"ABCD", g_eeGeneral.switchWarningStates, context.inc,
-								g_key_press, context.edit);
+						g_eeGeneral.switchWarningStates = gui_bitfield_edit(&context,
+								"ABCD", g_eeGeneral.switchWarningStates,
+								context.inc, g_key_press);
 						break;
 					case 18: // Memory Warning
 						lcd_set_cursor(110, context.line);
 						if (context.edit)
 							g_eeGeneral.disableMemoryWarning = gui_int_edit(
-									g_eeGeneral.disableMemoryWarning, context.inc, 0,
-									1);
+									g_eeGeneral.disableMemoryWarning,
+									context.inc, 0, 1);
 						lcd_write_string(
 								(char*) menu_on_off[1
 										- g_eeGeneral.disableMemoryWarning],
@@ -873,7 +869,8 @@ void gui_process(uint32_t data) {
 						lcd_set_cursor(110, context.line);
 						if (context.edit)
 							g_eeGeneral.disableAlarmWarning = gui_int_edit(
-									g_eeGeneral.disableAlarmWarning, context.inc, 0, 1);
+									g_eeGeneral.disableAlarmWarning,
+									context.inc, 0, 1);
 						lcd_write_string(
 								(char*) menu_on_off[1
 										- g_eeGeneral.disableAlarmWarning],
@@ -883,7 +880,8 @@ void gui_process(uint32_t data) {
 						lcd_set_cursor(110, context.line);
 						if (context.edit)
 							g_eeGeneral.enablePpmsim = gui_int_edit(
-									g_eeGeneral.enablePpmsim, context.inc, 0, 1);
+									g_eeGeneral.enablePpmsim, context.inc, 0,
+									1);
 						lcd_write_string(
 								(char*) menu_on_off[g_eeGeneral.enablePpmsim],
 								context.op_item, FLAGS_NONE);
@@ -917,7 +915,8 @@ void gui_process(uint32_t data) {
 				context.list_limit = 6;
 				context.col_limit = context.list != 5 ? 3 : 0;
 				for (uint8_t row = context.list_top;
-						(row < context.list_top + LIST_ROWS) && (row <= context.list_limit); ++row) {
+						(row < context.list_top + LIST_ROWS)
+								&& (row <= context.list_limit); ++row) {
 
 					// First row isn't editable
 					if (context.list == 0)
@@ -939,10 +938,12 @@ void gui_process(uint32_t data) {
 					case 4:
 						// Mode
 						if (context.edit)
-							switch(context.col) {
+							switch (context.col) {
 							case 0:
-								g_eeGeneral.trainer.mix[row - 1].mode = gui_int_edit(
-									g_eeGeneral.trainer.mix[row - 1].mode, context.inc, 0, 3);
+								g_eeGeneral.trainer.mix[row - 1].mode =
+										gui_int_edit(
+												g_eeGeneral.trainer.mix[row - 1].mode,
+												context.inc, 0, 3);
 								break;
 							case 1:
 								g_eeGeneral.trainer.mix[row - 1].studWeight =
@@ -957,29 +958,36 @@ void gui_process(uint32_t data) {
 												context.inc, 0, 7);
 								break;
 							case 3:
-								g_eeGeneral.trainer.mix[row - 1].swtch = gui_int_edit(
-										g_eeGeneral.trainer.mix[row - 1].swtch, context.inc,
-										-NUM_SWITCHES, NUM_SWITCHES);
+								g_eeGeneral.trainer.mix[row - 1].swtch =
+										gui_int_edit(
+												g_eeGeneral.trainer.mix[row - 1].swtch,
+												context.inc, -NUM_SWITCHES,
+												NUM_SWITCHES);
 							}
 
-
-						lcd_write_string((char*) sticks[row - 1], context.op_list, FLAGS_NONE);
+						lcd_write_string((char*) sticks[row - 1],
+								context.op_list, FLAGS_NONE);
 						lcd_write_string(" ", LCD_OP_SET, FLAGS_NONE);
 						lcd_write_string(
 								(char*) mix_mode[g_eeGeneral.trainer.mix[row - 1].mode],
-								(context.col == 0) ? context.op_item : LCD_OP_SET,
+								(context.col == 0) ?
+										context.op_item : LCD_OP_SET,
 								FLAGS_NONE);
 
 						lcd_set_cursor(66, context.line);
-						lcd_write_int(g_eeGeneral.trainer.mix[row - 1].studWeight,
-								(context.col == 1) ? context.op_item : LCD_OP_SET,
+						lcd_write_int(
+								g_eeGeneral.trainer.mix[row - 1].studWeight,
+								(context.col == 1) ?
+										context.op_item : LCD_OP_SET,
 								ALIGN_RIGHT);
 
 						// Source
 						lcd_set_cursor(78, context.line);
 						lcd_write_string("ch", LCD_OP_SET, FLAGS_NONE);
-						lcd_write_int(g_eeGeneral.trainer.mix[row - 1].srcChn + 1,
-								(context.col == 2) ? context.op_item : LCD_OP_SET,
+						lcd_write_int(
+								g_eeGeneral.trainer.mix[row - 1].srcChn + 1,
+								(context.col == 2) ?
+										context.op_item : LCD_OP_SET,
 								FLAGS_NONE);
 
 						// Switch
@@ -992,17 +1000,19 @@ void gui_process(uint32_t data) {
 							}
 							lcd_write_string((char*) switches[sw],
 									(context.col == 3) ?
-											context.op_item : LCD_OP_SET ,
+											context.op_item : LCD_OP_SET,
 									FLAGS_NONE);
 						}
 						break;
 					case 5:
-						lcd_write_string("Multiplier ", context.op_list, FLAGS_NONE);
+						lcd_write_string("Multiplier ", context.op_list,
+								FLAGS_NONE);
 						if (context.edit)
 							g_eeGeneral.PPM_Multiplier = gui_int_edit(
-									g_eeGeneral.PPM_Multiplier, context.inc, 10, 50);
-						lcd_write_int(g_eeGeneral.PPM_Multiplier, context.op_item,
-								INT_DIV10);
+									g_eeGeneral.PPM_Multiplier, context.inc, 10,
+									50);
+						lcd_write_int(g_eeGeneral.PPM_Multiplier,
+								context.op_item, INT_DIV10);
 						break;
 					case 6: {
 						int j;
@@ -1014,11 +1024,12 @@ void gui_process(uint32_t data) {
 									LCD_OP_SET, ALIGN_RIGHT | CHAR_CONDENSED);
 						}
 
-						if (context.edit && (g_key_press & (KEY_OK | KEY_SEL))) {
+						if (context.edit
+								&& (g_key_press & (KEY_OK | KEY_SEL))) {
 							for (j = 0; j < 4; ++j) {
 								g_eeGeneral.trainer.calib[j] = g_ppmIns[j];
 							}
-							g_menu_mode = MENU_MODE_LIST;
+							context.menu_mode = MENU_MODE_LIST;
 						}
 					}
 						break;
@@ -1134,8 +1145,8 @@ void gui_process(uint32_t data) {
 				context.op_list = LCD_OP_SET;
 				context.list_limit = 1;
 
-				if (g_menu_mode == MENU_MODE_EDIT
-						|| g_menu_mode == MENU_MODE_LIST) {
+				if (context.menu_mode == MENU_MODE_EDIT
+						|| context.menu_mode == MENU_MODE_LIST) {
 					g_eeGeneral.vBatCalib = gui_int_edit(g_eeGeneral.vBatCalib,
 							context.inc, 80, 120);
 					context.op_list = LCD_OP_CLR;
@@ -1153,7 +1164,8 @@ void gui_process(uint32_t data) {
 						lcd_write_int(sticks_get_percent(i), LCD_OP_SET,
 								FLAGS_NONE);
 					} else {
-						lcd_write_int(sticks_get_battery(), context.op_list, INT_DIV10);
+						lcd_write_int(sticks_get_battery(), context.op_list,
+								INT_DIV10);
 						lcd_write_string("v", context.op_list, FLAGS_NONE);
 					}
 
@@ -1188,17 +1200,17 @@ void gui_process(uint32_t data) {
 			 *
 			 */
 
-			lcd_write_string((char*) msg[GUI_HDG_MODELSEL + context.page], LCD_OP_CLR,
-					FLAGS_NONE);
+			lcd_write_string((char*) msg[GUI_HDG_MODELSEL + context.page],
+					LCD_OP_CLR, FLAGS_NONE);
 			if (context.page == MOD_PAGE_SETUP)
 				lcd_write_int(g_eeGeneral.currModel, LCD_OP_CLR, FLAGS_NONE);
 			lcd_set_cursor(104, 0);
 			lcd_write_int(context.page + 1,
-					(g_menu_mode == MENU_MODE_PAGE) ? LCD_OP_CLR : LCD_OP_SET,
+					(context.menu_mode == MENU_MODE_PAGE) ? LCD_OP_CLR : LCD_OP_SET,
 					ALIGN_RIGHT);
 			lcd_set_cursor(110, 0);
 			lcd_write_string("/10",
-					(g_menu_mode == MENU_MODE_PAGE) ? LCD_OP_CLR : LCD_OP_SET,
+					(context.menu_mode == MENU_MODE_PAGE) ? LCD_OP_CLR : LCD_OP_SET,
 					FLAGS_NONE);
 
 			/**********************************************************************
@@ -1209,8 +1221,8 @@ void gui_process(uint32_t data) {
 				context.list_limit = MAX_MODELS - 1;
 				context.col_limit = 0;
 				for (uint8_t row = context.list_top;
-						(row < context.list_top + LIST_ROWS) && (row <= context.list_limit); ++row)
-				{
+						(row < context.list_top + LIST_ROWS)
+								&& (row <= context.list_limit); ++row) {
 					prepare_context_for_list_row(&context, row);
 
 					lcd_write_string(g_eeGeneral.currModel == row ? "* " : "  ",
@@ -1227,65 +1239,33 @@ void gui_process(uint32_t data) {
 				}
 				// check if popup was finished, if so the result would show up
 				char popupRes = gui_popup_get_result();
-				if( popupRes )
-				{
+				if (popupRes) {
 					// "preset" popup was answered "OK" so preset the model
-					if( popupRes > 0 )
-					{
+					if (popupRes > 0) {
 						g_eeGeneral.currModel = context.list;
 						eeprom_init_current_model();
 					}
-				}
-				else
-				{
-					if( g_key_press & KEY_MENU )
-					{
+				} else {
+					if (g_key_press & KEY_MENU) {
 						g_eeGeneral.currModel = context.list;
-						gui_popup(GUI_MSG_OK_TO_RESET_MODEL,0);
-					}
-					else if( g_menu_mode == MENU_MODE_EDIT )
-					{
+						gui_popup(GUI_MSG_OK_TO_RESET_MODEL, 0);
+					} else if (context.menu_mode == MENU_MODE_EDIT) {
 						// select the model to use
-						if( g_key_press & (KEY_SEL|KEY_OK) )
-						{
+						if (g_key_press & (KEY_SEL | KEY_OK)) {
 							g_eeGeneral.currModel = context.list;
-							g_menu_mode = MENU_MODE_PAGE;
+							context.menu_mode = MENU_MODE_PAGE;
 							gui_navigate(GUI_LAYOUT_MODEL_MENU);
 						}
 					}
 				}
 			}
-			break;
+				break;
 
 			case MOD_PAGE_SETUP:
 				context.list_limit = MOD_MENU_LIST1_LEN - 1;
 				context.col_limit = 0;
-				for (uint8_t row = context.list_top;
-						(row < context.list_top + LIST_ROWS) && (row <= context.list_limit); ++row) {
-
-					prepare_context_for_list_row(&context, row);
-
-					lcd_write_string((char*) model_menu_list1[row], context.op_list,
-							FLAGS_NONE);
-					lcd_write_string(" ", LCD_OP_SET, FLAGS_NONE);
-					switch (row) {
-					GUI_CASE_OFS(0, 74, GUI_EDIT_STR(g_model.name))
-					GUI_CASE_OFS(1, 96,
-							GUI_EDIT_ENUM( g_model.tmrMode, 0, 5, timer_modes ))
-					GUI_CASE_OFS(2, 96,
-							GUI_EDIT_ENUM( g_model.tmrDir, 0, 1, dir_labels ))
-					GUI_CASE_OFS(3, 96, GUI_EDIT_INT( g_model.tmrVal, 0, 3600 ))
-					GUI_CASE_OFS(4, 96,
-							GUI_EDIT_ENUM( g_model.traineron, 0, 1, menu_on_off ))
-					GUI_CASE_OFS(5, 96,
-							GUI_EDIT_ENUM( g_model.thrTrim, 0, 1, menu_on_off ))
-					GUI_CASE_OFS(6, 96,
-							GUI_EDIT_ENUM( g_model.thrExpo, 0, 1, menu_on_off ))
-					GUI_CASE_OFS(7, 96, GUI_EDIT_INT( g_model.trimInc, 0, 7 ))
-					GUI_CASE_OFS(8, 96,
-							GUI_EDIT_ENUM( g_model.extendedLimits, 0, 1, menu_on_off ))
-					}
-				}
+				FOREACH_ROW(
+						lcd_write_string((char*) model_menu_list1[row], context.op_list, FLAGS_NONE); lcd_write_string(" ", LCD_OP_SET, FLAGS_NONE); switch (row) { GUI_CASE_OFS(0, 74, GUI_EDIT_STR(g_model.name)) GUI_CASE_OFS(1, 96, GUI_EDIT_ENUM( g_model.tmrMode, 0, 5, timer_modes )) GUI_CASE_OFS(2, 96, GUI_EDIT_ENUM( g_model.tmrDir, 0, 1, dir_labels )) GUI_CASE_OFS(3, 96, GUI_EDIT_INT( g_model.tmrVal, 0, 3600 )) GUI_CASE_OFS(4, 96, GUI_EDIT_ENUM( g_model.traineron, 0, 1, menu_on_off )) GUI_CASE_OFS(5, 96, GUI_EDIT_ENUM( g_model.thrTrim, 0, 1, menu_on_off )) GUI_CASE_OFS(6, 96, GUI_EDIT_ENUM( g_model.thrExpo, 0, 1, menu_on_off )) GUI_CASE_OFS(7, 96, GUI_EDIT_INT( g_model.trimInc, 0, 7 )) GUI_CASE_OFS(8, 96, GUI_EDIT_ENUM( g_model.extendedLimits, 0, 1, menu_on_off )) })
 				break;
 
 			case MOD_PAGE_HELI_SETUP:
@@ -1297,70 +1277,51 @@ void gui_process(uint32_t data) {
 				context.list_limit = 3;
 				context.col_limit = 0;
 				FOREACH_ROW(
-					lcd_write_string(sticks[row], context.op_list, TRAILING_SPACE);
-					ExpoData* ed = &g_model.expoData[row];
-					lcd_write_string(switches[ed->drSw1], context.op_list, TRAILING_SPACE);
-					lcd_write_string(switches[ed->drSw2], context.op_list, FLAGS_NONE);
-				)
+						lcd_write_string(sticks[row], context.op_list, TRAILING_SPACE); ExpoData* ed = &g_model.expoData[row]; lcd_write_string(switches[ed->drSw1], context.op_list, TRAILING_SPACE); lcd_write_string(switches[ed->drSw2], context.op_list, FLAGS_NONE);)
 				break;
 
-			case MOD_PAGE_MIXER:
-			{
+			case MOD_PAGE_MIXER: {
 				context.list_limit = MAX_MIXERS - 1;
 				context.col_limit = 0;
-				for (uint8_t row = context.list_top;
-						(row < context.list_top + LIST_ROWS) && (row <= context.list_limit); ++row)
-				{
-					prepare_context_for_list_row(&context, row);
+				FOREACH_ROW(
+						const MixData* const mx = &g_model.mixData[row]; if(row==0 || (mx->destCh && g_model.mixData[row-1].destCh!=mx->destCh) ) { char s[4] = "CH0"; s[2] += mx->destCh; lcd_write_string(s, context.op_list, FLAGS_NONE); } else { lcd_write_string(mix_mode[mx->destCh ? mx->mltpx : 0], context.op_list, FLAGS_NONE); } lcd_set_cursor(4*6, context.line);
 
-					const MixData* const mx = &g_model.mixData[row];
-					if(row==0 || (mx->destCh && g_model.mixData[row-1].destCh!=mx->destCh) )
-					{
-						char s[4] = "CH0";
-						s[2] += mx->destCh;
-						lcd_write_string(s, context.op_list, FLAGS_NONE);
-					}
-					else
-					{
-						lcd_write_string(mix_mode[mx->destCh ? mx->mltpx : 0], context.op_list, FLAGS_NONE);
-					}
-					lcd_set_cursor(4*6, context.line);
-
-					// TODO: mix_src must be changed accrding to stick modes!
-					lcd_write_string(mix_src[mx->srcRaw], context.op_list, FLAGS_NONE);
-					lcd_write_string(" ", context.op_list, FLAGS_NONE);
-					lcd_write_int(mx->weight,context.op_list,FLAGS_NONE);
-					lcd_write_string(" ", context.op_list, FLAGS_NONE);
-					lcd_write_string(switches[mx->swtch], context.op_list, FLAGS_NONE);
-				}
+						// TODO: mix_src must be changed accrding to stick modes!
+						lcd_write_string(mix_src[mx->srcRaw], context.op_list, FLAGS_NONE); lcd_write_string(" ", context.op_list, FLAGS_NONE); lcd_write_int(mx->weight,context.op_list,FLAGS_NONE); lcd_write_string(" ", context.op_list, FLAGS_NONE); lcd_write_string(switches[mx->swtch], context.op_list, FLAGS_NONE);)
 				// if we were in the popup then the result would show up, once
 				char popupRes = gui_popup_get_result();
-				if( popupRes )
-				{
+				if (popupRes) {
 					context.copy_row = -1;
 					// todo - handle selected line: Preset, Insert, Delete, Copy, Paste
-					switch( popupRes )
-					{
+					switch (popupRes) {
 					// preset
 					case 1:
-
+						// TODO
 						break;
-					// insert (duplicate?)
+						// insert (duplicate?)
 					case 2:
 						// make sure we are not pushing out the last row of the last outchan
-						if( g_model.mixData[MAX_MIXERS - 1].destCh  == 0 ||
-							g_model.mixData[MAX_MIXERS - 1].destCh ==  g_model.mixData[MAX_MIXERS - 2].destCh )
-						{
-							memmove(&g_model.mixData[context.list+1],&g_model.mixData[context.list],(MAX_MIXERS-context.list-1)*sizeof(MixData));
+						if (g_model.mixData[MAX_MIXERS - 1].destCh == 0
+								|| g_model.mixData[MAX_MIXERS - 1].destCh
+										== g_model.mixData[MAX_MIXERS - 2].destCh) {
+							memmove(&g_model.mixData[context.list + 1],
+									&g_model.mixData[context.list],
+									(MAX_MIXERS - context.list - 1)
+											* sizeof(MixData));
 						}
 						break;
-					// delete
+						// delete
 					case 3:
 						// delete only if not removing the last of rows for given output channel (at least one must stay)
-						if(g_model.mixData[context.list].destCh==g_model.mixData[context.list+1].destCh ||
-						   (context.list > 0 && g_model.mixData[context.list-1].destCh==g_model.mixData[context.list].destCh))
-						{
-							memmove(&g_model.mixData[context.list], &g_model.mixData[context.list+1],(MAX_MIXERS-context.list-1)*sizeof(MixData));
+						if (g_model.mixData[context.list].destCh
+								== g_model.mixData[context.list + 1].destCh
+								|| (context.list > 0
+										&& g_model.mixData[context.list - 1].destCh
+												== g_model.mixData[context.list].destCh)) {
+							memmove(&g_model.mixData[context.list],
+									&g_model.mixData[context.list + 1],
+									(MAX_MIXERS - context.list - 1)
+											* sizeof(MixData));
 						}
 						break;
 						// copy
@@ -1369,11 +1330,11 @@ void gui_process(uint32_t data) {
 						break;
 						// paste
 					case 5:
-						if( context.copy_row >=0 )
-						{
+						if (context.copy_row >= 0) {
 							// copy the "copy" row but retain the destCh
 							int ch = g_model.mixData[context.list].destCh;
-							g_model.mixData[context.list] = g_model.mixData[context.copy_row];
+							g_model.mixData[context.list] =
+									g_model.mixData[context.copy_row];
 							g_model.mixData[context.list].destCh = ch;
 						}
 						break;
@@ -1381,74 +1342,41 @@ void gui_process(uint32_t data) {
 						// canceled
 						break;
 					}
-				}
-				else
-				{
-					if( g_menu_mode == MENU_MODE_EDIT )
-					{
-						if( g_key_press & KEY_MENU )
-						{
+				} else {
+					if (context.menu_mode == MENU_MODE_EDIT) {
+						if (g_key_press & KEY_MENU) {
 							gui_popup_select(GUI_MSG_ROW_MENU);
 						}
-						if( g_key_press & KEY_OK )
-						{
-							g_edit_item = context.list;
-							g_menu_mode = MENU_MODE_LIST;
-							g_menu_return_page = MOD_PAGE_MIXER;
+						if (g_key_press & KEY_OK) {
+							g_menu_return_page = context.page;
 							context.page = MOD_PAGE_MIX_EDIT;
+							g_edit_item = context.list;
+							context.menu_mode = MENU_MODE_LIST;
 							context.list = 0;
 							context.list_top = 0;
 						}
 					}
 				}
 			}
-			break;
+				break;
 
 			case MOD_PAGE_LIMITS:
 				// ToDo: Implement context.edit
 				context.list_limit = NUM_CHNOUT - 1;
-				context.col_limit = 4;
+				context.col_limit = 3;
 				FOREACH_ROW(
+						char s[4] = "CH1"; s[2] += row; lcd_write_string(s, context.op_list, CHAR_NOSPACE);
 
-					char s[4] = "CH1";
-					s[2] += row;
-					lcd_write_string(s, context.op_list, CHAR_NOSPACE);
+						LimitData* const p = &g_model.limitData[row];
 
-					LimitData* const p = &g_model.limitData[row];
-
-					FOREACH_COL(
-
-							switch(col)
-							{
-								GUI_CASE_OFS( 0, (3+6-1)*6+2, GUI_EDIT_INT_EX2(p->offset,-100, 100, 0 , INT_DIV10|ALIGN_RIGHT, {}))
-								GUI_CASE_OFS( 1, (3+6+4-1)*6+2, GUI_EDIT_INT_EX2(p->min, -100, 100, 0, ALIGN_RIGHT, {}))
-								GUI_CASE_OFS( 2, (3+6+4+4-1)*6+2, GUI_EDIT_INT_EX2(p->max, -100, 100, 0, ALIGN_RIGHT,{}))
-								GUI_CASE_OFS( 3, (3+6+4+4+2-1)*6+2, GUI_EDIT_ENUM(p->reverse, 0, 1, inverse_labels))
-							}
-					)
-				)
+						FOREACH_COL( switch(col) { GUI_CASE_OFS( 0, (3+6-1)*6+2, GUI_EDIT_INT_EX2(p->offset,-100, 100, 0 , INT_DIV10|ALIGN_RIGHT, {})) GUI_CASE_OFS( 1, (3+6+4-1)*6+2, GUI_EDIT_INT_EX2(p->min, -100, 100, 0, ALIGN_RIGHT, {})) GUI_CASE_OFS( 2, (3+6+4+4-1)*6+2, GUI_EDIT_INT_EX2(p->max, -100, 100, 0, ALIGN_RIGHT,{})) GUI_CASE_OFS( 3, (3+6+4+4+2-1)*6+2, GUI_EDIT_ENUM(p->reverse, 0, 1, inverse_labels)) } ))
 				break;
 
 			case MOD_PAGE_CURVES:
 				// ToDo: Implement context.edit
 				context.list_limit = MAX_CURVE5 + MAX_CURVE9 - 1;
 				FOREACH_ROW(
-					char s[5];
-					s[0] = 'C';
-					s[1] = 'V';
-					s[3] = 0;
-					s[4] = 0;
-					if( row < 10 )
-					{
-						s[2] = '1' + row;
-					}
-					else
-					{
-						s[2] = '1' + row / 10;
-						s[3] = '1' + row % 10;
-					}
-					lcd_write_string(s, context.op_list, FLAGS_NONE);
-				)
+						char s[5]; s[0] = 'C'; s[1] = 'V'; s[3] = 0; s[4] = 0; if( row < 10 ) { s[2] = '1' + row; } else { s[2] = '1' + row / 10; s[3] = '1' + row % 10; } lcd_write_string(s, context.op_list, FLAGS_NONE);)
 				break;
 
 			case MOD_PAGE_CUST_SW:
@@ -1456,27 +1384,11 @@ void gui_process(uint32_t data) {
 				break;
 
 			case MOD_PAGE_SAFE_SW:
-				// ToDo: Implement!
 				// ToDo: Implement edit
-				context.list_limit = DIM(g_model.safetySw)-1;
+				context.list_limit = DIM(g_model.safetySw) - 1;
 				context.col_limit = 3;
 				FOREACH_ROW(
-					char s[4];
-					s[0] = 'C';
-					s[1] = 'H';
-					s[2] = '1'+row;
-					s[3] = 0;
-					lcd_write_string(s, context.op_list, TRAILING_SPACE);
-					FOREACH_COL(
-							SafetySwData* d = &g_model.safetySw[row];
-							switch(col)
-							{
-								GUI_CASE_OFS( 0, 4*6, GUI_EDIT_ENUM(d->opt.ss.swtch, 0, 4, switches) )
-								GUI_CASE_OFS( 1, 9*6, GUI_EDIT_ENUM(d->opt.ss.mode, 0, 3, safety_switch_mode_labels ) )
-								GUI_CASE_OFS( 2, 13*6, GUI_EDIT_INT(d->opt.ss.val, -100, 100) )
-							}
-					)
-				)
+						char s[4]; s[0] = 'C'; s[1] = 'H'; s[2] = '1'+row; s[3] = 0; lcd_write_string(s, context.op_list, TRAILING_SPACE); FOREACH_COL( SafetySwData* d = &g_model.safetySw[row]; switch(col) { GUI_CASE_OFS( 0, 4*6, GUI_EDIT_ENUM(d->opt.ss.swtch, 0, 4, switches) ) GUI_CASE_OFS( 1, 9*6, GUI_EDIT_ENUM(d->opt.ss.mode, 0, 3, safety_switch_mode_labels ) ) GUI_CASE_OFS( 2, 13*6, GUI_EDIT_INT(d->opt.ss.val, -100, 100) ) } ))
 
 				break;
 
@@ -1490,25 +1402,11 @@ void gui_process(uint32_t data) {
 				// ToDo: Implement!
 				context.list_limit = MIXER_EDIT_LIST1_LEN - 1;
 				FOREACH_ROW(
-					lcd_write_string((char*) mixer_edit_list1[row], context.op_list, FLAGS_NONE);
-					lcd_write_string(" ", LCD_OP_SET, FLAGS_NONE);
-					MixData* const mx = &g_model.mixData[g_edit_item];
-					switch (row) {
-						GUI_CASE_OFS(0, 96, GUI_EDIT_ENUM( mx->srcRaw, 0, MIX_SRC_MAX-1, mix_src ));
-						GUI_CASE_OFS(1, 96, GUI_EDIT_INT( mx->weight, -125, 125 ));
-						GUI_CASE_OFS(2, 96, GUI_EDIT_INT( mx->sOffset, -125, 125 ));
-						GUI_CASE_OFS(3, 96, GUI_EDIT_ENUM( mx->carryTrim, 0, 1, menu_on_off ));
+						lcd_write_string((char*) mixer_edit_list1[row], context.op_list, FLAGS_NONE); lcd_write_string(" ", LCD_OP_SET, FLAGS_NONE); MixData* const mx = &g_model.mixData[g_edit_item]; switch (row) { GUI_CASE_OFS(0, 96, GUI_EDIT_ENUM( mx->srcRaw, 0, MIX_SRC_MAX-1, mix_src )); GUI_CASE_OFS(1, 96, GUI_EDIT_INT( mx->weight, -125, 125 )); GUI_CASE_OFS(2, 96, GUI_EDIT_INT( mx->sOffset, -125, 125 )); GUI_CASE_OFS(3, 96, GUI_EDIT_ENUM( mx->carryTrim, 0, 1, menu_on_off ));
 						// #4 curve
 						GUI_CASE_OFS(5, 96, GUI_EDIT_ENUM( mx->swtch, 0, 4, switches ));
 						// #6 phase
-						GUI_CASE_OFS(7, 96, GUI_EDIT_ENUM( mx->mixWarn, 0, 1, menu_on_off ));
-						GUI_CASE_OFS(8, 96, GUI_EDIT_ENUM( mx->mltpx, 0, 3, mix_mode ));
-						GUI_CASE_OFS(9, 96, GUI_EDIT_INT( mx->delayUp, 0, 255 ));
-						GUI_CASE_OFS(10, 96, GUI_EDIT_INT( mx->delayDown, 0, 255 ));
-						GUI_CASE_OFS(11, 96, GUI_EDIT_INT( mx->speedUp, 0, 255 ));
-						GUI_CASE_OFS(12, 96, GUI_EDIT_INT( mx->speedDown, 0, 255 ));
-					}
-				)
+						GUI_CASE_OFS(7, 96, GUI_EDIT_ENUM( mx->mixWarn, 0, 1, menu_on_off )); GUI_CASE_OFS(8, 96, GUI_EDIT_ENUM( mx->mltpx, 0, 3, mix_mode )); GUI_CASE_OFS(9, 96, GUI_EDIT_INT( mx->delayUp, 0, 255 )); GUI_CASE_OFS(10, 96, GUI_EDIT_INT( mx->delayDown, 0, 255 )); GUI_CASE_OFS(11, 96, GUI_EDIT_INT( mx->speedUp, 0, 255 )); GUI_CASE_OFS(12, 96, GUI_EDIT_INT( mx->speedDown, 0, 255 )); })
 				break;
 			case MOD_PAGE_CURVE_EDIT:
 				// ToDo: Implement!
@@ -1547,11 +1445,11 @@ void gui_process(uint32_t data) {
 				if (state == CAL_LIMITS) {
 					state = CAL_CENTER;
 					sticks_calibrate(CAL_CENTER);
-					lcd_draw_message(msg[GUI_MSG_CAL_CENTRE], LCD_OP_SET,0,0);
+					lcd_draw_message(msg[GUI_MSG_CAL_CENTRE], LCD_OP_SET, 0, 0);
 				} else if (state == CAL_CENTER) {
 					state = CAL_OFF;
 					sticks_calibrate(CAL_OFF);
-					lcd_draw_message(msg[GUI_MSG_OK_CANCEL], LCD_OP_SET,0,0);
+					lcd_draw_message(msg[GUI_MSG_OK_CANCEL], LCD_OP_SET, 0, 0);
 				} else {
 					// ToDo: Write the calibration data into EEPROM.
 					// eeprom_set_data(EEPROM_ADC_CAL, cal_data);
@@ -1629,7 +1527,6 @@ void gui_popup(GUI_MSG msg, int16_t timeout) {
 	task_schedule(TASK_PROCESS_GUI, UPDATE_MSG, 0);
 }
 
-
 /**
  * @brief  Display the requested message as multiple line, one to be selected..
  * @note   The location and translation will be specific to the current state.
@@ -1686,23 +1583,21 @@ static void gui_show_sticks(void) {
 
 	// Centre point
 	lcd_draw_rect(BOX_L_X + BOX_W / 2 - 1, BOX_Y + BOX_H / 2 - 1,
-			BOX_L_X + BOX_W / 2 + 1, BOX_Y + BOX_H / 2 + 1, LCD_OP_SET,
-			RECT_ROUNDED);
+	BOX_L_X + BOX_W / 2 + 1, BOX_Y + BOX_H / 2 + 1, LCD_OP_SET, RECT_ROUNDED);
 	lcd_draw_rect(BOX_R_X + BOX_W / 2 - 1, BOX_Y + BOX_H / 2 - 1,
-			BOX_R_X + BOX_W / 2 + 1, BOX_Y + BOX_H / 2 + 1, LCD_OP_SET,
-			RECT_ROUNDED);
+	BOX_R_X + BOX_W / 2 + 1, BOX_Y + BOX_H / 2 + 1, LCD_OP_SET, RECT_ROUNDED);
 
 	// Stick position (Right)
 	x = 2 + (BOX_W - 4) * sticks_get_percent(STICK_R_H) / 100;
 	y = BOX_H - 2 - (BOX_H - 4) * sticks_get_percent(STICK_R_V) / 100;
 	lcd_draw_rect(BOX_R_X + x - 2, BOX_Y + y - 2, BOX_R_X + x + 2,
-			BOX_Y + y + 2, LCD_OP_SET, RECT_ROUNDED);
+	BOX_Y + y + 2, LCD_OP_SET, RECT_ROUNDED);
 
 	// Stick position (Left)
 	x = 2 + (BOX_W - 4) * sticks_get_percent(STICK_L_H) / 100;
 	y = BOX_H - 2 - (BOX_H - 4) * sticks_get_percent(STICK_L_V) / 100;
 	lcd_draw_rect(BOX_L_X + x - 2, BOX_Y + y - 2, BOX_L_X + x + 2,
-			BOX_Y + y + 2, LCD_OP_SET, RECT_ROUNDED);
+	BOX_Y + y + 2, LCD_OP_SET, RECT_ROUNDED);
 
 	// VRB
 	x = BOX_H * sticks_get_percent(STICK_VRB) / 100;
@@ -1915,28 +1810,28 @@ static void gui_draw_stick_icon(STICK stick, uint8_t inverse) {
  * @param  keys: Any pressed keys.
  * @retval None
  */
-static void gui_string_edit(char *string, int8_t delta, uint32_t keys) {
+static void gui_string_edit(MenuContext* pCtx, char *string, uint32_t keys) {
 	static int8_t char_index = 0;
 	static int8_t edit_mode = 1;
 	int i;
 
 	if (keys & KEY_SEL) {
-		g_menu_mode = MENU_MODE_EDIT_S;
+		pCtx->menu_mode = MENU_MODE_EDIT_S;
 		edit_mode = 1 - edit_mode;
 	} else if (keys & (KEY_CANCEL | KEY_OK)) {
 		char_index = 0;
 		edit_mode = 1;
-		g_menu_mode = MENU_MODE_LIST;
+		pCtx->menu_mode = MENU_MODE_LIST;
 	}
 
 	if (edit_mode) {
-		string[char_index] += delta;
+		string[char_index] += pCtx->inc;
 		if (string[char_index] < 32)
 			string[char_index] = 32;
 		if (string[char_index] > 126)
 			string[char_index] = 126;
 	} else {
-		char_index += delta;
+		char_index += pCtx->inc;
 	}
 
 	if (char_index < 0)
@@ -1973,22 +1868,22 @@ static void gui_string_edit(char *string, int8_t delta, uint32_t keys) {
  * @param  keys: Any pressed keys.
  * @retval Modified version of bitfield.
  */
-static uint32_t gui_bitfield_edit(char *string, uint32_t field, int8_t delta,
-		uint32_t keys, uint8_t edit) {
+static uint32_t gui_bitfield_edit(MenuContext* pCtx, char *string,
+		uint32_t field, int8_t delta, uint32_t keys) {
 	static int8_t char_index = 0;
 	static int8_t edit_mode = 1;
 	int i;
 	uint32_t ret = field;
 	uint16_t lcd_flags = FLAGS_NONE;
 
-	if (edit) {
+	if (pCtx->edit) {
 		if (keys & KEY_SEL) {
 			edit_mode = 1 - edit_mode;
-			g_menu_mode = MENU_MODE_EDIT_S;
+			pCtx->menu_mode = MENU_MODE_EDIT_S;
 		} else if (keys & (KEY_CANCEL | KEY_OK)) {
 			char_index = 0;
 			edit_mode = 1;
-			g_menu_mode = MENU_MODE_LIST;
+			pCtx->menu_mode = MENU_MODE_LIST;
 		} else if (keys & (KEY_LEFT | KEY_RIGHT)) {
 			if (edit_mode) {
 				ret ^= 1 << char_index;
