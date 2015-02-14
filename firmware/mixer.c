@@ -367,8 +367,8 @@ static void perOut(volatile int16_t *chanOut, uint8_t att)
                         vStud /= 31 ;
                         vStud *= 4 ;
                         switch ((uint8_t)td->mode) {
-                        case 1: v += vStud;   break; // add-mode
-                        case 2: v  = vStud;   break; // subst-mode
+                        case MLTPX_ADD: v += vStud;   break; // add-mode
+                        case MLTPX_REP: v  = vStud;   break; // subst-mode
                         }
                     }
                 }

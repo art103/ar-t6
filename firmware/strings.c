@@ -86,9 +86,9 @@ const char * mix_src[MIX_SRC_MAX] = {
 		// CHOUT_BASE
 };
 
+// must follow _mix_mode and
 const char *mix_mode_hdr = "mode";
 const char *mix_mode[MIX_MODE_MAX] = {
-		"off",
 		"+=",
 		"*=",
 		":=",

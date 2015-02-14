@@ -90,7 +90,6 @@ enum _model_page {
 };
 
 enum _mix_mode {
-	MIX_MODE_OFF,
 	MIX_MODE_ADD,
 	MIX_MODE_MULTIPLY,
 	MIX_MODE_REPLACE,

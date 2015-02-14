@@ -945,7 +945,7 @@ void gui_process(uint32_t data) {
 								g_eeGeneral.trainer.mix[row - 1].mode =
 										gui_int_edit(
 												g_eeGeneral.trainer.mix[row - 1].mode,
-												context.inc, 0, 3);
+												context.inc, 0, 2);
 								break;
 							case 1:
 								g_eeGeneral.trainer.mix[row - 1].studWeight =
@@ -1297,10 +1297,18 @@ void gui_process(uint32_t data) {
 				break;
 
 			case MOD_PAGE_MIXER: {
-				context.list_limit = MAX_MIXERS - 1;
+				context.list_limit = MAX_MIXERS-1;
 				context.col_limit = 0;
 				FOREACH_ROW(
 					const MixData* const mx = &g_model.mixData[row];
+					if((mx->destCh==0) || (mx->destCh>NUM_CHNOUT))
+					{
+						context.list_limit = row-1;
+						if( context.list >= row-1)
+							context.list = row-1;
+						break;
+					}
+
 					if(row==0 || (mx->destCh && g_model.mixData[row-1].destCh!=mx->destCh) ) {
 						char s[4] = "CH0"; s[2] += mx->destCh;
 						lcd_write_string(s, context.op_list, FLAGS_NONE);
@@ -1311,11 +1319,21 @@ void gui_process(uint32_t data) {
 					lcd_set_cursor(4*6, context.line);
 
 					// TODO: mix_src must be changed accrding to stick modes!
-					lcd_write_string(mix_src[mx->srcRaw], context.op_list, FLAGS_NONE);
-					lcd_write_string(" ", context.op_list, FLAGS_NONE);
-					lcd_write_int(mx->weight,context.op_list,FLAGS_NONE);
-					lcd_write_string(" ", context.op_list, FLAGS_NONE);
-					lcd_write_string(switches[mx->swtch], context.op_list, FLAGS_NONE);
+#if 0 // TODO column editing conflicts with popup menu (MENU_LONG) until it's separated from MENU_SEL by making MENU_SEL only when released
+					context.col_limit = 0;
+					FOREACH_COL(
+						switch(col) {
+						GUI_CASE_OFS(0, 4*6, GUI_EDIT_ENUM( mx->srcRaw, 0, MIX_SRC_MAX-1, mix_src ));
+						GUI_CASE_OFS(1, 9*6, GUI_EDIT_INT(mx->weight, -100, 100));
+						GUI_CASE_OFS(2, 12*6, GUI_EDIT_ENUM(mx->swtch, 0, 4, switches));
+						}
+					)
+#endif
+					lcd_write_string(mix_src[mx->srcRaw], LCD_OP_SET, FLAGS_NONE);
+					lcd_set_cursor(10*6, context.line);
+					lcd_write_int(mx->weight, LCD_OP_SET, ALIGN_RIGHT);
+					lcd_set_cursor(12*6, context.line);
+					lcd_write_string(switches[mx->swtch], LCD_OP_SET, FLAGS_NONE);
 				)
 				// if we were in the popup then the result would show up, once
 				char popupRes = gui_popup_get_result();
@@ -1327,11 +1345,11 @@ void gui_process(uint32_t data) {
 					case 1:
 						// TODO
 						break;
-						// insert (duplicate?)
+					// insert (duplicate?)
 					case 2:
 						// make sure we are not pushing out the last row of the last outchan
 						if (g_model.mixData[MAX_MIXERS - 1].destCh == 0
-								|| g_model.mixData[MAX_MIXERS - 1].destCh
+							|| g_model.mixData[MAX_MIXERS - 1].destCh
 										== g_model.mixData[MAX_MIXERS - 2].destCh) {
 							memmove(&g_model.mixData[context.list + 1],
 									&g_model.mixData[context.list],
@@ -1339,7 +1357,7 @@ void gui_process(uint32_t data) {
 											* sizeof(MixData));
 						}
 						break;
-						// delete
+					// delete
 					case 3:
 						// delete only if not removing the last of rows for given output channel (at least one must stay)
 						if (g_model.mixData[context.list].destCh
@@ -1353,11 +1371,11 @@ void gui_process(uint32_t data) {
 											* sizeof(MixData));
 						}
 						break;
-						// copy
+					// copy
 					case 4:
 						context.copy_row = context.list;
 						break;
-						// paste
+					// paste
 					case 5:
 						if (context.copy_row >= 0) {
 							// copy the "copy" row but retain the destCh
@@ -1421,7 +1439,6 @@ void gui_process(uint32_t data) {
 				break;
 
 			case MOD_PAGE_SAFE_SW:
-				// ToDo: Implement edit
 				context.list_limit = DIM(g_model.safetySw) - 1;
 				context.col_limit = 3;
 				FOREACH_ROW(
@@ -1447,14 +1464,20 @@ void gui_process(uint32_t data) {
 				// Not navigable through left / right scrolling.
 
 			case MOD_PAGE_MIX_EDIT:
-				// ToDo: Implement!
+			{
+				MixData* const mx = &g_model.mixData[g_edit_item];
+				{
+					char s[4] = "CH0"; s[2] += mx->destCh;
+					lcd_set_cursor(10*6, 0);
+					lcd_write_string(s, context.op_list, FLAGS_NONE);
+				}
+
 				context.list_limit = MIXER_EDIT_LIST1_LEN - 1;
 				context.col_limit = 0;
 				FOREACH_ROW(
 						lcd_write_string((char*) mixer_edit_list1[row], context.op_list, FLAGS_NONE);
 						lcd_write_string(" ", LCD_OP_SET, FLAGS_NONE);
 
-						MixData* const mx = &g_model.mixData[g_edit_item];
 						switch (row)
 						{
 						GUI_CASE_OFS(0, 96, GUI_EDIT_ENUM( mx->srcRaw, 0, MIX_SRC_MAX-1, mix_src ));
@@ -1473,6 +1496,7 @@ void gui_process(uint32_t data) {
 						}
 				)
 				break;
+			}
 			case MOD_PAGE_CURVE_EDIT:
 				// ToDo: Implement!
 				break;
