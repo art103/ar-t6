@@ -41,8 +41,10 @@
 
 // Keys that have been pressed since the last check.
 static uint32_t keys_pressed = 0;
+// key repeat/MENU state vars
 static uint32_t key_repeat = 0;
 static uint32_t key_time = 0;
+
 
 static void keypad_process(uint32_t data);
 
@@ -180,78 +182,111 @@ void keypad_cancel_repeat(void) {
  * @retval None
  */
 static void keypad_process(uint32_t data) {
-	KEYPAD_KEY key;
-
-	// Debouncing.
-	if (key_time != 0 && key_time + KEY_HOLDOFF > system_ticks) {
-		task_schedule(TASK_PROCESS_KEYPAD, 0, KEY_HOLDOFF);
-		return;
-	}
 
 	// Scan the keys.
-	key = keypad_scan_keys();
+	KEYPAD_KEY key = keypad_scan_keys();
 	// Scanning the keys causes the IRQ to fire, so de-schedule for now.
+	// TODO: suppress IRQ for scan
 	task_deschedule(TASK_PROCESS_KEYPAD);
 
-	// Cancel the repeat if we see a different key.
+	// nothing pressed now? reset timing but pass along as further states need to know keys are up
 	if (key == KEY_NONE) {
-		key_repeat = 0;
+		key_repeat = KEY_NONE;
 		key_time = 0;
 	}
-
-	// Data is used to send the rotary encoder data.
-	if (data != 0) {
-		switch (data) {
-		case 1:
-			key = KEY_RIGHT;
-			break;
-		case 2:
-			key = KEY_LEFT;
-			break;
-		default:
-			break;
+	else {
+		if( key_time == 0 ) {
+			key_time = system_ticks;
+			// first time seen key, schedule Debounce
+			task_schedule(TASK_PROCESS_KEYPAD, 0, KEY_HOLDOFF);
+			return;
 		}
 	}
 
-	if (key != 0) {
-		// Re-schedule to check the keys again.
+	// key still pressed and Debounced
+	// TODO: make sure this is the same key
+
+	// Data is used to send the rotary encoder data.
+	// TODO: debounce these somehow
+	if( data ) {
+		switch (data) {
+			case 1:
+				key = KEY_RIGHT;
+				break;
+			case 2:
+				key = KEY_LEFT;
+				break;
+		}
+		key_time = system_ticks;
+	}
+
+
+	// got debounced key? schedule further checking until released
+	if( key != KEY_NONE ) {
 		task_schedule(TASK_PROCESS_KEYPAD, 0, KEY_REPEAT_TIME);
+	}
 
-		if (key_time != 0) {
-			// A key has been pressed previously, check for repeat.
+	// from now on the 'key' may be suppressed and key_time should not be changed!
 
-			if ((key_repeat == 0)
-					&& key_time + KEY_REPEAT_DELAY > system_ticks) {
-				// Not repeating yet, and haven't passed the delay period.
-				return;
+	// KEY_MENU/KEY_SEL state machine
+	// note: KEY_MENU is a virtual key issued by long hold of KEY_SEL
+	// the state machine here suppresses issuing KEY_SEL until released quickly, otherwise issues KEY_MENU
+	static enum { KEY_SEL_UP, KEY_SEL_DOWN, KEY_SEL_MENU_ISSUED } key_sel_state = KEY_SEL_UP;
+	switch( key_sel_state )
+	{
+	case KEY_SEL_UP:
+		if( key & KEY_SEL ) {
+			// KEY_SEL pressed, move on but suppress the key for now
+			key = KEY_NONE;
+			key_sel_state = KEY_SEL_DOWN;
+			key_repeat = 0;
+		}
+		break;
+	case KEY_SEL_DOWN:
+		if( key & KEY_SEL ) {
+			// KEY_SEL still pressed, check timer to issue KEY_MENU, ignore if not expired yet
+			if (key_time + KEY_REPEAT_DELAY < system_ticks) {
+				key = KEY_MENU;
+				key_repeat = 0;
+				key_sel_state = KEY_SEL_MENU_ISSUED;
 			} else {
-				// Delay period passed, decide how to behave...
-				if (key & KEY_SEL) {
-					// After repeat delay, send only one KEY_MENU press from KEY_SEL.
-					if (key_repeat == 0)
-						key = KEY_MENU;
-					else
-						return;
-				} else if (!(key & TRIM_KEYS)) {
-					// For non-trim keys, don't repeat.
-					return;
-				}
+				key = KEY_NONE;
+			}
+		} else {
+			// KEY_SEL no longer pressed, issue KEY_SEL as it was not hold down long enough for KEY_MENU long press
+			key = KEY_SEL;
+			key_sel_state = KEY_SEL_UP;
+		}
+		break;
+	case KEY_SEL_MENU_ISSUED:
+		if( !(key & KEY_SEL) ) {
+			// KEY_SEL released...reset state
+			key_sel_state = KEY_SEL_UP;
+		} else {
+			key = KEY_NONE;
+		}
+		break;
+	}
 
-				// For trim keys, repeat at KEY_REPEAT_TIME intervals.
+	if (key != KEY_NONE ) {
+		// handle all but MENU/SEL keys
+		if( !(key & (KEY_MENU|KEY_SEL)) ) {
+			if( key & TRIM_KEYS ) {
 				key_repeat = key;
+			} else if( key_time + KEY_REPEAT_TIME < system_ticks ) {
+				// For non-trim keys, don't repeat when timer expired
+				// we should not be here the first time as repeat time >> holdoff time
+				key = KEY_NONE;
 			}
 		}
+	}
 
-		// Add the key to the pressed list.
-		keys_pressed |= key;
-
-		// Record the key time.
-		key_time = system_ticks;
-
+	if( key != KEY_NONE ) {
 		// Play the key tone.
 		if (g_eeGeneral.beeperVal > BEEPER_NOKEY)
 			sound_play_tone(500, 10);
-
+		// Add the key to the pressed list.
+		keys_pressed |= key;
 		// Send the key to the UI.
 		gui_input_key(key);
 	}

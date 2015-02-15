@@ -1248,16 +1248,17 @@ void gui_process(uint32_t data) {
 						eeprom_init_current_model();
 					}
 				} else {
-					if (g_key_press & KEY_MENU) {
-						g_eeGeneral.currModel = context.list;
-						gui_popup(GUI_MSG_OK_TO_RESET_MODEL, 0);
-					} else if (context.menu_mode == MENU_MODE_EDIT) {
-						// select the model to use
-						if (g_key_press & (KEY_SEL | KEY_OK)) {
+					if( context.menu_mode == MENU_MODE_LIST ) {
+						if (g_key_press & KEY_MENU) {
 							g_eeGeneral.currModel = context.list;
-							context.menu_mode = MENU_MODE_PAGE;
-							gui_navigate(GUI_LAYOUT_MODEL_MENU);
+							gui_popup(GUI_MSG_OK_TO_RESET_MODEL, 0);
 						}
+					}
+					if( context.menu_mode == MENU_MODE_EDIT ) {
+						// select the model to use
+						g_eeGeneral.currModel = context.list;
+						context.menu_mode = MENU_MODE_PAGE;
+						gui_navigate(GUI_LAYOUT_MODEL_MENU);
 					}
 				}
 			}
@@ -1310,7 +1311,8 @@ void gui_process(uint32_t data) {
 					}
 
 					if(row==0 || (mx->destCh && g_model.mixData[row-1].destCh!=mx->destCh) ) {
-						char s[4] = "CH0"; s[2] += mx->destCh;
+						char s[4] = "CH0";
+						s[2] += mx->destCh;
 						lcd_write_string(s, context.op_list, FLAGS_NONE);
 					}
 					else {
@@ -1390,7 +1392,8 @@ void gui_process(uint32_t data) {
 						break;
 					}
 				} else {
-					if (context.menu_mode == MENU_MODE_EDIT) {
+					if( context.menu_mode == MENU_MODE_LIST )
+					{
 						if (g_key_press & KEY_MENU) {
 							gui_popup_select(GUI_MSG_ROW_MENU);
 						}
@@ -1412,18 +1415,20 @@ void gui_process(uint32_t data) {
 				context.list_limit = NUM_CHNOUT - 1;
 				context.col_limit = 3;
 				FOREACH_ROW(
-						char s[4] = "CH1"; s[2] += row; lcd_write_string(s, context.op_list, CHAR_NOSPACE);
+					char s[4] = "CH1";
+					s[2] += row;
+					lcd_write_string(s, context.op_list, CHAR_NOSPACE);
 
-						LimitData* const p = &g_model.limitData[row];
+					LimitData* const p = &g_model.limitData[row];
 
-						FOREACH_COL(
-							switch(col) {
-								GUI_CASE_OFS( 0, (3+6-1)*6+2, GUI_EDIT_INT_EX2(p->offset,-100, 100, 0 , INT_DIV10|ALIGN_RIGHT, {}));
-								GUI_CASE_OFS( 1, (3+6+4-1)*6+2, GUI_EDIT_INT_EX2(p->min, -100, 100, 0, ALIGN_RIGHT, {}))
-								GUI_CASE_OFS( 2, (3+6+4+4-1)*6+2, GUI_EDIT_INT_EX2(p->max, -100, 100, 0, ALIGN_RIGHT,{}))
-								GUI_CASE_OFS( 3, (3+6+4+4+2-1)*6+2, GUI_EDIT_ENUM(p->reverse, 0, 1, inverse_labels))
-							}
-						)
+					FOREACH_COL(
+						switch(col) {
+							GUI_CASE_OFS( 0, (3+6-1)*6+2, GUI_EDIT_INT_EX2(p->offset,-100, 100, 0 , INT_DIV10|ALIGN_RIGHT, {}));
+							GUI_CASE_OFS( 1, (3+6+4-1)*6+2, GUI_EDIT_INT_EX2(p->min, -100, 100, 0, ALIGN_RIGHT, {}))
+							GUI_CASE_OFS( 2, (3+6+4+4-1)*6+2, GUI_EDIT_INT_EX2(p->max, -100, 100, 0, ALIGN_RIGHT,{}))
+							GUI_CASE_OFS( 3, (3+6+4+4+2-1)*6+2, GUI_EDIT_ENUM(p->reverse, 0, 1, inverse_labels))
+						}
+					)
 				)
 				break;
 
@@ -1431,7 +1436,10 @@ void gui_process(uint32_t data) {
 				// ToDo: Implement context.edit
 				context.list_limit = MAX_CURVE5 + MAX_CURVE9 - 1;
 				FOREACH_ROW(
-						char s[5]; s[0] = 'C'; s[1] = 'V'; s[3] = 0; s[4] = 0; if( row < 10 ) { s[2] = '1' + row; } else { s[2] = '1' + row / 10; s[3] = '1' + row % 10; } lcd_write_string(s, context.op_list, FLAGS_NONE);)
+					char s[4] = "CV0";
+					s[2] = '1' + row;
+					lcd_write_string(s, context.op_list, FLAGS_NONE);
+				)
 				break;
 
 			case MOD_PAGE_CUST_SW:
@@ -1442,8 +1450,8 @@ void gui_process(uint32_t data) {
 				context.list_limit = DIM(g_model.safetySw) - 1;
 				context.col_limit = 3;
 				FOREACH_ROW(
-					char s[4]; s[0] = 'C'; s[1] = 'H';
-					s[2] = '1'+row; s[3] = 0;
+					char s[4] = "CH0";
+					s[2] = '1'+row;
 					lcd_write_string(s, context.op_list, TRAILING_SPACE);
 					FOREACH_COL(
 						SafetySwData* d = &g_model.safetySw[row];
