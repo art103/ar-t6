@@ -19,10 +19,9 @@
 #ifndef PULSES_H
 #define PULSES_H
 
-#define PPM_LIMIT_NORMAL	500
-#define PPM_LIMIT_EXTENDED	800
+#define PPM_LIMIT_NORMAL	500 // +/- of PPM_CENTER [us]
+#define PPM_LIMIT_EXTENDED	800 // +/- of PPM_CENTER [us]
 
 void pulses_init(void);
-void pulses_setup(void);
 
 #endif // PULSES_H

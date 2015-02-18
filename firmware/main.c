@@ -61,6 +61,7 @@ int main(void)
 	// 1ms System tick
 	SysTick_Config(SystemCoreClock / 1000);
 	RCC_APB1PeriphClockCmd(RCC_APB1Periph_PWR, ENABLE);
+	NVIC_PriorityGroupConfig(NVIC_PriorityGroup_4);    // 4 bits for preemption priority; 0 bit for sub priority (hence ignored)
 
 	// Initialize the task loop.
 	task_init();

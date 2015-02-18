@@ -80,8 +80,6 @@ static volatile uint8_t g_update_type = 0;
 
 static GUI_LAYOUT g_main_layout = GUI_LAYOUT_MAIN1;
 static int8_t g_menu_mode_dir = 1;
-static int8_t g_edit_item = 0;
-static uint8_t g_menu_return_page = 0;
 
 // MenuContext used for Page/Subpage edits (System&Model)
 typedef struct {
@@ -409,8 +407,7 @@ void gui_process(uint32_t data) {
 		if ((g_update_type & UPDATE_STICKS) != 0) {
 			const int top = 40;
 			int scale = (g_model.extendedLimits == TRUE) ?
-			PPM_LIMIT_EXTENDED :
-															PPM_LIMIT_NORMAL;
+						PPM_LIMIT_EXTENDED : PPM_LIMIT_NORMAL;
 
 			// Left 4 sliders
 			gui_draw_slider(11, top, 48, 3, 2 * scale, scale + g_chans[0]);
@@ -587,10 +584,11 @@ void gui_process(uint32_t data) {
 
 		// @formatter:off
 		static MenuContext context = { 0 };
+		static MenuContext return_context = { 0 };
+		static uint8_t sub_edit_item;
 
 		// Clear the screen.
-		lcd_draw_rect(0, 0, LCD_WIDTH - 1, LCD_HEIGHT - 1, LCD_OP_CLR,
-				RECT_FILL);
+		lcd_draw_rect(0, 0, LCD_WIDTH - 1, LCD_HEIGHT - 1, LCD_OP_CLR, RECT_FILL);
 		lcd_set_cursor(0, 0);
 
 		context.edit = 0;
@@ -655,9 +653,10 @@ void gui_process(uint32_t data) {
 				break;
 			}
 		} else if (g_key_press & KEY_CANCEL) {
-			if (g_menu_return_page) {
-				context.page = g_menu_return_page;
-				g_menu_return_page = 0;
+			if (return_context.page) {
+				// we were in sub menu, so return (popup)
+				context = return_context;
+				return_context.page = 0;
 			} else {
 				if (context.menu_mode > 0) {
 					context.menu_mode--;
@@ -1301,7 +1300,7 @@ void gui_process(uint32_t data) {
 				context.list_limit = MAX_MIXERS-1;
 				context.col_limit = 0;
 				FOREACH_ROW(
-					const MixData* const mx = &g_model.mixData[row];
+					MixData* const mx = &g_model.mixData[row];
 					if((mx->destCh==0) || (mx->destCh>NUM_CHNOUT))
 					{
 						context.list_limit = row-1;
@@ -1320,9 +1319,9 @@ void gui_process(uint32_t data) {
 					}
 					lcd_set_cursor(4*6, context.line);
 
-					// TODO: mix_src must be changed accrding to stick modes!
-#if 0 // TODO column editing conflicts with popup menu (MENU_LONG) until it's separated from MENU_SEL by making MENU_SEL only when released
-					context.col_limit = 0;
+					// TODO: mix_src must be changed according to stick modes!?
+#if 0
+					context.col_limit = 3;
 					FOREACH_COL(
 						switch(col) {
 						GUI_CASE_OFS(0, 4*6, GUI_EDIT_ENUM( mx->srcRaw, 0, MIX_SRC_MAX-1, mix_src ));
@@ -1330,12 +1329,13 @@ void gui_process(uint32_t data) {
 						GUI_CASE_OFS(2, 12*6, GUI_EDIT_ENUM(mx->swtch, 0, 4, switches));
 						}
 					)
-#endif
+#else
 					lcd_write_string(mix_src[mx->srcRaw], LCD_OP_SET, FLAGS_NONE);
 					lcd_set_cursor(10*6, context.line);
 					lcd_write_int(mx->weight, LCD_OP_SET, ALIGN_RIGHT);
 					lcd_set_cursor(12*6, context.line);
 					lcd_write_string(switches[mx->swtch], LCD_OP_SET, FLAGS_NONE);
+#endif
 				)
 				// if we were in the popup then the result would show up, once
 				char popupRes = gui_popup_get_result();
@@ -1392,15 +1392,17 @@ void gui_process(uint32_t data) {
 						break;
 					}
 				} else {
-					if( context.menu_mode == MENU_MODE_LIST )
+					if( context.menu_mode != MENU_MODE_PAGE )
 					{
+						context.menu_mode = MENU_MODE_LIST;
 						if (g_key_press & KEY_MENU) {
 							gui_popup_select(GUI_MSG_ROW_MENU);
 						}
 						if (g_key_press & KEY_OK) {
-							g_menu_return_page = context.page;
+							// TODO - preserve entire context
+							return_context = context;
+							sub_edit_item = context.list;
 							context.page = MOD_PAGE_MIX_EDIT;
-							g_edit_item = context.list;
 							context.menu_mode = MENU_MODE_LIST;
 							context.list = 0;
 							context.list_top = 0;
@@ -1438,8 +1440,22 @@ void gui_process(uint32_t data) {
 				FOREACH_ROW(
 					char s[4] = "CV0";
 					s[2] = '1' + row;
-					lcd_write_string(s, context.op_list, FLAGS_NONE);
+					lcd_write_string(s, context.op_list, TRAILING_SPACE);
+				    int8_t ncv = row >= MAX_CURVE5 ? 9 : 5;
+				    int8_t *crv = ncv == 5 ? g_model.curves9[row-MAX_CURVE5] : g_model.curves5[row];
+
+					lcd_write_int(ncv, LCD_OP_SET, TRAILING_SPACE);
 				)
+				if (context.menu_mode == MENU_MODE_EDIT) {
+					// TODO - preserve entire context
+					context.menu_mode = MENU_MODE_LIST;
+					return_context = context;
+					sub_edit_item = context.list;
+					context.page = MOD_PAGE_CURVE_EDIT;
+					context.menu_mode = MENU_MODE_LIST;
+					context.list = 0;
+					context.list_top = 0;
+				}
 				break;
 
 			case MOD_PAGE_CUST_SW:
@@ -1473,41 +1489,54 @@ void gui_process(uint32_t data) {
 
 			case MOD_PAGE_MIX_EDIT:
 			{
-				MixData* const mx = &g_model.mixData[g_edit_item];
+				MixData* const mx = &g_model.mixData[sub_edit_item];
 				{
 					char s[4] = "CH0"; s[2] += mx->destCh;
-					lcd_set_cursor(10*6, 0);
-					lcd_write_string(s, context.op_list, FLAGS_NONE);
+					lcd_set_cursor(9*6, 0);
+					lcd_write_string(s, LCD_OP_CLR, FLAGS_NONE);
 				}
 
 				context.list_limit = MIXER_EDIT_LIST1_LEN - 1;
 				context.col_limit = 0;
 				FOREACH_ROW(
-						lcd_write_string((char*) mixer_edit_list1[row], context.op_list, FLAGS_NONE);
-						lcd_write_string(" ", LCD_OP_SET, FLAGS_NONE);
+					lcd_write_string((char*) mixer_edit_list1[row], context.op_list, FLAGS_NONE);
+					lcd_write_string(" ", LCD_OP_SET, FLAGS_NONE);
 
-						switch (row)
-						{
-						GUI_CASE_OFS(0, 96, GUI_EDIT_ENUM( mx->srcRaw, 0, MIX_SRC_MAX-1, mix_src ));
-						GUI_CASE_OFS(1, 96, GUI_EDIT_INT( mx->weight, -125, 125 ));
-						GUI_CASE_OFS(2, 96, GUI_EDIT_INT( mx->sOffset, -125, 125 ));
-						GUI_CASE_OFS(3, 96, GUI_EDIT_ENUM( mx->carryTrim, 0, 1, menu_on_off ));
-						// #4 curve
-						GUI_CASE_OFS(5, 96, GUI_EDIT_ENUM( mx->swtch, 0, 4, switches ));
-						// #6 phase
-						GUI_CASE_OFS(7, 96, GUI_EDIT_ENUM( mx->mixWarn, 0, 1, menu_on_off ));
-						GUI_CASE_OFS(8, 96, GUI_EDIT_ENUM( mx->mltpx, 0, 3, mix_mode ));
-						GUI_CASE_OFS(9, 96, GUI_EDIT_INT( mx->delayUp, 0, 255 ));
-						GUI_CASE_OFS(10, 96, GUI_EDIT_INT( mx->delayDown, 0, 255 ));
-						GUI_CASE_OFS(11, 96, GUI_EDIT_INT( mx->speedUp, 0, 255 ));
-						GUI_CASE_OFS(12, 96, GUI_EDIT_INT( mx->speedDown, 0, 255 ));
-						}
+					switch (row)
+					{
+					GUI_CASE_OFS(0, 96, GUI_EDIT_ENUM( mx->srcRaw, 0, MIX_SRC_MAX-1, mix_src ));
+					GUI_CASE_OFS(1, 96, GUI_EDIT_INT( mx->weight, -125, 125 ));
+					GUI_CASE_OFS(2, 96, GUI_EDIT_INT( mx->sOffset, -125, 125 ));
+					GUI_CASE_OFS(3, 96, GUI_EDIT_ENUM( mx->carryTrim, 0, 1, menu_on_off ));
+					// #4 curve
+					GUI_CASE_OFS(5, 96, GUI_EDIT_ENUM( mx->swtch, 0, 4, switches ));
+					// #6 phase
+					GUI_CASE_OFS(7, 96, GUI_EDIT_ENUM( mx->mixWarn, 0, 1, menu_on_off ));
+					GUI_CASE_OFS(8, 96, GUI_EDIT_ENUM( mx->mltpx, 0, 3, mix_mode ));
+					GUI_CASE_OFS(9, 96, GUI_EDIT_INT( mx->delayUp, 0, 255 ));
+					GUI_CASE_OFS(10, 96, GUI_EDIT_INT( mx->delayDown, 0, 255 ));
+					GUI_CASE_OFS(11, 96, GUI_EDIT_INT( mx->speedUp, 0, 255 ));
+					GUI_CASE_OFS(12, 96, GUI_EDIT_INT( mx->speedDown, 0, 255 ));
+					}
 				)
 				break;
 			}
-			case MOD_PAGE_CURVE_EDIT:
+			case MOD_PAGE_CURVE_EDIT: {
 				// ToDo: Implement!
+			    uint8_t ncv = sub_edit_item >= MAX_CURVE5 ? 9 : 5;
+			    int8_t *crv = ncv==9 ? g_model.curves9[sub_edit_item-MAX_CURVE5] : g_model.curves5[sub_edit_item];
+			    context.list_limit = ncv;
+				context.col_limit = 0;
+
+				{
+					char s[6] = "CV0:5";
+					s[2] += sub_edit_item+1;
+					s[4] += ncv-5;
+					lcd_set_cursor(6*6, 0);
+					lcd_write_string(s, LCD_OP_CLR, FLAGS_NONE);
+				}
 				break;
+			}
 
 			}
 		}

@@ -49,7 +49,7 @@
 
 // Exported globals
 volatile struct t_latency g_latency;
-volatile int16_t g_chans[NUM_CHNOUT];
+volatile int16_t g_chans[NUM_CHNOUT]; 	// -1024 - 1024
 
 // Private globals
 static union p1mhz_t
@@ -67,10 +67,10 @@ static volatile uint8_t ppmInState = 0; //0=unsync 1..8= wait for value i-1
 
 static bool trainer_out = FALSE;
 
-void pulses_setup(void);
-void pulses_setup_ppm(uint8_t proto);
-void pulses_set_trainer_port_ppm(void);
-void pulses_set_trainer_port_capture(void);
+static void pulses_setup(void);
+static void pulses_setup_ppm(uint8_t proto);
+static void pulses_set_trainer_port_ppm(void);
+static void pulses_set_trainer_port_capture(void);
 
 /**
   * @brief  Initialise the PPM module
@@ -125,7 +125,7 @@ void pulses_init(void)
 	TIM_ITConfig(TIM2, TIM_FLAG_CC1, ENABLE);
 	TIM_ITConfig(TIM3, TIM_FLAG_CC1, ENABLE);
 
-    // Configure the Interrupt priority to just below the DMA.
+	// configure to the highest priority 0:0 (above stick's DMA)
     nvicInit.NVIC_IRQChannelPreemptionPriority = 0;
     nvicInit.NVIC_IRQChannelSubPriority = 0;
     nvicInit.NVIC_IRQChannelCmd = ENABLE;
@@ -148,7 +148,7 @@ void pulses_init(void)
   * @param  None.
   * @retval None.
   */
-void pulses_setup(void)
+static void pulses_setup(void)
 {
 	uint8_t required_protocol ;
 	required_protocol = g_model.protocol ;
@@ -158,8 +158,8 @@ void pulses_setup(void)
 	{
 		if ( SlaveMode )
 		{
-			required_protocol = PROTO_PPMSIM ;			
-		}		
+			required_protocol = PROTO_PPMSIM ;
+		}
 	}
 
     if (Current_protocol != required_protocol)
@@ -231,50 +231,48 @@ void pulses_setup_ppm( uint8_t proto )
 	if( g_modelInvalid )
 		return;
 
-	int16_t PPM_range;
 	uint8_t startChan = g_model.ppmStart;
-	uint8_t i;
-	int16_t position = 0; // Running total so we can avoid resetting the timer count and avoid jitter.
-	  
+	uint16_t position = 0; // Running total so we can avoid resetting the timer count and avoid jitter.
+
 	// Total frame length = 22500usec
 	// each pulse is 0.5..2.5ms long including a 300us stop tail
 	uint16_t *ptr = (proto == PROTO_PPM) ? pulses_1us.pword : &pulses_1us.pword[PULSES_WORD_SIZE/2] ;
 	uint8_t p = g_model.ppmNCH; // Channels
 
-	int32_t gap = 22500 + g_model.ppmFrameLength * 1000; // Minimum Framelen = 22.5 ms
-
 	p += startChan;
 
+	// add start pulse to sequence
 	if (proto != PROTO_PPM)
 	{
 		position += PPM_STOP_LEN;
 		*ptr++ = position;
 	}
 
-	PPM_range = g_model.extendedLimits ? PPM_LIMIT_EXTENDED : PPM_LIMIT_NORMAL;   // range of 0.7 - 2.3ms or  0.8 - 2.2ms
+	int16_t PPM_range = g_model.extendedLimits ? PPM_LIMIT_EXTENDED : PPM_LIMIT_NORMAL;   // range of 0.7 - 2.3ms or 1.0 - 2.0ms
 	uint8_t start = (proto == PROTO_PPM16) ? p-8 : startChan;
 	// restore sanity if model got corrupt to avoid wild pointer 'ptr'
 	if( start >= NUM_CHNOUT ) start = NUM_CHNOUT-1;
 	if( p >= NUM_CHNOUT ) p = NUM_CHNOUT-1;
-	for (i = start; i < p; i++)
+	for (uint8_t i = start; i < p; i++)
 	{
 		// Get the channel and limit the range.
-		int32_t v = g_chans[i];	// -1024 - 1024
+		int16_t v = g_chans[i];	// -1024 - 1024
 		if (v > PPM_range) v = PPM_range;
 		if (v < -PPM_range) v = -PPM_range;
 		v += PPM_CENTER;
-		
+
 		// Channel
-		gap -= v;
 		position += v;
 		*ptr++ = position; // DANGER! if channels # are wrong *prt would run wild
 
 		// end-of-channel
-		gap -= PPM_STOP_LEN;
 		position += PPM_STOP_LEN;
 		*ptr++ = position; // DANGER! if channels # are wrong *prt would run wild
 	}
 
+	// final gap after all channels; will be decreased by each channel
+	int32_t gap = 22500 + g_model.ppmFrameLength * 1000; // Minimum Framelen = 22.5 ms
+	gap -= position;
 	// Make sure there is at least 9ms end-of-frame gap
 	if (gap < PPM_MIN_GAP_LEN) gap = PPM_MIN_GAP_LEN;
 
@@ -288,8 +286,10 @@ void pulses_setup_ppm( uint8_t proto )
 		position += PPM_STOP_LEN;
 		*ptr++ = position;
 	}
-
+    // mark the end of the sequence
 	*ptr = 0;
+
+	// for debugging
 	if( ptr >= &pulses_1us.pword[sizeof(pulses_1us.pword)/sizeof(pulses_1us.pword[0])])
 		// error, and now it's too late! this here is just so you can put a breakpoint
 		return;
@@ -348,8 +348,8 @@ void TIM2_IRQHandler(void)
     static uint8_t   pulsePol;
     static uint16_t *pulsePtr = pulses_1us.pword;
 
-    // For measuring the latency.
-    uint16_t dt = TIM_GetCounter(TIM2);
+    // For measuring the latency - difference between current count and desired
+    int16_t dt = TIM_GetCounter(TIM2) - *(pulsePtr-1);
 
     TIM_ClearITPendingBit(TIM2, TIM_FLAG_CC1);
 
@@ -378,7 +378,7 @@ void TIM2_IRQHandler(void)
     {
     	// Go back to the beginning.
         pulsePtr = pulses_1us.pword;
-        // Toggle the output level
+        // Set initial polarity of the output level to the inverse
         pulsePol = !g_model.pulsePol;
 
         // Pause the timer whilst we set the next sequence.
@@ -407,7 +407,7 @@ void TIM2_IRQHandler(void)
 
 /**
   * @brief  Timer 3 Interrupt Handler
-  * @note	Used as a time base for PPM pulse input (traner port).
+  * @note	Used as a time base for PPM pulse input (trainer port).
   *         Timer3 used for PPM_IN pulse width capture. Counter running at 16MHz / 8 = 2MHz
   *         equating to one count every half millisecond. (2 counts = 1ms). Control channel
   *         count delta values thus can range from about 1600 to 4400 counts (800us to 2200us),
