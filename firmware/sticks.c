@@ -148,16 +148,16 @@ void sticks_init(void) {
 }
 
 /**
- * @brief  Update sticks' GUI. All processing in IRQ.
- * @note   Called from the scheduler.
- * @param  data: Not used.
+ * @brief  Update stick_data from adc_data
+ * @note
+ * @param  None
  * @retval None
  */
-void sticks_process(uint32_t data) {
-	int i;
+void sticks_update()
+{
 	// Scale channels to -RESX to +RESX
 	// For GUI purpose only.
-	for (i = 0; i < STICK_ADC_CHANNELS; ++i) {
+	for (int i = 0; i < STICK_ADC_CHANNELS; ++i) {
 		int tmp;
 		tmp = adc_data[i];
 		if (adc_data[i] >= g_eeGeneral.calData[i].centre) {
@@ -174,7 +174,15 @@ void sticks_process(uint32_t data) {
 							- g_eeGeneral.calData[i].min);
 		}
 	}
+}
 
+/**
+ * @brief  Update sticks' GUI. All processing in IRQ.
+ * @note   Called from the scheduler.
+ * @param  data: Not used.
+ * @retval None
+ */
+void sticks_process(uint32_t data) {
 	gui_update(UPDATE_STICKS);
 	task_schedule(TASK_PROCESS_STICKS, 0, 20);
 }
@@ -246,7 +254,7 @@ uint16_t sticks_get_battery(void) {
 }
 
 /**
- * @brief  This function handles the DMA end of transfer
+ * @brief  This function handles the DMA end of transfer fro ADC read
  *          and processing of ADC stick data then calls the mixer.
  * @param  None
  * @retval None
@@ -259,6 +267,8 @@ void DMA1_Channel1_IRQHandler(void) {
 	// Don't run the mixer if we're calibrating
 	if (cal_state == CAL_OFF) {
 		if (!g_modelInvalid) {
+			// update the sticks data now
+			sticks_update();
 			// Run the mixer.
 			mixer_update();
 		}
