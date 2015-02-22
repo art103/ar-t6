@@ -50,6 +50,8 @@
 
 // Exported globals
 volatile struct t_latency g_latency = { 0xFF, 0, 0 } ;
+// TODO: what units are g_chans? (a relative full scale +-1024 or in us?)
+// for now they are relative and conv to us is in pulses.c
 volatile int16_t g_chans[NUM_CHNOUT]; 	// -1024 - 1024
 
 // Private globals
@@ -256,8 +258,10 @@ void pulses_setup_ppm( uint8_t proto )
 	if( p >= NUM_CHNOUT ) p = NUM_CHNOUT-1;
 	for (uint8_t i = start; i < p; i++)
 	{
-		// Get the channel and limit the range.
-		int16_t v = g_chans[i];	// -1024 - 1024
+		// Get the channel relative value
+		int32_t v = g_chans[i];	// -1024 - 1024 (+/RESX)
+		// scale to max PPM_range (essentially convert to us)
+		v = (v * PPM_range + 1024/2) / 1024 /*RESX*/;
 		if (v > PPM_range) v = PPM_range;
 		if (v < -PPM_range) v = -PPM_range;
 		v += PPM_CENTER;

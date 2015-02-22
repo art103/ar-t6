@@ -406,8 +406,7 @@ void gui_process(uint32_t data) {
 	case GUI_LAYOUT_MAIN2:
 		if ((g_update_type & UPDATE_STICKS) != 0) {
 			const int top = 40;
-			int scale = (g_model.extendedLimits == TRUE) ?
-						PPM_LIMIT_EXTENDED : PPM_LIMIT_NORMAL;
+			const int scale = 1024; // RESX
 
 			// Left 4 sliders
 			gui_draw_slider(11, top, 48, 3, 2 * scale, scale + g_chans[0]);
@@ -441,9 +440,7 @@ void gui_process(uint32_t data) {
 		int top = 40;
 		int left = 12;
 		const int spacing = 28;
-		int scale = (g_model.extendedLimits == TRUE) ?
-		PPM_LIMIT_EXTENDED :
-														PPM_LIMIT_NORMAL;
+		const int scale = 1024;
 
 		lcd_draw_rect(left, top, left + spacing * 4 - 4, top + 16, LCD_OP_CLR,
 				RECT_FILL);
@@ -1300,7 +1297,11 @@ void gui_process(uint32_t data) {
 				context.list_limit = 3;
 				context.col_limit = 0;
 				FOREACH_ROW(
-						lcd_write_string(sticks[row], context.op_list, TRAILING_SPACE); ExpoData* ed = &g_model.expoData[row]; lcd_write_string(switches[ed->drSw1], context.op_list, TRAILING_SPACE); lcd_write_string(switches[ed->drSw2], context.op_list, FLAGS_NONE);)
+						lcd_write_string(sticks[row], context.op_list, TRAILING_SPACE);
+				        ExpoData* ed = &g_model.expoData[row];
+				        lcd_write_string(switches[ed->drSw1], context.op_list, TRAILING_SPACE);
+				        lcd_write_string(switches[ed->drSw2], context.op_list, FLAGS_NONE);
+				)
 				break;
 
 			case MOD_PAGE_MIXER: {

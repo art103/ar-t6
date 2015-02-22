@@ -231,6 +231,7 @@ int16_t expo(int16_t x, int16_t k)
 
 static inline int16_t calc100toRESX(int8_t x)
 {
+	// ((int32_t)x * RESX)/100
     return ((x*41)>>2) - x/64;
 }
 
@@ -651,9 +652,9 @@ static void perOut(volatile int16_t *chanOut, uint8_t att)
 
         //========== CURVES ===============
         switch(md->curve){
-        case 0:
+        case 0: // symmetric (normal)
             break;
-        case 1:
+        case 1: // positive only
             if(md->srcRaw == MIX_FULL) //FUL
             {
                 if( v<0 ) v=-RESX;   //x|x>0
@@ -662,7 +663,7 @@ static void perOut(volatile int16_t *chanOut, uint8_t att)
                 if( v<0 ) v=0;   //x|x>0
             }
             break;
-        case 2:
+        case 2: // negative only
             if(md->srcRaw == MIX_FULL) //FUL
             {
                 if( v>0 ) v=RESX;   //x|x<0
