@@ -807,7 +807,7 @@ struct t_latency
 {
 	uint8_t g_tmr1Latency_min ;
 	uint8_t g_tmr1Latency_max ;
-	uint16_t g_timeMain ;
+	// TODO: unused ? uint16_t g_timeMain ;
 } ;
 
 

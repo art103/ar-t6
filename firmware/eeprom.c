@@ -111,9 +111,10 @@ void eeprom_init_current_model() {
 	g_model.name[MODEL_NAME_LEN-1] =  0;
 	g_model.protocol = PROTO_PPM;
 	g_model.extendedLimits = TRUE;
-	g_model.ppmFrameLength = 8;
-	g_model.ppmDelay = 6;
 	g_model.ppmNCH = NUM_CHNOUT;
+	g_model.ppmFrameLength = 0;
+	g_model.ppmDelay = 2;
+	g_model.ppmStart = 0;
 	for(int mx=0; mx < NUM_CHNOUT; mx++)
 	{
 		MixData* md = &g_model.mixData[mx];
@@ -121,6 +122,11 @@ void eeprom_init_current_model() {
 		md->srcRaw = mx+1;
 		md->mltpx = MLTPX_REP;
 		md->weight = 100;
+		if( mx > 5 )
+		{
+			md->srcRaw = MIX_SRC_MAX;
+			md->swtch = SWITCH_SWA + mx - 6;
+		}
 	}
 	for(int l=0; l < sizeof(g_model.limitData)/sizeof(g_model.limitData[0]); l++)
 	{

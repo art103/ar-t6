@@ -1058,12 +1058,16 @@ void gui_process(uint32_t data) {
 				lcd_set_cursor(36, 4 * 8);
 				lcd_write_string(__TIME__, LCD_OP_SET, FLAGS_NONE);
 
-				lcd_set_cursor(30, 6 * 8);
-				lcd_write_string("eMEM:", LCD_OP_SET, ALIGN_RIGHT);
-				lcd_set_cursor(36, 6 * 8);
-				lcd_write_int(sizeof(g_eeGeneral), LCD_OP_SET, INT_PAD10);
-				lcd_set_cursor(50, 6 * 8);
-				lcd_write_int(sizeof(g_model), LCD_OP_SET, INT_PAD10);
+				lcd_set_cursor(0, 6 * 8);
+				lcd_write_string("EPRM", LCD_OP_SET, TRAILING_SPACE);
+				lcd_write_int(sizeof(g_eeGeneral), LCD_OP_SET, TRAILING_SPACE);
+				lcd_write_int(sizeof(g_model), LCD_OP_SET, TRAILING_SPACE);
+				lcd_write_string("SCCk", LCD_OP_SET, TRAILING_SPACE);
+				lcd_write_int(SystemCoreClock/1000000, LCD_OP_SET, TRAILING_SPACE);
+				lcd_set_cursor(0, 7 * 8);
+				lcd_write_string("Ltcy", LCD_OP_SET, TRAILING_SPACE);
+				lcd_write_int(g_latency.g_tmr1Latency_min, LCD_OP_SET, INT_PAD10|TRAILING_SPACE);
+				lcd_write_int(g_latency.g_tmr1Latency_max, LCD_OP_SET, INT_PAD10|TRAILING_SPACE);
 
 				break; // SYS_PAGE_VERSION
 
@@ -1280,6 +1284,9 @@ void gui_process(uint32_t data) {
 							GUI_CASE_OFS(6, 96, GUI_EDIT_ENUM( g_model.thrExpo, 0, 1, menu_on_off ))
 							GUI_CASE_OFS(7, 96, GUI_EDIT_INT( g_model.trimInc, 0, 7 ))
 							GUI_CASE_OFS(8, 96, GUI_EDIT_ENUM( g_model.extendedLimits, 0, 1, menu_on_off ))
+							GUI_CASE_OFS(9, 96, GUI_EDIT_INT( g_model.ppmNCH, 1, NUM_CHNOUT ))
+							GUI_CASE_OFS(10, 96, GUI_EDIT_INT( g_model.ppmDelay, 0, 7 ))
+							GUI_CASE_OFS(11, 96, GUI_EDIT_INT( g_model.ppmFrameLength, 0, 7 ))
 						}
 				)
 				break;
@@ -1425,7 +1432,7 @@ void gui_process(uint32_t data) {
 
 					FOREACH_COL(
 						switch(col) {
-							GUI_CASE_OFS( 0, (3+6-1)*6+2, GUI_EDIT_INT_EX2(p->offset,-100, 100, 0 , INT_DIV10|ALIGN_RIGHT, {}));
+							GUI_CASE_OFS( 0, (3+6-1)*6+2, GUI_EDIT_INT_EX2(p->offset,-1000, 1000, 0 , INT_DIV10|ALIGN_RIGHT, {}));
 							GUI_CASE_OFS( 1, (3+6+4-1)*6+2, GUI_EDIT_INT_EX2(p->min, -100, 100, 0, ALIGN_RIGHT, {}))
 							GUI_CASE_OFS( 2, (3+6+4+4-1)*6+2, GUI_EDIT_INT_EX2(p->max, -100, 100, 0, ALIGN_RIGHT,{}))
 							GUI_CASE_OFS( 3, (3+6+4+4+2-1)*6+2, GUI_EDIT_ENUM(p->reverse, 0, 1, inverse_labels))

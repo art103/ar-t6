@@ -215,7 +215,7 @@ PACK(typedef struct t_SafetySwData { // Custom Switches data
 	union opt
 	{
 		struct ss
-		{	
+		{
 	    int8_t  swtch:6;
 		uint8_t mode:2;
     	int8_t  val;
@@ -242,7 +242,7 @@ PACK(typedef struct t_PhaseData {
   uint8_t fadeIn:4;
   uint8_t fadeOut:4;
 }) PhaseData;
-	 
+
 PACK(typedef struct t_FunctionData { // Function data
   int8_t  swtch ; //input
   uint8_t func ;
@@ -278,8 +278,8 @@ PACK(typedef struct t_ModelData {
     char      name[MODEL_NAME_LEN]; // 10 must be first for eeLoadModelName
     int8_t    tmrMode;              // timer trigger source -> off, abs, stk, stk%, sw/!sw, !m_sw/!m_sw
     uint16_t  tmrVal;
-    int8_t    ppmNCH;
-    int8_t    ppmDelay;
+    int8_t    ppmNCH; // 1-8
+    int8_t    ppmDelay; // 300 + ppmDelay * 100us (width of STOP impulse in PPM)
     int8_t    trimSw;
     uint8_t   beepANACenter;// 1<<0->A1.. 1<<6->A7
 
