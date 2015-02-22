@@ -24,4 +24,6 @@
 
 void pulses_init(void);
 
+volatile struct t_latency g_latency;
+
 #endif // PULSES_H

@@ -44,11 +44,12 @@
 // All timings in us
 #define PPM_CENTER 			1500
 #define PPM_STOP_LEN		(300 + g_model.ppmDelay * 50)
+#define PPM_MIN_FRAME_LEN  	22500
 #define PPM_MAX_FRAME_LEN	60000
 #define PPM_MIN_GAP_LEN		9000
 
 // Exported globals
-volatile struct t_latency g_latency;
+volatile struct t_latency g_latency = { 0xFF, 0, 0 } ;
 volatile int16_t g_chans[NUM_CHNOUT]; 	// -1024 - 1024
 
 // Private globals
@@ -110,7 +111,7 @@ void pulses_init(void)
 	TIM_ICStructInit(&timIcInit);
 
 	// 1MHz time base
-	timInit.TIM_Prescaler = 23;
+	timInit.TIM_Prescaler = SystemCoreClock / 1000000 ; // 1us
 	TIM_TimeBaseInit(TIM2, &timInit);
 	TIM_TimeBaseInit(TIM3, &timInit);
 
@@ -250,7 +251,7 @@ void pulses_setup_ppm( uint8_t proto )
 
 	int16_t PPM_range = g_model.extendedLimits ? PPM_LIMIT_EXTENDED : PPM_LIMIT_NORMAL;   // range of 0.7 - 2.3ms or 1.0 - 2.0ms
 	uint8_t start = (proto == PROTO_PPM16) ? p-8 : startChan;
-	// restore sanity if model got corrupt to avoid wild pointer 'ptr'
+	// restore sanity when model got corrupted and avoid wild pointer 'ptr'
 	if( start >= NUM_CHNOUT ) start = NUM_CHNOUT-1;
 	if( p >= NUM_CHNOUT ) p = NUM_CHNOUT-1;
 	for (uint8_t i = start; i < p; i++)
@@ -261,6 +262,10 @@ void pulses_setup_ppm( uint8_t proto )
 		if (v < -PPM_range) v = -PPM_range;
 		v += PPM_CENTER;
 
+		// part of width is used for the "STOP" pulse width so subtract it
+		v -= PPM_STOP_LEN;
+		if( v < PPM_STOP_LEN ) v = PPM_STOP_LEN;
+
 		// Channel
 		position += v;
 		*ptr++ = position; // DANGER! if channels # are wrong *prt would run wild
@@ -270,10 +275,10 @@ void pulses_setup_ppm( uint8_t proto )
 		*ptr++ = position; // DANGER! if channels # are wrong *prt would run wild
 	}
 
-	// final gap after all channels; will be decreased by each channel
-	int32_t gap = 22500 + g_model.ppmFrameLength * 1000; // Minimum Framelen = 22.5 ms
-	gap -= position;
-	// Make sure there is at least 9ms end-of-frame gap
+	// compute the finnal gap between PPM sequences (frames)
+	int32_t frameLength = g_model.ppmFrameLength * 1000; // Minimum Framelen = 22.5 ms
+	if( frameLength < PPM_MIN_FRAME_LEN ) frameLength = PPM_MIN_FRAME_LEN;
+	int32_t gap = frameLength - position;
 	if (gap < PPM_MIN_GAP_LEN) gap = PPM_MIN_GAP_LEN;
 
 	// end-of-frame
