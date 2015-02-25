@@ -177,24 +177,28 @@ PACK(typedef struct t_MixData {
     /// keep the bitfields together for better packing
     uint8_t destCh:4;          // 1..NUM_CHNOUT
     int8_t  swtch:4;           // A,B,C,D - switch bitmask
-    int8_t  curve:4;           //0=symmetrisch 1=no neg 2=no pos,...6 then MAX_CURVES==4
+    uint8_t curve:4;           //0=symmetrisch 1=no neg 2=no pos,...6 then MAX_CURVES==4
     uint8_t delayUp:4;
     uint8_t delayDown:4;
     uint8_t speedUp:4;         // Servogeschwindigkeit aus Tabelle (10ms Cycle)
     uint8_t speedDown:4;       // 0 nichts
     uint8_t carryTrim:1;
     uint8_t mltpx:2;           // multiplex method 0=+ 1=* 2=replace
-    uint8_t lateOffset:1;      // Add offset later
     uint8_t mixWarn:2;         // mixer warning
+
+// unused fields
+    uint8_t lateOffset:1;      // todo: Add offset later
 #ifdef FMODE_TRIM
     uint8_t enableFmTrim:1;
 #else
-    uint8_t spareenableFmTrim:1;
+    uint8_t spareenableFmTrim:1; // todo: unused
 #endif
-    uint8_t differential:1;
-	uint8_t modeControl:5 ;
-    uint8_t res:3 ;
+    uint8_t differential:1; // todo:unused
+	uint8_t modeControl:5 ; // todo: unused
+    uint8_t res:3 ; // todo: unused
+    uint8_t unused: 3 ;
 }) MixData;
+// total of 9 bytes
 
 
 PACK(typedef struct t_CSwData { // Custom Switches data
@@ -280,7 +284,7 @@ PACK(typedef struct t_ModelData {
     uint16_t  tmrVal;
     int8_t    ppmNCH; // 1-8
     int8_t    ppmDelay; // 300 + ppmDelay * 100us (width of STOP impulse in PPM)
-    int8_t    trimSw;
+    int8_t    trimSw; // todo: unused
     uint8_t   beepANACenter;// 1<<0->A1.. 1<<6->A7
 
     //=== BEG == bit fields keep together for better packing
@@ -306,7 +310,7 @@ PACK(typedef struct t_ModelData {
 
     uint8_t   swashCollectiveSource;
     uint8_t   swashRingValue;
-    int8_t    ppmFrameLength;    		//0=22.5  (10msec-30msec) 0.5msec increments
+    int8_t    ppmFrameLength;    		//0=22.5  (10msec-30msec) 1msec increments
     MixData   mixData[MAX_MIXERS];
     LimitData limitData[NUM_CHNOUT];
     ExpoData  expoData[4];
@@ -314,7 +318,7 @@ PACK(typedef struct t_ModelData {
     int8_t    curves5[MAX_CURVE5][5];
     int8_t    curves9[MAX_CURVE9][9];
 //    CSwData   customSw[NUM_CSW];
-    int8_t		tmrModeB;
+    int8_t		tmrModeB; // todo: unused
 //    uint8_t   numVoice:5;		// 0-16, rest are Safety switches
 //		uint8_t		anaVolume:3 ;	// analog volume control
     SafetySwData  safetySw[NUM_CHNOUT];
@@ -333,7 +337,7 @@ PACK(typedef struct t_ModelData {
 //	uint8_t   currentSource ;
 //	uint8_t   altSource ;
 //	uint8_t phaseNames[MAX_MODES][6] ;
-	ScaleData Scalers[NUM_SCALERS] ;
+	ScaleData Scalers[NUM_SCALERS] ; // todo: unused
 
 //		uint8_t   altSource ;
     uint16_t  chkSum;

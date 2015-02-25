@@ -684,7 +684,7 @@ static void perOut(volatile int16_t *chanOut, uint8_t att)
         case 6:       //f|abs(f)
             v = v>0 ? RESX : -RESX;
             break;
-        default: //c1..c16
+        default: //c1..c8
             v = intpol(v, md->curve - 7);
         }
 

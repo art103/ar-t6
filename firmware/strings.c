@@ -94,6 +94,25 @@ const char *mix_mode[MIX_MODE_MAX] = {
 		":=",
 };
 
+
+const char *mix_curve[MIX_CURVE_MAX] = {
+		"x",
+		"x>0",
+		"x<0",
+		"|x|",
+		"f>0",
+		"f<0",
+		"|f|",
+		"cv1",
+		"cv2",
+		"cv3",
+		"cv4",
+		"cv5",
+		"cv6",
+		"cv7",
+		"cv8",
+};
+
 const char *menu_on_off[4] = {
 		"OFF",
 		"ON",
@@ -184,7 +203,7 @@ const char *model_menu_list1[MOD_MENU_LIST1_LEN] = {
 		"Thro Trim",
 		"Thro Expo",
 		"Thrim Incr",
-		"Ext Limits",
+		"PPM Extd Lmts",
 		"PPM #Chanels",
 		"PPM Delay",
 		"PPM Ex Frm Wdth",

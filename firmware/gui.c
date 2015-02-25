@@ -1516,7 +1516,7 @@ void gui_process(uint32_t data) {
 					GUI_CASE_OFS(1, 96, GUI_EDIT_INT( mx->weight, -125, 125 ));
 					GUI_CASE_OFS(2, 96, GUI_EDIT_INT( mx->sOffset, -125, 125 ));
 					GUI_CASE_OFS(3, 96, GUI_EDIT_ENUM( mx->carryTrim, 0, 1, menu_on_off ));
-					// #4 curve
+					GUI_CASE_OFS(4, 96, GUI_EDIT_ENUM( mx->curve, 0, MIX_CURVE_MAX-1, mix_curve));
 					GUI_CASE_OFS(5, 96, GUI_EDIT_ENUM( mx->swtch, 0, 4, switches ));
 					// #6 phase
 					GUI_CASE_OFS(7, 96, GUI_EDIT_ENUM( mx->mixWarn, 0, 1, menu_on_off ));
