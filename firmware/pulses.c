@@ -113,7 +113,7 @@ void pulses_init(void)
 	TIM_ICStructInit(&timIcInit);
 
 	// 1MHz time base
-	timInit.TIM_Prescaler = SystemCoreClock / 1000000 ; // 1us
+	timInit.TIM_Prescaler = SystemCoreClock / 1000000 - 1; // 1us
 	TIM_TimeBaseInit(TIM2, &timInit);
 	TIM_TimeBaseInit(TIM3, &timInit);
 
@@ -349,6 +349,7 @@ void pulses_set_trainer_port_capture()
   * @brief  Timer 2 Interrupt Handler
   * @note	Used as a time base for pulse generation.
   * 		The overflow count is set by this handler based on the duration of each pulse.
+  * 		1us time base
   * @param  None
   * @retval None
   */
@@ -358,23 +359,23 @@ void TIM2_IRQHandler(void)
     static uint16_t *pulsePtr = pulses_1us.pword;
 
     // For measuring the latency - difference between current count and desired
-    int16_t dt = TIM_GetCounter(TIM2) - *(pulsePtr-1);
+    int16_t dt = TIM2->CNT /*TIM_GetCounter(TIM2)*/ - *(pulsePtr-1);
 
-    TIM_ClearITPendingBit(TIM2, TIM_FLAG_CC1);
+    TIM2->SR = (uint16_t)~TIM_FLAG_CC1; /* TIM_ClearITPendingBit(TIM2, TIM_FLAG_CC1); */
 
     // Toggle the output bit.
     if(pulsePol)
     {
-    	GPIO_SetBits(GPIOA, PPM_OUT);
+    	GPIOA->BSRR = PPM_OUT; /*GPIO_SetBits(GPIOA, PPM_OUT);*/
     	if (trainer_out)
-        	GPIO_SetBits(GPIOA, PPM_IN);
+    		GPIOA->BSRR = PPM_IN; /* GPIO_SetBits(GPIOA, PPM_IN);*/
         pulsePol = 0;
     }
     else
     {
-    	GPIO_ResetBits(GPIOA, PPM_OUT);
+    	GPIOA->BRR = PPM_OUT; /* GPIO_ResetBits(GPIOA, PPM_OUT); */
     	if (trainer_out)
-        	GPIO_ResetBits(GPIOA, PPM_IN);
+    		GPIOA->BRR = PPM_IN; /*GPIO_ResetBits(GPIOA, PPM_IN);*/
         pulsePol = 1;
     }
 
@@ -391,23 +392,23 @@ void TIM2_IRQHandler(void)
         pulsePol = !g_model.pulsePol;
 
         // Pause the timer whilst we set the next sequence.
-        TIM_Cmd(TIM2, DISABLE);
+        TIM2->CR1 &= (uint16_t)(~((uint16_t)TIM_CR1_CEN)); /*TIM_Cmd(TIM2, DISABLE);*/
 
         pulses_setup();
 
         if ( (g_model.protocol == PROTO_PPM) || (g_model.protocol == PROTO_PPM16) )
         {
             // Reset and start the timer.
-	        TIM_ClearITPendingBit(TIM2, TIM_FLAG_CC1);
-	        TIM_SetCounter(TIM2, 0);
-	        TIM_SetCompare1(TIM2, PPM_STOP_LEN);
-            TIM_Cmd(TIM2, ENABLE);
+        	TIM2->SR = (uint16_t)~TIM_FLAG_CC1; /*TIM_ClearITPendingBit(TIM2, TIM_FLAG_CC1);*/
+        	TIM2->CNT = 0; /*TIM_SetCounter(TIM2, 0);*/
+        	TIM2->CCR1 = PPM_STOP_LEN; /*TIM_SetCompare1(TIM2, PPM_STOP_LEN);*/
+        	TIM2->CR1 |= TIM_CR1_CEN; /*TIM_Cmd(TIM2, ENABLE);*/
         }
     }
     else
     {
         // Set the compare value for the next pulse.
-        TIM_SetCompare1(TIM2, *pulsePtr);
+    	TIM2->CCR1 = *pulsePtr; /*TIM_SetCompare1(TIM2, *pulsePtr);*/
     	pulsePtr++;
     }
 

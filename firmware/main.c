@@ -69,7 +69,7 @@ int main(void)
 	// Initialize the keypad scanner (with IRQ wakeup).
 	keypad_init();
 
-	// Initialize the LCD and display logo.
+	// Initialize the LCD
 	lcd_init();
 	gui_init();
 

@@ -39,6 +39,17 @@ volatile int16_t stick_data[STICK_ADC_CHANNELS];
 static CAL_STATE cal_state = CAL_OFF;
 
 /**
+ * @brief  Update sticks' GUI. All processing in IRQ.
+ * @note   Called from the scheduler.
+ * @param  data: Not used.
+ * @retval None
+ */
+static void sticks_process(uint32_t data) {
+	gui_update(UPDATE_STICKS);
+	task_schedule(TASK_PROCESS_STICKS, 0, 20);
+}
+
+/**
  * @brief  Initialise the stick scanning.
  * @note   Starts the ADC continuous sampling.
  * @param  None
@@ -124,7 +135,7 @@ void sticks_init(void) {
 	/* TIM4 init */
 	TIM_TimeBaseStructInit(&timInit);
 	timInit.TIM_Period = 20-1; /* 20 ms */
-	timInit.TIM_Prescaler = 24*1000; /* 24*1000 CLKs in 1 ms @ 24MHz */
+	timInit.TIM_Prescaler = SystemCoreClock/1000 - 1; /* 1ms */
 	timInit.TIM_ClockDivision = 0x0;
 	timInit.TIM_CounterMode = TIM_CounterMode_Up;
 	TIM_TimeBaseInit(TIM4, &timInit);
@@ -176,15 +187,36 @@ void sticks_update()
 	}
 }
 
+
 /**
- * @brief  Update sticks' GUI. All processing in IRQ.
- * @note   Called from the scheduler.
- * @param  data: Not used.
+ * @brief  Update cal data after ADC conversion
+ * @note
+ * @param  None
  * @retval None
  */
-void sticks_process(uint32_t data) {
-	gui_update(UPDATE_STICKS);
-	task_schedule(TASK_PROCESS_STICKS, 0, 20);
+static void cal_update()
+{
+	int i;
+	if (cal_state == CAL_LIMITS) {
+		for (i = 0; i < STICK_INPUT_CHANNELS; ++i) {
+			if (adc_data[i] < g_eeGeneral.calData[i].min)
+				g_eeGeneral.calData[i].min = adc_data[i];
+			if (adc_data[i] > g_eeGeneral.calData[i].max)
+				g_eeGeneral.calData[i].max = adc_data[i];
+		}
+	} else if (cal_state == CAL_CENTER) {
+		// Set the stick centres.
+		for (i = 0; i < STICKS_TO_CALIBRATE; ++i) {
+			g_eeGeneral.calData[i].centre = adc_data[i];
+		}
+
+		// Set the remaining centres.
+		for (i = STICKS_TO_CALIBRATE; i < STICK_INPUT_CHANNELS; ++i) {
+			g_eeGeneral.calData[i].centre = g_eeGeneral.calData[i].min
+					+ ((g_eeGeneral.calData[i].max
+							- g_eeGeneral.calData[i].min) / 2);
+		}
+	}
 }
 
 /**
@@ -194,12 +226,10 @@ void sticks_process(uint32_t data) {
  * @retval None
  */
 void sticks_calibrate(CAL_STATE state) {
-	int i;
-
 	cal_state = state;
 
 	if (state == CAL_LIMITS) {
-		for (i = 0; i < STICKS_TO_CALIBRATE; ++i) {
+		for (int i = 0; i < STICKS_TO_CALIBRATE; ++i) {
 			g_eeGeneral.calData[i].min = 0x7FFF;
 			g_eeGeneral.calData[i].max = 0;
 			g_eeGeneral.calData[i].centre = 2048;
@@ -264,36 +294,17 @@ void DMA1_Channel1_IRQHandler(void) {
 	DMA_ClearFlag(DMA1_FLAG_TC1);
 	DMA_ClearITPendingBit(DMA_IT_TC);
 
+	// update the sticks data now
+	sticks_update();
+
 	// Don't run the mixer if we're calibrating
 	if (cal_state == CAL_OFF) {
 		if (!g_modelInvalid) {
-			// update the sticks data now
-			sticks_update();
 			// Run the mixer.
 			mixer_update();
 		}
 	} else // if (cal_state != CAL_OFF)
 	{
-		int i;
-		if (cal_state == CAL_LIMITS) {
-			for (i = 0; i < STICK_INPUT_CHANNELS; ++i) {
-				if (adc_data[i] < g_eeGeneral.calData[i].min)
-					g_eeGeneral.calData[i].min = adc_data[i];
-				if (adc_data[i] > g_eeGeneral.calData[i].max)
-					g_eeGeneral.calData[i].max = adc_data[i];
-			}
-		} else if (cal_state == CAL_CENTER) {
-			// Set the stick centres.
-			for (i = 0; i < STICKS_TO_CALIBRATE; ++i) {
-				g_eeGeneral.calData[i].centre = adc_data[i];
-			}
-
-			// Set the remaining centres.
-			for (i = STICKS_TO_CALIBRATE; i < STICK_INPUT_CHANNELS; ++i) {
-				g_eeGeneral.calData[i].centre = g_eeGeneral.calData[i].min
-						+ ((g_eeGeneral.calData[i].max
-								- g_eeGeneral.calData[i].min) / 2);
-			}
-		}
+		cal_update();
 	}
 }

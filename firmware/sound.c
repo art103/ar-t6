@@ -79,7 +79,7 @@ void sound_init(void)
 	TIM_OCStructInit(&timOcInit);
 
 	// 1MHz time base
-	timInit.TIM_Prescaler = 23;
+	timInit.TIM_Prescaler =  SystemCoreClock/1000000 - 1;
 	TIM_TimeBaseInit(TIM1, &timInit);
 
 	// TIM1 (Tone Output)

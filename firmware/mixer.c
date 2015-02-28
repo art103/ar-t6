@@ -525,7 +525,7 @@ static void perOut(volatile int16_t *chanOut, uint8_t att)
         /* srcRaw
         STK1..STK4
         VRA, VRB
-        ???
+        ??? non existent VRC/VRD
 		MIX_MAX   8
 		MIX_FULL  9
 		MIX_CYC1  10

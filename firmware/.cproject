@@ -34,7 +34,7 @@
 									<listOptionValue builtIn="false" value="/opt/CodeSourcery/arm-2013.05/arm-none-eabi/include"/>
 									<listOptionValue builtIn="false" value="/opt/CodeSourcery/arm-2013.05/lib/gcc/arm-none-eabi/4.7.3/include/"/>
 								</option>
-								<option id="gnu.c.compiler.option.optimization.flags.464563330" name="Other optimization flags" superClass="gnu.c.compiler.option.optimization.flags" useByScannerDiscovery="false" value="-mcpu=cortex-m3 -mthumb -ffunction-sections -fdata-sections -fomit-frame-pointer -fconserve-stack -fstrict-overflow" valueType="string"/>
+								<option id="gnu.c.compiler.option.optimization.flags.464563330" name="Other optimization flags" superClass="gnu.c.compiler.option.optimization.flags" useByScannerDiscovery="false" value="-mcpu=cortex-m3 -mthumb -ffunction-sections -fdata-sections -fomit-frame-pointer -fconserve-stack -fstrict-overflow  -Wl,--gc-sections" valueType="string"/>
 								<option id="gnu.c.compiler.option.misc.other.410411450" name="Other flags" superClass="gnu.c.compiler.option.misc.other" useByScannerDiscovery="false" value="-c -fmessage-length=0 -Wstack-usage=128" valueType="string"/>
 								<option id="gnu.c.compiler.option.dialect.std.1625663427" name="Language standard" superClass="gnu.c.compiler.option.dialect.std" useByScannerDiscovery="true" value="gnu.c.compiler.dialect.c99" valueType="enumerated"/>
 								<inputType id="cdt.managedbuild.tool.gnu.c.compiler.input.897869236" superClass="cdt.managedbuild.tool.gnu.c.compiler.input"/>
