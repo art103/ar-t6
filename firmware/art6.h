@@ -195,6 +195,19 @@ extern uint8_t SlaveMode;
 #define DR_WEIGHT 1
 #define DR_RIGHT  0
 #define DR_LEFT   1
+
+// DR - double rate sticks
+// dwSw1 dwSw2
+//   1     x	HIGH
+//   0     1    MID
+//   0     0    LOW
+#define GET_DR_STATE(x) (\
+    !keypad_get_switch(g_model.expoData[x].drSw1) ?   \
+		DR_HIGH :                                     \
+		!keypad_get_switch(g_model.expoData[x].drSw2)?\
+				DR_MID : 							  \
+				DR_LOW);
+
 //#define DR_BOTH   2
 //#define DR_DRSW1  99
 //#define DR_DRSW2  98

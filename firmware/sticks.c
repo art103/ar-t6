@@ -229,7 +229,8 @@ void sticks_calibrate(CAL_STATE state) {
 	cal_state = state;
 
 	if (state == CAL_LIMITS) {
-		for (int i = 0; i < STICKS_TO_CALIBRATE; ++i) {
+		int i;
+		for (i = 0; i < STICKS_TO_CALIBRATE; ++i) {
 			g_eeGeneral.calData[i].min = 0x7FFF;
 			g_eeGeneral.calData[i].max = 0;
 			g_eeGeneral.calData[i].centre = 2048;

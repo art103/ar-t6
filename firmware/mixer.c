@@ -173,17 +173,6 @@ static int8_t *TrimPtr[4] =
     &g_model.trim[3]
 };
 
-// DR - double rate sticks
-// dwSw1 dwSw2
-//   1     x	HIGH
-//   0     1    MID
-//   0     0    LOW
-#define GET_DR_STATE(x) (\
-    !keypad_get_switch(g_model.expoData[x].drSw1) ?   \
-		DR_HIGH :                                     \
-		!keypad_get_switch(g_model.expoData[x].drSw2)?\
-				DR_MID : 							  \
-				DR_LOW);
 
 static uint16_t isqrt32(uint32_t n)
 {

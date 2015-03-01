@@ -29,4 +29,6 @@ void mixer_update(void);
 void mixer_input_trim(KEYPAD_KEY key);
 int16_t mixer_get_trim(STICK stick);
 
+int16_t expo(int16_t x, int16_t k);
+
 #endif // _MIXER_H
