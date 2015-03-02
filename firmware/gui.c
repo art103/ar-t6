@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 /*
  *                  Copyright 2014 ARTaylor.co.uk
  *
@@ -4174,4 +4173,3 @@ uint8_t gui_offset_curves(int8_t max, int8_t min, int8_t a, int8_t b, int8_t x) 
 	long coord = (((b-a)*(x-min))/(max-min))+a;
 	return (int8_t) coord;
 }
->>>>>>> branch 'master' of https://github.com/art103/ar-t6.git
