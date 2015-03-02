@@ -113,6 +113,22 @@ const char *mix_curve[MIX_CURVE_MAX] = {
 		"cv8",
 };
 
+const char* expodr[EXPODR_MAX] = {
+		"CH ",   // 0: 0
+		"EXPO",  // 1:
+		"",      // 2: 1 2
+		"WEIGHT",// 3:
+		"",      // 4: 3 4
+		"Sw1",   // 5: 5
+		"Sw2"    // 6: 6
+};
+
+const char* drlevel[3] = {
+		"Hi",
+		"Md",
+		"Lo"
+};
+
 const char *menu_on_off[4] = {
 		"OFF",
 		"ON",

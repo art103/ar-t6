@@ -26,6 +26,7 @@
 #define MIX_SRC_MAX 29
 #define MIX_WARN_MAX 4
 #define MIX_CURVE_MAX 14
+#define EXPODR_MAX 7
 
 typedef enum {
 	GUI_MSG_NONE = 0,
@@ -123,6 +124,8 @@ extern const char *mix_mode[MIX_MODE_MAX];
 extern const char *mix_src[MIX_SRC_MAX];
 extern const char *mix_warn[MIX_WARN_MAX];
 extern const char *mix_curve[MIX_CURVE_MAX];
+extern const char *expodr[EXPODR_MAX];
+extern const char* drlevel[3];
 extern const char *menu_on_off[4];
 const char *channel_order[CHAN_ORDER_MAX];
 extern const char *system_menu_beeper[BEEPER_MAX];

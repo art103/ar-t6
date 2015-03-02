@@ -1325,21 +1325,11 @@ void gui_process(uint32_t data) {
 	        	uint8_t dr = GET_DR_STATE(curr_chan);
 	        	context.form = 1;
 				context.item_limit = 7; // 7 fields all together
-				static const char* expodr_label[7] = {
-						"CH ",   // 0: 0
-						"EXPO",  // 1:
-						"",      // 2: 1 2
-						"WEIGHT",// 3:
-						"",      // 4: 3 4
-						"Sw1",   // 5: 5
-						"Sw2"    // 6: 6
-				};
-				static const char* drlevel[3] = { "Hi", "Md", "Lo" };
 				// print labels
 				for(int row = 0; row < 7; row++)
 				{
 					prepare_context_for_list_row( &context, row );
-					lcd_write_string(expodr_label[row], LCD_OP_SET, TRAILING_SPACE);
+					lcd_write_string(expodr[row], LCD_OP_SET, TRAILING_SPACE);
 					if( row == 1 ) lcd_write_string(drlevel[dr], LCD_OP_SET, 0);
 				}
 				// print/edit fields
@@ -1349,10 +1339,10 @@ void gui_process(uint32_t data) {
 					prepare_context_for_field( &context, fld );
 					switch (fld) {
 						GUI_CASE_OFS(0, 4*6, GUI_EDIT_ENUM( curr_chan, 0, DIM(g_model.expoData), sticks ) );
-						GUI_CASE_OFS(1, 4*6, GUI_EDIT_INT_EX2(ed->expo[dr][0][0], -100, 100, 0, ALIGN_RIGHT,{}));
-						GUI_CASE_OFS(2, 8*6, GUI_EDIT_INT_EX2(ed->expo[dr][0][1], -100, 100, 0, ALIGN_RIGHT,{}));
-						GUI_CASE_OFS(3, 4*6, GUI_EDIT_INT(ed->expo[dr][1][0],-100,100));
-						GUI_CASE_OFS(4, 8*6, GUI_EDIT_INT(ed->expo[dr][1][1],-100,100));
+						GUI_CASE_OFS(1, 4*6, GUI_EDIT_INT_EX2(ed->expo[dr][DR_EXPO][DR_RIGHT], -100, 100, 0, ALIGN_RIGHT,{}));
+						GUI_CASE_OFS(2, 8*6, GUI_EDIT_INT_EX2(ed->expo[dr][DR_EXPO][DR_LEFT], -100, 100, 0, ALIGN_RIGHT,{}));
+						GUI_CASE_OFS(3, 4*6, GUI_EDIT_INT(ed->expo[dr][DR_WEIGHT][DR_RIGHT],-100,100));
+						GUI_CASE_OFS(4, 8*6, GUI_EDIT_INT(ed->expo[dr][DR_WEIGHT][DR_LEFT],-100,100));
 						GUI_CASE_OFS(5, 4*6, GUI_EDIT_ENUM( ed->drSw1, 0, NUM_SWITCHES, switches));
 						GUI_CASE_OFS(6, 4*6, GUI_EDIT_ENUM( ed->drSw2, 0, NUM_SWITCHES, switches));
 					}
@@ -1364,7 +1354,7 @@ void gui_process(uint32_t data) {
 				const int H = LCD_HEIGHT-Y0;
 				lcd_draw_line( X0, Y0+H/2, X0+W, Y0+H/2, LCD_OP_SET);
 				lcd_draw_line( X0+W/2, Y0, X0+W/2, Y0+H, LCD_OP_SET);
-				for(int v=-1024; v <= 1024; v++)
+				for(int v=-1024; v <= 1024; v += 2*1024/W)
 				{
 					int e = expo(v,ed->expo[dr][DR_EXPO][v>0?DR_RIGHT:DR_LEFT]);
 					int y = -(e*H)/(2*1024)+Y0+H/2;
