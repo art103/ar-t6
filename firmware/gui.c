@@ -1324,9 +1324,9 @@ void gui_process(uint32_t data) {
 	        	ExpoData* ed = &g_model.expoData[curr_chan];
 	        	uint8_t dr = GET_DR_STATE(curr_chan);
 	        	context.form = 1;
-				context.item_limit = 7; // 7 fields all together
+				context.item_limit = EXPODR_MAX; // 7 fields all together
 				// print labels
-				for(int row = 0; row < 7; row++)
+				for(int row = 0; row < EXPODR_MAX; row++)
 				{
 					prepare_context_for_list_row( &context, row );
 					lcd_write_string(expodr[row], LCD_OP_SET, TRAILING_SPACE);
@@ -1338,13 +1338,13 @@ void gui_process(uint32_t data) {
 					prepare_context_for_list_row( &context, row );
 					prepare_context_for_field( &context, fld );
 					switch (fld) {
-						GUI_CASE_OFS(0, 4*6, GUI_EDIT_ENUM( curr_chan, 0, DIM(g_model.expoData), sticks ) );
-						GUI_CASE_OFS(1, 4*6, GUI_EDIT_INT_EX2(ed->expo[dr][DR_EXPO][DR_RIGHT], -100, 100, 0, ALIGN_RIGHT,{}));
-						GUI_CASE_OFS(2, 8*6, GUI_EDIT_INT_EX2(ed->expo[dr][DR_EXPO][DR_LEFT], -100, 100, 0, ALIGN_RIGHT,{}));
-						GUI_CASE_OFS(3, 4*6, GUI_EDIT_INT(ed->expo[dr][DR_WEIGHT][DR_RIGHT],-100,100));
-						GUI_CASE_OFS(4, 8*6, GUI_EDIT_INT(ed->expo[dr][DR_WEIGHT][DR_LEFT],-100,100));
-						GUI_CASE_OFS(5, 4*6, GUI_EDIT_ENUM( ed->drSw1, 0, NUM_SWITCHES, switches));
-						GUI_CASE_OFS(6, 4*6, GUI_EDIT_ENUM( ed->drSw2, 0, NUM_SWITCHES, switches));
+						GUI_CASE_OFS(0, 3*6, GUI_EDIT_ENUM( curr_chan, 0, DIM(g_model.expoData), sticks ) );
+						GUI_CASE_OFS(1, 3*6, GUI_EDIT_INT_EX2(ed->expo[dr][DR_EXPO][DR_RIGHT], -100, 100, 0, ALIGN_RIGHT,{}));
+						GUI_CASE_OFS(2, 7*6, GUI_EDIT_INT_EX2(ed->expo[dr][DR_EXPO][DR_LEFT], -100, 100, 0, ALIGN_RIGHT,{}));
+						GUI_CASE_OFS(3, 3*6, GUI_EDIT_INT(ed->expo[dr][DR_WEIGHT][DR_RIGHT],-100,100));
+						GUI_CASE_OFS(4, 7*6, GUI_EDIT_INT(ed->expo[dr][DR_WEIGHT][DR_LEFT],-100,100));
+						GUI_CASE_OFS(5, 3*6, GUI_EDIT_ENUM( ed->drSw1, 0, NUM_SWITCHES, switches));
+						GUI_CASE_OFS(6, 7*6, GUI_EDIT_ENUM( ed->drSw2, 0, NUM_SWITCHES, switches));
 					}
 				}
 				// draw curve
@@ -1408,8 +1408,6 @@ void gui_process(uint32_t data) {
 				// if we were in the popup then the result would show up, once
 				char popupRes = gui_popup_get_result();
 				if (popupRes) {
-					context.copy_row = -1;
-					// todo - handle selected line: Preset, Insert, Delete, Copy, Paste
 					switch (popupRes) {
 					// preset
 					case 1:
@@ -1481,7 +1479,6 @@ void gui_process(uint32_t data) {
 				break;
 
 			case MOD_PAGE_LIMITS:
-				// ToDo: Implement context.edit
 				context.item_limit = NUM_CHNOUT - 1;
 				context.col_limit = 3;
 				FOREACH_ROW(
@@ -1503,7 +1500,7 @@ void gui_process(uint32_t data) {
 				break;
 
 			case MOD_PAGE_CURVES:
-				// ToDo: Implement context.edit
+				// ToDo: Implement
 				context.item_limit = MAX_CURVE5 + MAX_CURVE9 - 1;
 				FOREACH_ROW(
 					char s[4] = "CV0";
