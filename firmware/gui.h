@@ -49,9 +49,7 @@ typedef enum _menu_mode {
 	MENU_MODE_LIST,
 	MENU_MODE_COL,
 	MENU_MODE_EDIT,
-	MENU_MODE_EDIT_S, /* used for string editor */
-	MENU_MODE_LIST_SUB /* list menu with submenu (mixer and curves)*/
-
+	MENU_MODE_EDIT_S /* used for string editor */
 } MENU_MODE;
 
 
@@ -65,7 +63,6 @@ void gui_navigate(GUI_LAYOUT layout);
 void gui_popup(GUI_MSG msg, int16_t timeout);
 void gui_popup_select(GUI_MSG msg);
 char gui_popup_get_result();
-uint8_t gui_offset_curves(int8_t max, int8_t min, int8_t a, int8_t b, int8_t x);
 
 GUI_LAYOUT gui_get_layout(void);
 
