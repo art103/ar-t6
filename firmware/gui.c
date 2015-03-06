@@ -83,21 +83,24 @@ static int8_t g_menu_mode_dir = 1;
 
 // MenuContext used for Page/Subpage edits (System&Model)
 typedef struct {
-	uint8_t page; // current page
+	uint8_t page; // current menu page
+	uint8_t submenu_page; // submenu page if any for this page
+	uint8_t popup; // popup id if any for this page
+
 	uint8_t item; // current selected item (row in list or item in the form)
 	uint8_t item_limit; // #-1 of items (rows or fields) in a page
-	uint8_t top_row;  // current top row (scroll offset)
-	uint8_t cur_row_y; // precomputed LCD y offset of current line
 	int8_t col;  // current column (0 for single column row)
 	int8_t col_limit; // #-1 of columns in this row
+	uint8_t top_row;  // current top row (scroll offset)
+	uint8_t cur_row_y; // precomputed LCD y offset of current line
 	int8_t copy_row; // row # of last "copy" (to be used in next "paste")
-	MENU_MODE menu_mode :3;
-	uint8_t edit :1; // 1 if this line is in active "edit" mode; 0 otherwise
-	int8_t inc :2; // -1,0,1
+
+	MENU_MODE menu_mode :3; // current state of navigation
+	uint8_t edit :1; // 1 if this row/item is in active "edit" mode; 0 otherwise
+	int8_t inc :2; // -1,0,1 - used to pass to the value editors for increment/decrement
 	LCD_OP op_list :2; // opacity of text currently being printed in a row (used mainly for row heading)
 	LCD_OP op_item :2; // opacity of text of item currently being printed
-	uint8_t form: 1; // a form like mode where 'row' becomes item # (stops row scrolling)
-	uint8_t submenu; // submenu indicator for mixer and curve selection
+	uint8_t form :1; // option - a form like behavior - stops row scrolling
 } MenuContext;
 
 //static MenuContext g_menuContext = {0};
@@ -127,7 +130,7 @@ for (int row = context.top_row;\
 
 
 #define FOREACH_COL(BODY)\
-for(int col = 0; col < context.col_limit; ++col ) {\
+for(int col = 0; col <= context.col_limit; ++col ) {\
 	prepare_context_for_list_rowcol(&context, row, col);\
 	BODY;\
 }
@@ -205,7 +208,6 @@ static void prepare_context_for_list_rowcol(MenuContext* pCtx, uint8_t row, uint
 	if (row == pCtx->item) {
 		switch (pCtx->menu_mode) {
 		case MENU_MODE_LIST:
-		case MENU_MODE_LIST_SUB:
 			pCtx->op_list = LCD_OP_CLR;
 			break;
 		case MENU_MODE_COL:
@@ -658,13 +660,22 @@ void gui_process(uint32_t data) {
 				g_menu_mode_dir = 1;
 				break;
 			case MENU_MODE_LIST:
-				if(context.submenu == 0) {
-						context.menu_mode = MENU_MODE_LIST;
-						g_menu_mode_dir = 1;
-					}
+				if( context.submenu_page ) {
+					return_context = context;
+					sub_edit_item = context.item;
+					context.page = context.submenu_page;
+					context.menu_mode = MENU_MODE_LIST;
+					context.item = 0;
+					context.top_row = 0;
+				}
+				else {
+					if (context.col_limit == 0)
+						context.menu_mode = MENU_MODE_EDIT;
 					else {
-						context.menu_mode = MENU_MODE_LIST_SUB;
+						context.menu_mode = MENU_MODE_COL;
+						context.col = 0;
 					}
+				}
 				break;
 			case MENU_MODE_COL:
 				context.menu_mode = MENU_MODE_EDIT;
@@ -680,21 +691,15 @@ void gui_process(uint32_t data) {
 			}
 		} else if (g_key_press & KEY_CANCEL) {
 			if (return_context.page) {
-				// we were in sub menu, so return (popup)
+				// we were in sub menu, so return (pop up the context)
 				context = return_context;
 				return_context.page = 0;
 			} else {
 				if (context.menu_mode > 0) {
-					if(context.menu_mode == MENU_MODE_LIST_SUB)
-					{
+					context.menu_mode--;
+					if (context.col_limit == 0 &&
+						context.menu_mode == MENU_MODE_COL) {
 						context.menu_mode = MENU_MODE_LIST;
-					}
-					else {
-						context.menu_mode--;
-						if (context.col_limit == 0
-								&& context.menu_mode == MENU_MODE_COL) {
-							context.menu_mode = MENU_MODE_LIST;
-						}
 					}
 				} else {
 					context.page = 0;
@@ -703,6 +708,9 @@ void gui_process(uint32_t data) {
 					gui_navigate(g_main_layout);
 				}
 			}
+		} else if (g_key_press & KEY_MENU ) {
+			if( context.popup )
+				gui_popup_select( context.popup );
 		}
 
 		if( context.form )
@@ -713,6 +721,13 @@ void gui_process(uint32_t data) {
 			if (context.item >= context.top_row + LIST_ROWS)
 				context.top_row++;
 		}
+
+		// defaults - can be changed by particular menu later for next call of gui_process
+		context.submenu_page = 0;
+		context.col_limit = 0;
+		context.popup = 0;
+
+		// actual handling of particular layouts/menus
 
 		if (g_current_layout == GUI_LAYOUT_SYSTEM_MENU) {
 			/**********************************************************************
@@ -738,7 +753,6 @@ void gui_process(uint32_t data) {
 			switch (context.page) {
 			case SYS_PAGE_SETUP:
 				context.item_limit = SYS_MENU_LIST1_LEN - 1;
-				context.col_limit = 0;
 				for (uint8_t row = context.top_row;
 						(row < context.top_row + LIST_ROWS)
 								&& (row <= context.item_limit); ++row) {
@@ -1178,16 +1192,17 @@ void gui_process(uint32_t data) {
 				lcd_write_char(' ', LCD_OP_SET, FLAGS_NONE);
 				lcd_write_int((keypad_scan_keys() == KEY_CH4_UP) ? 1 : 0,
 						LCD_OP_SET, FLAGS_NONE);
-				i++;
-			}
+				// i++;
+
 				break; // SYS_PAGE_DIAG
+			}
 
 			case SYS_PAGE_ANA: {
 				context.op_list = LCD_OP_SET;
 				context.item_limit = 1;
 
-				if (context.menu_mode == MENU_MODE_EDIT
-						|| context.menu_mode == MENU_MODE_LIST) {
+				if (context.menu_mode == MENU_MODE_EDIT ||
+					context.menu_mode == MENU_MODE_LIST) {
 					g_eeGeneral.vBatCalib = gui_int_edit(g_eeGeneral.vBatCalib,
 							context.inc, 80, 120);
 					context.op_list = LCD_OP_CLR;
@@ -1202,17 +1217,15 @@ void gui_process(uint32_t data) {
 					lcd_write_string("  ", LCD_OP_SET, FLAGS_NONE);
 					// All but battery
 					if (i != 6) {
-						lcd_write_int(sticks_get_percent(i), LCD_OP_SET,
-								FLAGS_NONE);
+						lcd_write_int(sticks_get_percent(i), LCD_OP_SET, FLAGS_NONE);
 					} else {
-						lcd_write_int(sticks_get_battery(), context.op_list,
-								INT_DIV10);
+						lcd_write_int(sticks_get_battery(), context.op_list, INT_DIV10);
 						lcd_write_string("v", context.op_list, FLAGS_NONE);
 					}
 
 				}
-			}
 				break; // SYS_PAGE_ANA
+			}
 
 			case SYS_PAGE_CAL:
 				lcd_set_cursor(5, 16);
@@ -1259,7 +1272,6 @@ void gui_process(uint32_t data) {
 			switch (context.page) {
 			case MOD_PAGE_SELECT: {
 				context.item_limit = MAX_MODELS - 1;
-				context.col_limit = 0;
 				for (uint8_t row = context.top_row;
 						(row < context.top_row + LIST_ROWS)
 								&& (row <= context.item_limit); ++row) {
@@ -1295,6 +1307,7 @@ void gui_process(uint32_t data) {
 					if( context.menu_mode == MENU_MODE_EDIT ) {
 						// select the model to use
 						g_eeGeneral.currModel = context.item;
+						// pop up from model selection to PAGE nav
 						context.menu_mode = MENU_MODE_PAGE;
 						gui_navigate(GUI_LAYOUT_MODEL_MENU);
 					}
@@ -1304,7 +1317,6 @@ void gui_process(uint32_t data) {
 
 			case MOD_PAGE_SETUP:
 				context.item_limit = MOD_MENU_LIST1_LEN - 1;
-				context.col_limit = 0;
 				FOREACH_ROW(
 						lcd_write_string((char*) model_menu_list1[row], context.op_list, FLAGS_NONE);
 						lcd_write_string(" ", LCD_OP_SET, FLAGS_NONE);
@@ -1337,7 +1349,7 @@ void gui_process(uint32_t data) {
 	        	ExpoData* ed = &g_model.expoData[curr_chan];
 	        	uint8_t dr = GET_DR_STATE(curr_chan);
 	        	context.form = 1;
-				context.item_limit = 7; // 7 fields all together
+				context.item_limit = 7-1; // 7 fields all together
 				// print labels
 				for(int row = 0; row < 7; row++)
 				{
@@ -1346,7 +1358,7 @@ void gui_process(uint32_t data) {
 					if( row == 1 ) lcd_write_string(drlevel[dr], LCD_OP_SET, 0);
 				}
 				// print/edit fields
-				for(int fld = 0; fld < context.item_limit; fld++) {
+				for(int fld = 0; fld <= context.item_limit; fld++) {
 					int8_t row = ( fld == 1 || fld == 3 ) ? fld + 1 : fld;
 					prepare_context_for_list_row( &context, row );
 					prepare_context_for_field( &context, fld );
@@ -1379,8 +1391,8 @@ void gui_process(uint32_t data) {
 
 			case MOD_PAGE_MIXER: {
 				context.item_limit = MAX_MIXERS-1;
-				context.col_limit = 0;
-				context.submenu = 1;
+				context.submenu_page = MOD_PAGE_MIX_EDIT;
+				context.popup = GUI_MSG_ROW_MENU;
 				FOREACH_ROW(
 					MixData* const mx = &g_model.mixData[row];
 					if((mx->destCh==0) || (mx->destCh>NUM_CHNOUT))
@@ -1402,22 +1414,11 @@ void gui_process(uint32_t data) {
 					lcd_set_cursor(4*6, context.cur_row_y);
 
 					// TODO: mix_src must be changed according to stick modes!?
-#if 0
-					context.col_limit = 3-1;
-					FOREACH_COL(
-						switch(col) {
-						GUI_CASE_OFS(0, 4*6, GUI_EDIT_ENUM( mx->srcRaw, 0, MIX_SRC_MAX-1, mix_src ));
-						GUI_CASE_OFS(1, 9*6, GUI_EDIT_INT(mx->weight, -100, 100));
-						GUI_CASE_OFS(2, 12*6, GUI_EDIT_ENUM(mx->swtch, 0, 4, switches));
-						}
-					)
-#else
 					lcd_write_string(mix_src[mx->srcRaw], LCD_OP_SET, FLAGS_NONE);
 					lcd_set_cursor(10*6, context.cur_row_y);
 					lcd_write_int(mx->weight, LCD_OP_SET, ALIGN_RIGHT);
 					lcd_set_cursor(12*6, context.cur_row_y);
 					lcd_write_string(switches[mx->swtch], LCD_OP_SET, FLAGS_NONE);
-#endif
 				)
 				// if we were in the popup then the result would show up, once
 				char popupRes = gui_popup_get_result();
@@ -1473,29 +1474,11 @@ void gui_process(uint32_t data) {
 						// canceled
 						break;
 					}
-				} else {
-					if( context.menu_mode != MENU_MODE_PAGE )
-					{
-						context.menu_mode = MENU_MODE_LIST;
-						if (g_key_press & KEY_MENU) {
-							gui_popup_select(GUI_MSG_ROW_MENU);
-						}
-						if (g_key_press & KEY_OK) {
-							// TODO - preserve entire context
-							return_context = context;
-							sub_edit_item = context.item;
-							context.page = MOD_PAGE_MIX_EDIT;
-							context.menu_mode = MENU_MODE_LIST;
-							context.item = 0;
-							context.top_row = 0;
-						}
-					}
 				}
 			}
 			break;
 
 			case MOD_PAGE_LIMITS:
-				// ToDo: Implement context.edit
 				context.item_limit = NUM_CHNOUT-1;
 				context.col_limit = 4-1;
 				FOREACH_ROW(
@@ -1517,9 +1500,8 @@ void gui_process(uint32_t data) {
 				break;
 
 			case MOD_PAGE_CURVES:
-				// ToDo: Implement context.edit
 				context.item_limit = MAX_CURVE5 + MAX_CURVE9 - 1;
-				context.submenu = 1;
+				context.submenu_page = MOD_PAGE_CURVE_EDIT;
 				FOREACH_ROW(
 					char s[4] = "CV0";
 					s[2] = '1' + row;
@@ -1529,19 +1511,7 @@ void gui_process(uint32_t data) {
 
 					lcd_write_int(ncv, LCD_OP_SET, TRAILING_SPACE);
 				)
-				if( context.menu_mode != MENU_MODE_PAGE )
-				{
-					context.menu_mode = MENU_MODE_LIST;
-					if (g_key_press & KEY_OK) {
-						// TODO - preserve entire context
-						return_context = context;
-						sub_edit_item = context.item;
-						context.page = MOD_PAGE_CURVE_EDIT;
-						context.menu_mode = MENU_MODE_LIST;
-						context.item = 0;
-						context.top_row = 0;
-					}
-				}
+				// TODO: draw selected curve
 				break;
 
 			case MOD_PAGE_CUST_SW:
@@ -1571,11 +1541,12 @@ void gui_process(uint32_t data) {
 				// ToDo: Implement!
 				break;
 
-				// Not navigable through left / right scrolling.
+			// SubMenus --- Not navigable through left / right scrolling.
 
 			case MOD_PAGE_MIX_EDIT:
 			{
 				MixData* const mx = &g_model.mixData[sub_edit_item];
+				// print label for this mix on header row (top)
 				{
 					char s[4] = "CH0"; s[2] += mx->destCh;
 					lcd_set_cursor(9*6, 0);
@@ -1614,6 +1585,8 @@ void gui_process(uint32_t data) {
 											&g_model.curves9[sub_edit_item-MAX_CURVE5];
 				context.item_limit = NPTS-1;
 				context.col_limit = 0;
+
+				// draw curve
 				const uint8_t max_y = 10;
 				const uint8_t min_y = 60;
 				const uint8_t min_x = 6*6; // 6 chars to the right
@@ -1642,6 +1615,7 @@ void gui_process(uint32_t data) {
 				lcd_set_pixel(107, offset_curves(-100,100,max_y,min_y,pCurve[3]),LCD_OP_SET);
 				lcd_set_pixel(115, offset_curves(-100,100,max_y,min_y,pCurve[4]),LCD_OP_SET);
 #endif
+
 				FOREACH_ROW(
 					switch (row)
 					{

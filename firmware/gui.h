@@ -50,7 +50,6 @@ typedef enum _menu_mode {
 	MENU_MODE_COL,
 	MENU_MODE_EDIT,
 	MENU_MODE_EDIT_S, /* used for string editor */
-	MENU_MODE_LIST_SUB /* list menu with submenu (mixer and curves)*/
 } MENU_MODE;
 
 
