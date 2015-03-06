@@ -49,7 +49,7 @@
 #define PPM_MIN_GAP_LEN		9000
 
 // Exported globals
-volatile struct t_latency g_latency = { 0xFF, 0, 0 } ;
+volatile struct t_latency g_latency = { 0xFF, 0 } ;
 // TODO: what units are g_chans? (a relative full scale +-1024 or in us?)
 // for now they are relative and conv to us is in pulses.c
 volatile int16_t g_chans[NUM_CHNOUT]; 	// -1024 - 1024

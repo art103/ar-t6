@@ -25,7 +25,7 @@
 #define MIXER_EDIT_LIST1_LEN 13
 #define MIX_SRC_MAX 29
 #define MIX_WARN_MAX 4
-#define MIX_CURVE_MAX 14
+#define MIX_CURVE_MAX 15
 #define EXPODR_MAX 7
 
 typedef enum {
