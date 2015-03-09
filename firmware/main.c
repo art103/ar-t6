@@ -20,6 +20,7 @@
  */
 
 #include "stm32f10x.h"
+#include "stm32f10x_usart.h"
 #include "tasks.h"
 #include "keypad.h"
 #include "sticks.h"
@@ -36,6 +37,45 @@ volatile EEGeneral  g_eeGeneral;
 volatile ModelData  g_model;
 volatile uint8_t g_modelInvalid = 1;
 uint8_t SlaveMode;		// Trainer Slave
+
+
+
+
+
+/**
+  * @brief  calls Stm32F1xx on-chip bootloader for flashing
+  * @param  None
+  * @retval None - shall not ever return
+  */
+void EnterBootLoader(void) {
+	USART_DeInit(USART1);
+	RCC_DeInit();
+	SysTick->CTRL = 0;
+	SysTick->LOAD = 0;
+	SysTick->VAL = 0;
+
+	__ASM volatile (
+			"MOVS r4,#1\n"
+			"MSR primask, r4\n"
+			"LDR r4,=#0x1FFFF000\n"
+			"LDR r3,[r4]\n"
+			"MSR msp,r3\n"
+			"LDR r3,[r4, #4]\n"
+			"blx r3\n"
+	);
+	 // the above ASM does the same but is much shorter
+	// and does not need core_cm3.c (for the __set_XXXX())
+	#if 0
+	__set_PRIMASK(1);
+	// changing stack point would invalidate all local var on stack!
+	#define SYSMEM ((uint32_t*)0x1FFFF000) /*specific to STM32F1xx*/
+	register const uint32_t SP = SYSMEM[0];
+	__set_MSP(SYSMEM[0]/*sp addr*/);
+	register const uint32_t BL = SYSMEM[1];
+	typedef void (*BLFUNC)();
+	((BLFUNC)SYSMEM[1]/*bootloader addr*/)();
+	#endif
+}
 
 /**
   * @brief  This function handles the SysTick.

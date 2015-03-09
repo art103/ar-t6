@@ -65,6 +65,9 @@
 							</tool>
 						</toolChain>
 					</folderInfo>
+					<fileInfo id="cdt.managedbuild.config.gnu.cross.exe.debug.1782401481.2009709709" name="core_cm3.c" rcbsApplicability="disable" resourcePath="system/core_cm3.c" toolsToInvoke="cdt.managedbuild.tool.gnu.cross.c.compiler.2020665710.37908257">
+						<tool id="cdt.managedbuild.tool.gnu.cross.c.compiler.2020665710.37908257" name="Cross GCC Compiler" superClass="cdt.managedbuild.tool.gnu.cross.c.compiler.2020665710"/>
+					</fileInfo>
 					<sourceEntries>
 						<entry excluding="system/core_cm3.c|custom.c" flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name=""/>
 					</sourceEntries>

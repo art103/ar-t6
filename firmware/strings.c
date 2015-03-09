@@ -160,7 +160,8 @@ const char *msg[GUI_MSG_MAX] = {
 		"Please zero throttle to continue.",
 		"Calibration data invalid, please calibrate the sticks.",
 		"OK to preset the model?",
-		"Preset\nInsert\nDelete\nCopy\nPaste\n",
+		"Preset\nInsert\nDelete\nCopy\nPaste",/*GUI_MSG_ROW_MENU*/
+		"OK to Enter Firmware Upgrade?",/*GUI_MSG_FW_UPGRADE*/
 
 		// Headings (System)
 		"RADIO SETUP",

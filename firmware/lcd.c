@@ -303,13 +303,24 @@ void lcd_write_char(uint8_t c, LCD_OP op, uint16_t flags)
 		divY = 2;
 	}
 
+	// CR/LF - note LF == CR+LF
+	switch(c)
+	{
+	case 10:
+		cursor_y += height;
+		/* no break */
+	case 13:
+		cursor_x = 0;
+		return;
+	}
+
 	if (op == LCD_OP_XOR)
 	{
 		op_set = LCD_OP_XOR;
 		op_clr = LCD_OP_NONE;
 	}
 
-	// condenced chars overlap so do not erase or prev char gets damaged, use CHAR_NOSPACE alternatively
+	// condensed chars overlap so do not erase or prev char gets damaged, use CHAR_NOSPACE alternatively
 	if (flags & CHAR_CONDENSED)
 		op_clr = LCD_OP_NONE;
 
@@ -373,6 +384,8 @@ void lcd_write_string(const char *s, LCD_OP op, uint16_t flags)
 
 	if( flags & TRAILING_SPACE )
 		lcd_write_char(' ', op, flags);
+	if( flags & NEW_LINE)
+		lcd_write_char(10, 0, 0);
 }
 
 
@@ -441,8 +454,11 @@ void lcd_write_int(int32_t val, LCD_OP op, uint16_t flags)
 		lcd_write_char('.', op, flags);
 
 	lcd_write_char(u + '0', op, flags);
+
 	if( flags & TRAILING_SPACE )
 		lcd_write_char(' ', op, flags);
+	if( flags & NEW_LINE)
+		lcd_write_char(10, 0, 0);
 }
 
 /**

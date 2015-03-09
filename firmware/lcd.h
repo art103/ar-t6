@@ -49,7 +49,8 @@ typedef enum {
 	CHAR_NOSPACE = 0x1000,
 
 	ALIGN_RIGHT = 0x2000,
-	TRAILING_SPACE = 0x4000,
+	TRAILING_SPACE = 0x4000, // add a trailing space after the string
+	NEW_LINE = 0x8000, // move to new line  after the string
 } LCD_FLAGS;
 
 void lcd_init(void);

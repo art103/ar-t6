@@ -1108,17 +1108,43 @@ void gui_process(uint32_t data) {
 				lcd_set_cursor(36, 4 * 8);
 				lcd_write_string(__TIME__, LCD_OP_SET, FLAGS_NONE);
 
-				lcd_set_cursor(0, 6 * 8);
-				lcd_write_string("EPRM", LCD_OP_SET, TRAILING_SPACE);
-				lcd_write_int(sizeof(g_eeGeneral), LCD_OP_SET, TRAILING_SPACE);
-				lcd_write_int(sizeof(g_model), LCD_OP_SET, TRAILING_SPACE);
-				lcd_write_string("SCCk", LCD_OP_SET, TRAILING_SPACE);
-				lcd_write_int(SystemCoreClock/1000000, LCD_OP_SET, TRAILING_SPACE);
-				lcd_set_cursor(0, 7 * 8);
-				lcd_write_string("Ltcy", LCD_OP_SET, TRAILING_SPACE);
-				lcd_write_int(g_latency.g_tmr1Latency_min, LCD_OP_SET, INT_PAD10|TRAILING_SPACE);
-				lcd_write_int(g_latency.g_tmr1Latency_max, LCD_OP_SET, INT_PAD10|TRAILING_SPACE);
-
+				// count to differ entering the bootloader so screen can get updated
+				static uint8_t deffercount = 0;
+				// FW upgrade popup
+				context.popup = GUI_MSG_FW_UPGRADE;
+				// check popup result
+				char popupRes = gui_popup_get_result();
+				if( popupRes == 1 )
+				{
+					deffercount = 3;
+				}
+				if( deffercount > 0 )
+				{
+					lcd_set_cursor(0, 5 * 8);
+					lcd_write_string("!!!!!!!!!!!!!!!!!!!!!", LCD_OP_SET, TRAILING_SPACE|NEW_LINE);
+					lcd_write_string("!!FIRMWARE UPGRADE!!!", LCD_OP_SET, TRAILING_SPACE|NEW_LINE);
+					lcd_write_string("!!DO NOT INTERRUPT!!!", LCD_OP_SET, TRAILING_SPACE|NEW_LINE);
+				}
+				else
+				{
+					lcd_set_cursor(0, 6 * 8);
+					lcd_write_string("EPRM", LCD_OP_SET, TRAILING_SPACE);
+					lcd_write_int(sizeof(g_eeGeneral), LCD_OP_SET, TRAILING_SPACE);
+					lcd_write_int(sizeof(g_model), LCD_OP_SET, TRAILING_SPACE);
+					lcd_write_string("SCCk", LCD_OP_SET, TRAILING_SPACE);
+					lcd_write_int(SystemCoreClock/1000000, LCD_OP_SET, TRAILING_SPACE|NEW_LINE);
+					lcd_write_string("Ltcy", LCD_OP_SET, TRAILING_SPACE);
+					lcd_write_int(g_latency.g_tmr1Latency_min, LCD_OP_SET, INT_PAD10|TRAILING_SPACE);
+					lcd_write_int(g_latency.g_tmr1Latency_max, LCD_OP_SET, INT_PAD10|TRAILING_SPACE);
+				}
+				// defer bootloader so the scr can get updated
+				// count down when count still non-zero
+				if( deffercount > 0 )
+				{
+					// call bootloader when count _reaches_ 0
+					if( --deffercount == 0 )
+						EnterBootLoader();
+				}
 				break; // SYS_PAGE_VERSION
 
 			case SYS_PAGE_DIAG: {

@@ -40,6 +40,7 @@ typedef enum {
 	GUI_MSG_EEPROM_INVALID,
 	GUI_MSG_OK_TO_RESET_MODEL,
 	GUI_MSG_ROW_MENU,
+	GUI_MSG_FW_UPGRADE,
 
 	// Headings (System Menu)
 	GUI_HDG_RADIO_SETUP,
@@ -66,7 +67,6 @@ typedef enum {
 	GUI_MSG_MAX,
 } GUI_MSG;
 
-
 enum _menu_page {
 	SYS_PAGE_SETUP = 0,
 	SYS_PAGE_TRAINER,
@@ -92,12 +92,8 @@ enum _model_page {
 };
 
 enum _mix_mode {
-	MIX_MODE_ADD,
-	MIX_MODE_MULTIPLY,
-	MIX_MODE_REPLACE,
-	MIX_MODE_MAX
+	MIX_MODE_ADD, MIX_MODE_MULTIPLY, MIX_MODE_REPLACE, MIX_MODE_MAX
 };
-
 
 enum _sources {
 	SRC_HALF = 0, SRC_FULL, SRC_CYC, SRC_PPM, SRC_MIX, SRC_TRN, SRC_MAX
