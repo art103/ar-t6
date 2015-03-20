@@ -31,7 +31,7 @@ This produces "ar-t6.bin" that is ready to flash.
 ### Development Environment
 
 - Eclipse/CDT (Luna) + [Arm Plugin](http://gnuarmeclipse.livius.net/blog/)
-- gnu ARM toolchain (gcc-arm-none-eabi)
+- gnu ARM toolchain (gcc-arm-none-eabi; currently 4.9.2)
 - GDB (w/ Eclipse Arm plugin)
 - OOCD (Open on-chip Debugger) or [stlink](http://www.github.com/texane/stlink)
 - STM32 Discovery board with stlink v2 (remove the jumpers for external SWD)
