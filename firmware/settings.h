@@ -21,6 +21,7 @@
 void settings_init();
 void settings_load_current_model_if_changed();
 void settings_init_current_model();
+void settings_init_current_model_mixers();
 void settings_read_model_name(char model, char buf[]);
 
 #endif // _EEPROM_H

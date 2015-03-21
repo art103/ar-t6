@@ -53,6 +53,27 @@ static uint16_t model_address(uint8_t modelNumber) {
 	return modelAddress;
 }
 
+
+/**
+ * @brief  Initialize model's mider data in global g_model
+ * @note   current model is g_eeGeneral.currModel
+ * @retval None
+ */
+void settings_init_current_model_mixers() {
+	memset((void*) &g_model.mixData, 0, sizeof(g_model.mixData));
+	for (int mx = 0; mx < NUM_CHNOUT; mx++) {
+		MixData* md = &g_model.mixData[mx];
+		md->destCh = mx + 1;
+		md->srcRaw = mx + 1;
+		md->mltpx = MLTPX_REP;
+		md->weight = 100;
+		if (mx > 5) {
+			md->srcRaw = MIX_MAX;
+			md->swtch = SWITCH_SWA + mx - 6;
+		}
+	}
+}
+
 /**
  * @brief  Initialize model data in global g_model
  * @note   current model is g_eeGeneral.currModel
@@ -76,17 +97,7 @@ void settings_init_current_model() {
 	g_model.ppmFrameLength = 0;
 	g_model.ppmDelay = 2;
 	g_model.ppmStart = 0;
-	for (int mx = 0; mx < NUM_CHNOUT; mx++) {
-		MixData* md = &g_model.mixData[mx];
-		md->destCh = mx + 1;
-		md->srcRaw = mx + 1;
-		md->mltpx = MLTPX_REP;
-		md->weight = 100;
-		if (mx > 5) {
-			md->srcRaw = MIX_SRC_MAX;
-			md->swtch = SWITCH_SWA + mx - 6;
-		}
-	}
+	settings_init_current_model_mixers();
 	for (int l = 0;
 			l < sizeof(g_model.limitData) / sizeof(g_model.limitData[0]); l++) {
 		LimitData *p = &g_model.limitData[l];

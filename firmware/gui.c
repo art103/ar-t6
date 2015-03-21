@@ -344,6 +344,9 @@ void gui_init(void) {
 void gui_process(uint32_t data) {
 	bool full = FALSE;
 
+	// clear popup reult until OK/SEL/CANCEL pressed,
+	// then only allow one chance to process it (for safety of it was not handled)
+	g_popup_result = GUI_POPUP_RESULT_NONE;
 	// If we are currently displaying a popup,
 	// check the time and schedule a re-check.
 	// Also check keys to cancel the popup.
@@ -377,6 +380,9 @@ void gui_process(uint32_t data) {
 			g_gui_timeout = 0;
 			g_current_msg = 0;
 			g_new_layout = g_current_layout;
+			// clear all pending keys as we just closed the popup
+			// and follow through to let the popup result be processed
+			g_key_press = 0;
 		} else {
 			task_schedule(TASK_PROCESS_GUI, UPDATE_MSG, 40);
 			return;
@@ -679,8 +685,7 @@ void gui_process(uint32_t data) {
 		static uint8_t sub_edit_item;
 
 		// Clear the screen.
-		lcd_draw_rect(0, 0, LCD_WIDTH - 1, LCD_HEIGHT - 1, LCD_OP_CLR,
-				RECT_FILL);
+		lcd_draw_rect(0, 0, LCD_WIDTH - 1, LCD_HEIGHT - 1, LCD_OP_CLR, RECT_FILL);
 		lcd_set_cursor(0, 0);
 
 		context.edit = 0;
@@ -765,7 +770,7 @@ void gui_process(uint32_t data) {
 				if (context.menu_mode > 0) {
 					context.menu_mode--;
 					if (context.col_limit == 0
-							&& context.menu_mode == MENU_MODE_COL) {
+						&& context.menu_mode == MENU_MODE_COL) {
 						context.menu_mode = MENU_MODE_LIST;
 					}
 				} else {
@@ -1560,7 +1565,7 @@ void gui_process(uint32_t data) {
 					switch (popupRes) {
 					// preset
 					case 1:
-						// TODO
+						settings_init_current_model_mixers();
 						break;
 						// insert (duplicate?)
 					case 2:
@@ -1704,13 +1709,13 @@ void gui_process(uint32_t data) {
 					lcd_write_string(" ", LCD_OP_SET, FLAGS_NONE);
 
 					switch (row) {
-					GUI_CASE_OFS(0, 96, GUI_EDIT_ENUM( mx->srcRaw, 0, MIX_SRC_MAX-1, mix_src ));
+					GUI_CASE_OFS(0, 96, GUI_EDIT_ENUM( mx->srcRaw, 0, MIX_SRCS_MAX-1, mix_src ));
 					GUI_CASE_OFS(1, 96, GUI_EDIT_INT( mx->weight, -125, 125 ));
 					GUI_CASE_OFS(2, 96, GUI_EDIT_INT( mx->sOffset, -125, 125 ));
 					GUI_CASE_OFS(3, 96, GUI_EDIT_ENUM( mx->carryTrim, 0, 1, menu_on_off ));
 					GUI_CASE_OFS(4, 96, GUI_EDIT_ENUM( mx->curve, 0, MIX_CURVE_MAX-1, mix_curve));
 					GUI_CASE_OFS(5, 96, GUI_EDIT_ENUM( mx->swtch, 0, 4, switches ));
-						// #6 phase
+					// #6 phase
 					GUI_CASE_OFS(7, 96, GUI_EDIT_ENUM( mx->mixWarn, 0, 1, menu_on_off ));
 					GUI_CASE_OFS(8, 96, GUI_EDIT_ENUM( mx->mltpx, 0, 3, mix_mode ));
 					GUI_CASE_OFS(9, 96, GUI_EDIT_INT( mx->delayUp, 0, 255 ));
