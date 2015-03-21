@@ -27,7 +27,7 @@
 #include "pulses.h"
 #include "gui.h"
 #include "myeeprom.h"
-#include "eeprom.h"
+#include "settings.h"
 #include "art6.h"
 #include "icons.h"
 #include "sound.h"

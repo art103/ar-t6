@@ -15,11 +15,7 @@
 
 /* Description:
  *
- * This is an IRQ driven EEPROM driver (including I2C).
- *
- * The 8KB is split into 4 blocks of 2KB.
- * The 2KB blocks are cycled between when writing new data.
- * Each block has a checksum. If the checksum fails, the previous block is used.
+ * This is an IRQ/DMA driven EEPROM driver (including I2C).
  *
  */
 
@@ -28,10 +24,6 @@
 
 // forwards
 void eeprom_wait_complete(void);
-uint16_t eeprom_calc_chksum(void *buffer, uint16_t length);
-void eeprom_process(uint32_t data);
-void eeprom_read(uint16_t offset, uint16_t length, void *buffer);
-void eeprom_write(uint16_t offset, uint16_t length, void *buffer);
 
 #define I2C_PINS	(1 << 6 | 1 << 7)
 
@@ -59,6 +51,45 @@ static volatile DMA_InitTypeDef g_dmaInit;
 
 
 /**
+ * @brief  Calculate the data's checksum
+ * @note
+ * @param  buffer: data to sum
+ * @param  length: data length
+ * @retval checksum
+ */
+uint16_t eeprom_calc_chksum(void *buffer, uint16_t length) {
+	int i;
+	uint8_t *ptr = buffer;
+	uint16_t sum = 0;
+	for (i = 0; i < length; ++i) {
+		sum += *ptr++;
+	}
+
+	return sum;
+}
+
+/**
+ * @brief  Compute simple checksum over eeprom memory
+ * @note   performs read of the memory
+ * @param  offset: EEPROM start byte address
+ * @param  length: number of bytes
+ * @retval checksum
+ */
+uint16_t eeprom_checksum_memory(uint16_t offset, uint16_t length) {
+	uint16_t sum = 0;
+	char buf[32];
+	while (length > 0) {
+		int thisStep = sizeof(buf) < length ? sizeof(buf) : length;
+		eeprom_read(offset, thisStep, buf);
+		offset += thisStep;
+		length -= thisStep;
+		while (thisStep > 0)
+			sum += buf[--thisStep];
+	}
+	return sum;
+}
+
+/**
  * @brief  Returns eeprom state character for display
  * @note
  * @retval ' ' - idel; 'E' - error ; 'B' - busy
@@ -73,27 +104,6 @@ char eeprom_state() {
 	default:
 		return 'B';
 	}
-}
-
-/**
- * @brief  Compute simple checksum over eeprom memory
- * @note   performs read of the memory
- * @param  offset: EEPROM start byte address
- * @param  length: number of bytes
- * @retval checksum
- */
-unsigned eeprom_checksum_memory(uint16_t offset, uint16_t length) {
-	unsigned sum = 0;
-	char buf[32];
-	while (length > 0) {
-		int thisStep = sizeof(buf) < length ? sizeof(buf) : length;
-		eeprom_read(offset, thisStep, buf);
-		offset += thisStep;
-		length -= thisStep;
-		while (thisStep > 0)
-			sum += buf[--thisStep];
-	}
-	return sum;
 }
 
 /**
@@ -267,25 +277,6 @@ void eeprom_wait_complete(void) {
 	while (state != STATE_COMPLETE && state != STATE_ERROR)
 		;
 }
-
-/**
- * @brief  Calculate the data's checksum
- * @note
- * @param  buffer: data to sum
- * @param  length: data length
- * @retval checksum
- */
-uint16_t eeprom_calc_chksum(void *buffer, uint16_t length) {
-	int i;
-	uint8_t *ptr = buffer;
-	uint16_t sum = 0;
-	for (i = 0; i < length; ++i) {
-		sum += *ptr++;
-	}
-
-	return sum;
-}
-
 
 /**
  * @brief  I2C Error Handler
