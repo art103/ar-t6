@@ -162,7 +162,7 @@ PACK(typedef struct t_ExpoData {
 PACK(typedef struct t_LimitData {
     int8_t  min;
     int8_t  max;
-    bool    reverse:1;
+    uint8_t  reverse:1;
     int16_t  offset:15;
 }) LimitData;
 

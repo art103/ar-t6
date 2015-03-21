@@ -1382,7 +1382,7 @@ void gui_process(uint32_t data) {
 					name[2] = ' ';
 					name[3] = 0;
 					lcd_write_string(name, context.op_list, FLAGS_NONE);
-					eeprom_read_model_name(row, name);
+					settings_read_model_name(row, name);
 					lcd_write_string(name, context.op_list, FLAGS_NONE);
 					lcd_write_string(" ", LCD_OP_SET, FLAGS_NONE);
 				}
@@ -1392,7 +1392,7 @@ void gui_process(uint32_t data) {
 					// "preset" popup was answered "OK" so preset the model
 					if (popupRes > 0) {
 						g_eeGeneral.currModel = context.item;
-						eeprom_init_current_model();
+						settings_init_current_model();
 					}
 				} else {
 					if (context.menu_mode == MENU_MODE_LIST) {

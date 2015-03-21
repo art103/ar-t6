@@ -54,7 +54,7 @@ typedef enum {
 } LCD_FLAGS;
 
 void lcd_init(void);
-void lcd_backlight(bool state);
+void lcd_backlight(uint8_t state);
 void lcd_set_contrast(uint8_t val);
 void lcd_update(void);
 void lcd_set_pixel(uint8_t x, uint8_t y, LCD_OP op);

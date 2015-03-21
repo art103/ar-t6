@@ -122,7 +122,7 @@ void keypad_init(void) {
  * @param  key: Key to check.
  * @retval bool: TRUE if pressed, FALSE if not.
  */
-bool keypad_get_pressed(KEYPAD_KEY key) {
+uint8_t keypad_get_pressed(KEYPAD_KEY key) {
 	if ((keys_pressed & key) != 0) {
 		keys_pressed &= ~key;
 		return TRUE;
@@ -159,7 +159,7 @@ uint8_t keypad_get_switches(void) {
  * @param  sw: The Switch to check. sw==0 always on
  * @retval bool: true if on, false if off.
  */
-bool keypad_get_switch(KEYPAD_SWITCH sw) {
+uint8_t keypad_get_switch(KEYPAD_SWITCH sw) {
 	return sw == 0 || (keypad_get_switches() & sw);
 }
 

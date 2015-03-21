@@ -31,6 +31,7 @@
 #include "mixer.h"
 #include "sound.h"
 #include "eeprom.h"
+#include "settings.h"
 #include "logo.h"
 
 volatile EEGeneral  g_eeGeneral;
@@ -115,6 +116,9 @@ int main(void)
 
 	// Initialize the EEPROM
 	eeprom_init();
+
+	// initalize settings
+	settings_init();
 
 	// set contrast but to a reasonable value
 	uint16_t contrast = g_eeGeneral.contrast;
