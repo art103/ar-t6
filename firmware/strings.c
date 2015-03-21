@@ -52,7 +52,7 @@ const char * mix_warm[MIX_WARN_MAX] = {
 		"W3",
 };
 
-const char * mix_src[MIX_SRC_MAX] = {
+const char * mix_src[MIX_SRCS_MAX] = {
 		"off",
 		"AIL",
 		"ELE",
@@ -60,13 +60,12 @@ const char * mix_src[MIX_SRC_MAX] = {
 		"RUD",
 		"VRA",
 		"VRB",
-		"???",
-		"???",
-		"MAX", // 9
-		"FULL", // 10
-		"CYC1", // 11
-		"CYC2", // 12
-		"CYC3",	// 13
+		"VRC",
+		"MAX",  // 8 MIX_MAX
+		"FULL", // 9 MIX_FULL
+		"CYC1", // 10
+		"CYC2", // 11
+		"CYC3",	// 12
 		"PPM1",
 		"PPM2",
 		"PPM3",

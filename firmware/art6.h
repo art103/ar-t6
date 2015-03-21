@@ -179,9 +179,8 @@ extern uint8_t SlaveMode;
 #define SWASH_TYPE_90    4
 #define SWASH_TYPE_NUM   4
 //
-//#define MIX_P1    5
-//#define MIX_P2    6
-//#define MIX_P3    7
+
+//MIX 0..7 are input channels (AETRVV??)
 #define MIX_MAX   8
 #define MIX_FULL  9
 #define MIX_CYC1  10

@@ -23,7 +23,7 @@
 #define SYS_MENU_LIST1_LEN	22
 #define MOD_MENU_LIST1_LEN	12
 #define MIXER_EDIT_LIST1_LEN 13
-#define MIX_SRC_MAX 29
+#define MIX_SRCS_MAX 29
 #define MIX_WARN_MAX 4
 #define MIX_CURVE_MAX 15
 #define EXPODR_MAX 7
@@ -117,7 +117,7 @@ extern const char *pots[NUM_POTS];
 extern const char *sources[SRC_MAX];
 extern const char *mix_mode_hdr;
 extern const char *mix_mode[MIX_MODE_MAX];
-extern const char *mix_src[MIX_SRC_MAX];
+extern const char *mix_src[MIX_SRCS_MAX];
 extern const char *mix_warn[MIX_WARN_MAX];
 extern const char *mix_curve[MIX_CURVE_MAX];
 extern const char *expodr[EXPODR_MAX];
