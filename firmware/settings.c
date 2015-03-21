@@ -167,11 +167,20 @@ void settings_load_current_model_if_changed() {
 		settings_load_current_model();
 }
 
+/**
+ * @brief  display EEPROM busy icon
+ * @retval None
+ */
 void display_busy(uint8_t busy)
 {
-	lcd_set_cursor(0, 0);
-	lcd_write_char(busy ? 0x05 : ' ', LCD_OP_SET, FLAGS_NONE);
-	lcd_update();
+	static uint8_t prev = ' ';
+	if( prev != busy )
+	{
+		lcd_set_cursor(0, 0);
+		lcd_write_char(busy ? 0x05 : ' ', LCD_OP_SET, FLAGS_NONE);
+		lcd_update();
+		prev = busy;
+	}
 }
 
 /**
