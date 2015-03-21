@@ -120,20 +120,18 @@ static uint32_t gui_bitfield_edit(MenuContext* pCtx, char *string,
 static int32_t gui_int_edit(int32_t data, int32_t delta, int32_t min,
 		int32_t max);
 
-#define FOREACH_ROW_BARE \
+#define FOREACH_ROW \
 for (int row = context.top_row;\
 		prepare_context_for_list_rowcol(&context, row, COL_IGNORE),\
 	   (row < context.top_row + LIST_ROWS) && (row <= context.item_limit);  \
 	 ++row )
 
-#define FOREACH_ROW(BODY) FOREACH_ROW_BARE{ BODY }
+//#define FOREACH_ROW(BODY) FOREACH_ROW_BARE{ BODY }
 
-
-#define FOREACH_COL(BODY)\
-for(int col = 0; col <= context.col_limit; ++col ) {\
-	prepare_context_for_list_rowcol(&context, row, col);\
-	BODY;\
-}
+#define FOREACH_COL \
+for(int col = 0;\
+	prepare_context_for_list_rowcol(&context, row, col),col <= context.col_limit;\
+	++col )
 
 #define GUI_EDIT_INT_EX2( VAR, MIN, MAX, UNITS, FLAGS, EDITACTION ) \
 		if (context.edit) { VAR = gui_int_edit((int)VAR, context.inc, MIN, MAX); EDITACTION; } \
@@ -166,11 +164,80 @@ case CASE: \
 	break; \
 
 
-static uint8_t offset_curves(int8_t max, int8_t min, int8_t a, int8_t b, int8_t x) {
-	long coord = (((b-a)*(x-min))/(max-min))+a;
+
+/**
+ * @brief  scale a value of curve (max,min) into (b,a) range
+ * @param  min X
+ * @param  max X
+ * @param  a target min
+ * @param  b target max
+ * @param  x - point value
+ * @param  selectedPoint a selected point on a curve (-1 for none)
+ * @retval None
+ */
+static uint8_t gui_scale_curve_point(int8_t max, int8_t min,
+		                             int8_t a, int8_t b, int8_t x)
+{
+	long coord = (((b - a) * (x - min)) / (max - min)) + a;
 	return (int8_t) coord;
 }
 
+
+/**
+ * @brief  Draw a curve
+ * @param  curveNumber indext to curve in g_Model; 0..MAX_CURVES
+ * @param  selectedPoint a selected point on a curve (-1 for none)
+ * @retval None
+ */
+static void gui_draw_curve(uint8_t curveNumber, int8_t selectedPoint)
+{
+	int8_t* pCurve =
+			curveNumber < MAX_CURVE5 ?
+					&g_model.curves5[curveNumber] :
+					&g_model.curves9[curveNumber - MAX_CURVE5];
+
+	const uint8_t NPTS = curveNumber < MAX_CURVE5 ? 5 : 9;
+	// draw curve
+	const uint8_t min_y = 10;
+	const uint8_t max_y = LCD_HEIGHT;
+	const uint8_t min_x = 7 * 6; // 7 chars to the right
+	const uint8_t max_x = LCD_WIDTH;
+	const int16_t W = max_x - min_x;
+	const int16_t H = max_y - min_y;
+
+	const int16_t MX = W / 2 + min_x;
+	const int16_t MY = H / 2 + min_y;
+
+	for (int8_t x = -W / 2; x < W / 2; x += 2) {
+		//lcd_draw_line( x-1+MX, MY, x+1+MX, MY, LCD_OP_SET);
+		lcd_set_pixel(x + MX, MY, LCD_OP_SET);
+	}
+	for (int8_t y = -H / 2; y < H / 2; y += 2) {
+		//lcd_draw_line( MX, y-1+MY, MX, y+1+MY, LCD_OP_SET);
+		lcd_set_pixel(MX, y + MY, LCD_OP_SET);
+	}
+	const uint8_t xstep = W / NPTS;
+	//lcd_draw_line(min_x+xstep*NPTS/2, max_y, min_x+xstep*NPTS/2, min_y, LCD_OP_SET);
+
+	for (int8_t pt = 0, yprev; pt < NPTS; pt++) {
+		int8_t x = (pt - NPTS / 2) * xstep + MX;
+		int8_t y = gui_scale_curve_point(-100, 100, -H / 2, H / 2, pCurve[pt])
+				+ MY;
+		//lcd_set_pixel(x, y, LCD_OP_SET);
+		const int R = 1;
+		lcd_draw_rect(x - R, y - R, x + R, y + R, LCD_OP_SET, FLAGS_NONE);
+		if (pt > 0)
+			lcd_draw_line(x - xstep, yprev, x, y, LCD_OP_SET);
+		yprev = y;
+	}
+	if (selectedPoint >= 0) {
+		int8_t x = (selectedPoint - NPTS / 2) * xstep + MX;
+		int8_t y = gui_scale_curve_point(-100, 100, -H / 2, H / 2,
+				pCurve[selectedPoint]) + MY;
+		const int R = 3;
+		lcd_draw_rect(x - R, y - R, x + R, y + R, LCD_OP_SET, FLAGS_NONE);
+	}
+}
 
 /**
  * @brief  Prefill strig with space up to length
@@ -189,7 +256,6 @@ static char* prefill_string(char* str, int len) {
 	return str;
 }
 
-
 /**
  * @brief  sets up menu context parameters for menu and given list row
  * @note
@@ -198,7 +264,8 @@ static char* prefill_string(char* str, int len) {
  * @param  col list col we are working on
  * @retval None
  */
-static void prepare_context_for_list_rowcol(MenuContext* pCtx, uint8_t row, uint8_t col) {
+static void prepare_context_for_list_rowcol(MenuContext* pCtx, uint8_t row,
+		uint8_t col) {
 	if (pCtx->col_limit == 0)
 		pCtx->col = 0;
 	pCtx->cur_row_y = (row - pCtx->top_row + 1) * 8;
@@ -216,7 +283,7 @@ static void prepare_context_for_list_rowcol(MenuContext* pCtx, uint8_t row, uint
 			break;
 		case MENU_MODE_EDIT:
 		case MENU_MODE_EDIT_S:
-			if (pCtx->col == col || pCtx->col_limit==0 || col == COL_IGNORE ) {
+			if (pCtx->col == col || pCtx->col_limit == 0 || col == COL_IGNORE) {
 				pCtx->edit = 1;
 				pCtx->op_item = LCD_OP_CLR;
 			}
@@ -244,16 +311,16 @@ static void prepare_context_for_list_row(MenuContext* pCtx, uint8_t row) {
 static void prepare_context_for_field(MenuContext* pCtx, uint8_t field) {
 	pCtx->edit = 0;
 	if (field == pCtx->item) {
-			switch (pCtx->menu_mode) {
-			case MENU_MODE_LIST:
-			case MENU_MODE_EDIT:
-			case MENU_MODE_EDIT_S:
-					pCtx->edit = 1;
-					pCtx->op_item = LCD_OP_CLR;
-				break;
-			default:
-				break;
-			}
+		switch (pCtx->menu_mode) {
+		case MENU_MODE_LIST:
+		case MENU_MODE_EDIT:
+		case MENU_MODE_EDIT_S:
+			pCtx->edit = 1;
+			pCtx->op_item = LCD_OP_CLR;
+			break;
+		default:
+			break;
+		}
 	}
 }
 
@@ -553,7 +620,7 @@ void gui_process(uint32_t data) {
 			}
 		}
 	}
-	break; // GUI_LAYOUT_MAIN4
+		break; // GUI_LAYOUT_MAIN4
 
 		/**********************************************************************
 		 * Menu to select System or Model Menus
@@ -598,7 +665,7 @@ void gui_process(uint32_t data) {
 			lcd_draw_rect(72, 57, 104, 58, LCD_OP_SET, RECT_FILL);
 		}
 	}
-	break; // GUI_LAYOUT_MENU
+		break; // GUI_LAYOUT_MENU
 
 		/**********************************************************************
 		 * Common Menu key handling
@@ -612,7 +679,8 @@ void gui_process(uint32_t data) {
 		static uint8_t sub_edit_item;
 
 		// Clear the screen.
-		lcd_draw_rect(0, 0, LCD_WIDTH - 1, LCD_HEIGHT - 1, LCD_OP_CLR, RECT_FILL);
+		lcd_draw_rect(0, 0, LCD_WIDTH - 1, LCD_HEIGHT - 1, LCD_OP_CLR,
+				RECT_FILL);
 		lcd_set_cursor(0, 0);
 
 		context.edit = 0;
@@ -660,15 +728,14 @@ void gui_process(uint32_t data) {
 				g_menu_mode_dir = 1;
 				break;
 			case MENU_MODE_LIST:
-				if( context.submenu_page ) {
+				if (context.submenu_page) {
 					return_context = context;
 					sub_edit_item = context.item;
 					context.page = context.submenu_page;
 					context.menu_mode = MENU_MODE_LIST;
 					context.item = 0;
 					context.top_row = 0;
-				}
-				else {
+				} else {
 					if (context.col_limit == 0)
 						context.menu_mode = MENU_MODE_EDIT;
 					else {
@@ -697,8 +764,8 @@ void gui_process(uint32_t data) {
 			} else {
 				if (context.menu_mode > 0) {
 					context.menu_mode--;
-					if (context.col_limit == 0 &&
-						context.menu_mode == MENU_MODE_COL) {
+					if (context.col_limit == 0
+							&& context.menu_mode == MENU_MODE_COL) {
 						context.menu_mode = MENU_MODE_LIST;
 					}
 				} else {
@@ -708,12 +775,12 @@ void gui_process(uint32_t data) {
 					gui_navigate(g_main_layout);
 				}
 			}
-		} else if (g_key_press & KEY_MENU ) {
-			if( context.popup )
-				gui_popup_select( context.popup );
+		} else if (g_key_press & KEY_MENU) {
+			if (context.popup)
+				gui_popup_select(context.popup);
 		}
 
-		if( context.form )
+		if (context.form)
 			context.top_row = 0;
 		else {
 			if (context.item < context.top_row)
@@ -741,11 +808,11 @@ void gui_process(uint32_t data) {
 					LCD_OP_CLR, FLAGS_NONE);
 			lcd_set_cursor(110, 0);
 			lcd_write_int(context.page + 1,
-					(context.menu_mode == MENU_MODE_PAGE) ? LCD_OP_CLR : LCD_OP_SET,
-					FLAGS_NONE);
+					(context.menu_mode == MENU_MODE_PAGE) ?
+							LCD_OP_CLR : LCD_OP_SET, FLAGS_NONE);
 			lcd_write_string("/6",
-					(context.menu_mode == MENU_MODE_PAGE) ? LCD_OP_CLR : LCD_OP_SET,
-					FLAGS_NONE);
+					(context.menu_mode == MENU_MODE_PAGE) ?
+							LCD_OP_CLR : LCD_OP_SET, FLAGS_NONE);
 
 			/**********************************************************************
 			 * System Menu Pages
@@ -901,9 +968,10 @@ void gui_process(uint32_t data) {
 						break;
 					case 17: // Default Sw
 						lcd_set_cursor(104, context.cur_row_y);
-						g_eeGeneral.switchWarningStates = gui_bitfield_edit(&context,
-								"ABCD", g_eeGeneral.switchWarningStates,
-								context.inc, g_key_press);
+						g_eeGeneral.switchWarningStates = gui_bitfield_edit(
+								&context, "ABCD",
+								g_eeGeneral.switchWarningStates, context.inc,
+								g_key_press);
 						break;
 					case 18: // Memory Warning
 						lcd_set_cursor(110, context.cur_row_y);
@@ -1114,35 +1182,37 @@ void gui_process(uint32_t data) {
 				context.popup = GUI_MSG_FW_UPGRADE;
 				// check popup result
 				char popupRes = gui_popup_get_result();
-				if( popupRes == 1 )
-				{
+				if (popupRes == 1) {
 					deffercount = 3;
 				}
-				if( deffercount > 0 )
-				{
+				if (deffercount > 0) {
 					lcd_set_cursor(0, 5 * 8);
-					lcd_write_string("!!!!!!!!!!!!!!!!!!!!!", LCD_OP_SET, TRAILING_SPACE|NEW_LINE);
-					lcd_write_string("!!FIRMWARE UPGRADE!!!", LCD_OP_SET, TRAILING_SPACE|NEW_LINE);
-					lcd_write_string("!!DO NOT INTERRUPT!!!", LCD_OP_SET, TRAILING_SPACE|NEW_LINE);
-				}
-				else
-				{
+					lcd_write_string("!!!!!!!!!!!!!!!!!!!!!", LCD_OP_SET,
+							TRAILING_SPACE | NEW_LINE);
+					lcd_write_string("!!FIRMWARE UPGRADE!!!", LCD_OP_SET,
+							TRAILING_SPACE | NEW_LINE);
+					lcd_write_string("!!DO NOT INTERRUPT!!!", LCD_OP_SET,
+							TRAILING_SPACE | NEW_LINE);
+				} else {
 					lcd_set_cursor(0, 6 * 8);
 					lcd_write_string("EPRM", LCD_OP_SET, TRAILING_SPACE);
-					lcd_write_int(sizeof(g_eeGeneral), LCD_OP_SET, TRAILING_SPACE);
+					lcd_write_int(sizeof(g_eeGeneral), LCD_OP_SET,
+							TRAILING_SPACE);
 					lcd_write_int(sizeof(g_model), LCD_OP_SET, TRAILING_SPACE);
 					lcd_write_string("SCCk", LCD_OP_SET, TRAILING_SPACE);
-					lcd_write_int(SystemCoreClock/1000000, LCD_OP_SET, TRAILING_SPACE|NEW_LINE);
+					lcd_write_int(SystemCoreClock / 1000000, LCD_OP_SET,
+							TRAILING_SPACE | NEW_LINE);
 					lcd_write_string("Ltcy", LCD_OP_SET, TRAILING_SPACE);
-					lcd_write_int(g_latency.g_tmr1Latency_min, LCD_OP_SET, INT_PAD10|TRAILING_SPACE);
-					lcd_write_int(g_latency.g_tmr1Latency_max, LCD_OP_SET, INT_PAD10|TRAILING_SPACE);
+					lcd_write_int(g_latency.g_tmr1Latency_min, LCD_OP_SET,
+							INT_PAD10 | TRAILING_SPACE);
+					lcd_write_int(g_latency.g_tmr1Latency_max, LCD_OP_SET,
+							INT_PAD10 | TRAILING_SPACE);
 				}
 				// defer bootloader so the scr can get updated
 				// count down when count still non-zero
-				if( deffercount > 0 )
-				{
+				if (deffercount > 0) {
 					// call bootloader when count _reaches_ 0
-					if( --deffercount == 0 )
+					if (--deffercount == 0)
 						EnterBootLoader();
 				}
 				break; // SYS_PAGE_VERSION
@@ -1220,15 +1290,15 @@ void gui_process(uint32_t data) {
 						LCD_OP_SET, FLAGS_NONE);
 				// i++;
 
-				break; // SYS_PAGE_DIAG
+				break;// SYS_PAGE_DIAG
 			}
 
 			case SYS_PAGE_ANA: {
 				context.op_list = LCD_OP_SET;
 				context.item_limit = 1;
 
-				if (context.menu_mode == MENU_MODE_EDIT ||
-					context.menu_mode == MENU_MODE_LIST) {
+				if (context.menu_mode == MENU_MODE_EDIT
+						|| context.menu_mode == MENU_MODE_LIST) {
 					g_eeGeneral.vBatCalib = gui_int_edit(g_eeGeneral.vBatCalib,
 							context.inc, 80, 120);
 					context.op_list = LCD_OP_CLR;
@@ -1243,9 +1313,11 @@ void gui_process(uint32_t data) {
 					lcd_write_string("  ", LCD_OP_SET, FLAGS_NONE);
 					// All but battery
 					if (i != 6) {
-						lcd_write_int(sticks_get_percent(i), LCD_OP_SET, FLAGS_NONE);
+						lcd_write_int(sticks_get_percent(i), LCD_OP_SET,
+								FLAGS_NONE);
 					} else {
-						lcd_write_int(sticks_get_battery(), context.op_list, INT_DIV10);
+						lcd_write_int(sticks_get_battery(), context.op_list,
+								INT_DIV10);
 						lcd_write_string("v", context.op_list, FLAGS_NONE);
 					}
 
@@ -1269,8 +1341,7 @@ void gui_process(uint32_t data) {
 				}
 				break; // SYS_PAGE_CAL
 			}
-		}
-		else // GUI_LAYOUT_MODEL_MENU
+		} else // GUI_LAYOUT_MODEL_MENU
 		{
 			/**********************************************************************
 			 * Model Menu
@@ -1285,12 +1356,12 @@ void gui_process(uint32_t data) {
 				lcd_write_int(g_eeGeneral.currModel, LCD_OP_CLR, FLAGS_NONE);
 			lcd_set_cursor(104, 0);
 			lcd_write_int(context.page + 1,
-					(context.menu_mode == MENU_MODE_PAGE) ? LCD_OP_CLR : LCD_OP_SET,
-					ALIGN_RIGHT);
+					(context.menu_mode == MENU_MODE_PAGE) ?
+							LCD_OP_CLR : LCD_OP_SET, ALIGN_RIGHT);
 			lcd_set_cursor(110, 0);
 			lcd_write_string("/10",
-					(context.menu_mode == MENU_MODE_PAGE) ? LCD_OP_CLR : LCD_OP_SET,
-					FLAGS_NONE);
+					(context.menu_mode == MENU_MODE_PAGE) ?
+							LCD_OP_CLR : LCD_OP_SET, FLAGS_NONE);
 
 			/**********************************************************************
 			 * System Menu Pages
@@ -1324,13 +1395,13 @@ void gui_process(uint32_t data) {
 						eeprom_init_current_model();
 					}
 				} else {
-					if( context.menu_mode == MENU_MODE_LIST ) {
+					if (context.menu_mode == MENU_MODE_LIST) {
 						if (g_key_press & KEY_MENU) {
 							g_eeGeneral.currModel = context.item;
 							gui_popup(GUI_MSG_OK_TO_RESET_MODEL, 0);
 						}
 					}
-					if( context.menu_mode == MENU_MODE_EDIT ) {
+					if (context.menu_mode == MENU_MODE_EDIT) {
 						// select the model to use
 						g_eeGeneral.currModel = context.item;
 						// pop up from model selection to PAGE nav
@@ -1343,25 +1414,34 @@ void gui_process(uint32_t data) {
 
 			case MOD_PAGE_SETUP:
 				context.item_limit = MOD_MENU_LIST1_LEN - 1;
-				FOREACH_ROW(
-						lcd_write_string((char*) model_menu_list1[row], context.op_list, FLAGS_NONE);
-						lcd_write_string(" ", LCD_OP_SET, FLAGS_NONE);
-						switch (row)
-						{
-							GUI_CASE_OFS(0, 74, GUI_EDIT_STR(g_model.name))
-							GUI_CASE_OFS(1, 96, GUI_EDIT_ENUM( g_model.tmrMode, 0, 5, timer_modes ))
-							GUI_CASE_OFS(2, 96, GUI_EDIT_ENUM( g_model.tmrDir, 0, 1, dir_labels ))
-							GUI_CASE_OFS(3, 96, GUI_EDIT_INT( g_model.tmrVal, 0, 3600 ))
-							GUI_CASE_OFS(4, 96, GUI_EDIT_ENUM( g_model.traineron, 0, 1, menu_on_off ))
-							GUI_CASE_OFS(5, 96, GUI_EDIT_ENUM( g_model.thrTrim, 0, 1, menu_on_off ))
-							GUI_CASE_OFS(6, 96, GUI_EDIT_ENUM( g_model.thrExpo, 0, 1, menu_on_off ))
-							GUI_CASE_OFS(7, 96, GUI_EDIT_INT( g_model.trimInc, 0, 7 ))
-							GUI_CASE_OFS(8, 96, GUI_EDIT_ENUM( g_model.extendedLimits, 0, 1, menu_on_off ))
-							GUI_CASE_OFS(9, 96, GUI_EDIT_INT( g_model.ppmNCH, 1, NUM_CHNOUT ))
-							GUI_CASE_OFS(10, 96, GUI_EDIT_INT( g_model.ppmDelay, 0, 7 ))
-							GUI_CASE_OFS(11, 96, GUI_EDIT_INT( g_model.ppmFrameLength, 0, 7 ))
-						}
-				)
+				FOREACH_ROW
+				{
+					lcd_write_string((char*) model_menu_list1[row],
+							context.op_list, FLAGS_NONE);
+					lcd_write_string(" ", LCD_OP_SET, FLAGS_NONE);
+					switch (row) {
+					GUI_CASE_OFS(0, 74, GUI_EDIT_STR(g_model.name))
+					GUI_CASE_OFS(1, 96,
+							GUI_EDIT_ENUM( g_model.tmrMode, 0, 5, timer_modes ))
+					GUI_CASE_OFS(2, 96,
+							GUI_EDIT_ENUM( g_model.tmrDir, 0, 1, dir_labels ))
+					GUI_CASE_OFS(3, 96, GUI_EDIT_INT( g_model.tmrVal, 0, 3600 ))
+					GUI_CASE_OFS(4, 96,
+							GUI_EDIT_ENUM( g_model.traineron, 0, 1, menu_on_off ))
+					GUI_CASE_OFS(5, 96,
+							GUI_EDIT_ENUM( g_model.thrTrim, 0, 1, menu_on_off ))
+					GUI_CASE_OFS(6, 96,
+							GUI_EDIT_ENUM( g_model.thrExpo, 0, 1, menu_on_off ))
+					GUI_CASE_OFS(7, 96, GUI_EDIT_INT( g_model.trimInc, 0, 7 ))
+					GUI_CASE_OFS(8, 96,
+							GUI_EDIT_ENUM( g_model.extendedLimits, 0, 1, menu_on_off ))
+					GUI_CASE_OFS(9, 96,
+							GUI_EDIT_INT( g_model.ppmNCH, 1, NUM_CHNOUT ))
+					GUI_CASE_OFS(10, 96, GUI_EDIT_INT( g_model.ppmDelay, 0, 7 ))
+					GUI_CASE_OFS(11, 96,
+							GUI_EDIT_INT( g_model.ppmFrameLength, 0, 7 ))
+					}
+				}
 				break;
 
 			case MOD_PAGE_HELI_SETUP:
@@ -1370,82 +1450,108 @@ void gui_process(uint32_t data) {
 
 			case MOD_PAGE_EXPODR: {
 				static uint8_t curr_chan = 0;
-				if( curr_chan < 0 ) curr_chan = 0;
-				if( curr_chan >= DIM(g_model.expoData) ) curr_chan = DIM(g_model.expoData)-1;
-	        	ExpoData* ed = &g_model.expoData[curr_chan];
-	        	uint8_t dr = GET_DR_STATE(curr_chan);
-	        	context.form = 1;
-				context.item_limit = 7-1; // 7 fields all together
+				if (curr_chan < 0)
+					curr_chan = 0;
+				if (curr_chan >= DIM(g_model.expoData))
+					curr_chan = DIM(g_model.expoData) - 1;
+				ExpoData* ed = &g_model.expoData[curr_chan];
+				uint8_t dr = GET_DR_STATE(curr_chan)
+				;
+				context.form = 1;
+				context.item_limit = 7 - 1; // 7 fields all together
 				// print labels
-				for(int row = 0; row < 7; row++)
-				{
-					prepare_context_for_list_row( &context, row );
+				for (int row = 0; row < 7; row++) {
+					prepare_context_for_list_row(&context, row);
 					lcd_write_string(expodr[row], LCD_OP_SET, TRAILING_SPACE);
-					if( row == 1 ) lcd_write_string(drlevel[dr], LCD_OP_SET, 0);
+					if (row == 1)
+						lcd_write_string(drlevel[dr], LCD_OP_SET, 0);
 				}
 				// print/edit fields
-				for(int fld = 0; fld <= context.item_limit; fld++) {
-					int8_t row = ( fld == 1 || fld == 3 ) ? fld + 1 : fld;
-					prepare_context_for_list_row( &context, row );
-					prepare_context_for_field( &context, fld );
+				for (int fld = 0; fld <= context.item_limit; fld++) {
+					int8_t row = (fld == 1 || fld == 3) ? fld + 1 : fld;
+					prepare_context_for_list_row(&context, row);
+					prepare_context_for_field(&context, fld);
 					switch (fld) {
-						GUI_CASE_OFS(0, 4*6, GUI_EDIT_ENUM( curr_chan, 0, DIM(g_model.expoData), sticks ) );
-						GUI_CASE_OFS(1, 4*6, GUI_EDIT_INT_EX2(ed->expo[dr][DR_EXPO][DR_RIGHT], -100, 100, 0, ALIGN_RIGHT,{}));
-						GUI_CASE_OFS(2, 8*6, GUI_EDIT_INT_EX2(ed->expo[dr][DR_EXPO][DR_LEFT], -100, 100, 0, ALIGN_RIGHT,{}));
-						GUI_CASE_OFS(3, 4*6, GUI_EDIT_INT(ed->expo[dr][DR_WEIGHT][DR_RIGHT],-100,100));
-						GUI_CASE_OFS(4, 8*6, GUI_EDIT_INT(ed->expo[dr][DR_WEIGHT][DR_LEFT],-100,100));
-						GUI_CASE_OFS(5, 4*6, GUI_EDIT_ENUM( ed->drSw1, 0, NUM_SWITCHES, switches));
-						GUI_CASE_OFS(6, 4*6, GUI_EDIT_ENUM( ed->drSw2, 0, NUM_SWITCHES, switches));
+					GUI_CASE_OFS(0, 4 * 6,
+							GUI_EDIT_ENUM( curr_chan, 0, DIM(g_model.expoData), sticks ))
+						;
+					GUI_CASE_OFS(1, 4 * 6,
+							GUI_EDIT_INT_EX2(ed->expo[dr][DR_EXPO][DR_RIGHT], -100, 100, 0, ALIGN_RIGHT,{}))
+						;
+					GUI_CASE_OFS(2, 8 * 6,
+							GUI_EDIT_INT_EX2(ed->expo[dr][DR_EXPO][DR_LEFT], -100, 100, 0, ALIGN_RIGHT,{}))
+						;
+					GUI_CASE_OFS(3, 4 * 6,
+							GUI_EDIT_INT(ed->expo[dr][DR_WEIGHT][DR_RIGHT],-100,100))
+						;
+					GUI_CASE_OFS(4, 8 * 6,
+							GUI_EDIT_INT(ed->expo[dr][DR_WEIGHT][DR_LEFT],-100,100))
+						;
+					GUI_CASE_OFS(5, 4 * 6,
+							GUI_EDIT_ENUM( ed->drSw1, 0, NUM_SWITCHES, switches))
+						;
+					GUI_CASE_OFS(6, 4 * 6,
+							GUI_EDIT_ENUM( ed->drSw2, 0, NUM_SWITCHES, switches))
+						;
 					}
 				}
 				// draw curve
-				const int X0 = 8*6;
-				const int Y0 = 1*8;
-				const int W = LCD_WIDTH-X0;
-				const int H = LCD_HEIGHT-Y0;
-				lcd_draw_line( X0, Y0+H/2, X0+W, Y0+H/2, LCD_OP_SET);
-				lcd_draw_line( X0+W/2, Y0, X0+W/2, Y0+H, LCD_OP_SET);
-				for(int v=-1024; v <= 1024; v += 2*1024/W)
-				{
-					int e = expo(v,ed->expo[dr][DR_EXPO][v>0?DR_RIGHT:DR_LEFT]);
-					int y = -(e*H)/(2*1024)+Y0+H/2;
-					int x = (v*W)/(2*1024)+X0+W/2;
-					lcd_set_pixel(x,y,LCD_OP_SET);
+				const int X0 = 9 * 6;
+				const int Y0 = 1 * 8;
+				const int W = LCD_WIDTH - X0;
+				const int H = LCD_HEIGHT - Y0;
+				//lcd_draw_line( X0, Y0+H/2, X0+W, Y0+H/2, LCD_OP_SET);
+				for (int x = X0; x <= X0 + W; x += 2)
+					lcd_set_pixel(x, Y0 + H / 2, LCD_OP_SET);
+				for (int y = Y0; y <= Y0 + H; y += 2)
+					lcd_set_pixel(X0 + W / 2, y, LCD_OP_SET);
+				//lcd_draw_line( X0+W/2, Y0, X0+W/2, Y0+H, LCD_OP_SET);
+				for (int v = -1024; v <= 1024; v += 2 * 1024 / W) {
+					int e = expo(v,
+							ed->expo[dr][DR_EXPO][v > 0 ? DR_RIGHT : DR_LEFT]);
+					int y = -(e * H) / (2 * 1024) + Y0 + H / 2;
+					int x = (v * W) / (2 * 1024) + X0 + W / 2;
+					lcd_set_pixel(x, y, LCD_OP_SET);
 				}
 				break;
 			}
 
 			case MOD_PAGE_MIXER: {
-				context.item_limit = MAX_MIXERS-1;
+				context.item_limit = MAX_MIXERS - 1;
 				context.submenu_page = MOD_PAGE_MIX_EDIT;
 				context.popup = GUI_MSG_ROW_MENU;
-				FOREACH_ROW(
+				FOREACH_ROW
+				{
 					MixData* const mx = &g_model.mixData[row];
-					if((mx->destCh==0) || (mx->destCh>NUM_CHNOUT))
-					{
-						context.item_limit = row-1;
-						if( context.item >= row-1)
-							context.item = row-1;
+					if ((mx->destCh == 0) || (mx->destCh > NUM_CHNOUT)) {
+						context.item_limit = row - 1;
+						if (context.item >= row - 1)
+							context.item = row - 1;
 						break;
 					}
 
-					if(row==0 || (mx->destCh && g_model.mixData[row-1].destCh!=mx->destCh) ) {
+					if (row == 0
+							|| (mx->destCh
+									&& g_model.mixData[row - 1].destCh
+											!= mx->destCh)) {
 						char s[4] = "CH0";
 						s[2] += mx->destCh;
 						lcd_write_string(s, context.op_list, FLAGS_NONE);
+					} else {
+						lcd_write_string(mix_mode[mx->destCh ? mx->mltpx : 0],
+								context.op_list, FLAGS_NONE);
 					}
-					else {
-						lcd_write_string(mix_mode[mx->destCh ? mx->mltpx : 0], context.op_list, FLAGS_NONE);
-					}
-					lcd_set_cursor(4*6, context.cur_row_y);
+					lcd_set_cursor(4 * 6, context.cur_row_y);
 
 					// TODO: mix_src must be changed according to stick modes!?
-					lcd_write_string(mix_src[mx->srcRaw], LCD_OP_SET, FLAGS_NONE);
-					lcd_set_cursor(10*6, context.cur_row_y);
+					lcd_write_string(mix_src[mx->srcRaw], LCD_OP_SET,
+							FLAGS_NONE);
+					lcd_set_cursor(10 * 6, context.cur_row_y);
 					lcd_write_int(mx->weight, LCD_OP_SET, ALIGN_RIGHT);
-					lcd_set_cursor(12*6, context.cur_row_y);
-					lcd_write_string(switches[mx->swtch], LCD_OP_SET, FLAGS_NONE);
-				)
+					lcd_set_cursor(12 * 6, context.cur_row_y);
+					lcd_write_string(switches[mx->swtch], LCD_OP_SET,
+							FLAGS_NONE);
+				}
 				// if we were in the popup then the result would show up, once
 				char popupRes = gui_popup_get_result();
 				if (popupRes) {
@@ -1456,11 +1562,11 @@ void gui_process(uint32_t data) {
 					case 1:
 						// TODO
 						break;
-					// insert (duplicate?)
+						// insert (duplicate?)
 					case 2:
 						// make sure we are not pushing out the last row of the last outchan
 						if (g_model.mixData[MAX_MIXERS - 1].destCh == 0
-							|| g_model.mixData[MAX_MIXERS - 1].destCh
+								|| g_model.mixData[MAX_MIXERS - 1].destCh
 										== g_model.mixData[MAX_MIXERS - 2].destCh) {
 							memmove(&g_model.mixData[context.item + 1],
 									&g_model.mixData[context.item],
@@ -1468,7 +1574,7 @@ void gui_process(uint32_t data) {
 											* sizeof(MixData));
 						}
 						break;
-					// delete
+						// delete
 					case 3:
 						// delete only if not removing the last of rows for given output channel (at least one must stay)
 						if (g_model.mixData[context.item].destCh
@@ -1482,11 +1588,11 @@ void gui_process(uint32_t data) {
 											* sizeof(MixData));
 						}
 						break;
-					// copy
+						// copy
 					case 4:
 						context.copy_row = context.item;
 						break;
-					// paste
+						// paste
 					case 5:
 						if (context.copy_row >= 0) {
 							// copy the "copy" row but retain the destCh
@@ -1502,42 +1608,48 @@ void gui_process(uint32_t data) {
 					}
 				}
 			}
-			break;
+				break;
 
 			case MOD_PAGE_LIMITS:
-				context.item_limit = NUM_CHNOUT-1;
-				context.col_limit = 4-1;
-				FOREACH_ROW(
+				context.item_limit = NUM_CHNOUT - 1;
+				context.col_limit = 4 - 1;
+				FOREACH_ROW
+				{
 					char s[4] = "CH1";
 					s[2] += row;
 					lcd_write_string(s, context.op_list, CHAR_NOSPACE);
 
-					LimitData* const p = &g_model.limitData[row];
+					volatile LimitData* const p = &g_model.limitData[row];
 
-					FOREACH_COL(
-						switch(col) {
-							GUI_CASE_OFS( 0, (3+6-1)*6+2, GUI_EDIT_INT_EX2(p->offset,-1000, 1000, 0 , INT_DIV10|ALIGN_RIGHT, {}));
-							GUI_CASE_OFS( 1, (3+6+4-1)*6+2, GUI_EDIT_INT_EX2(p->min, -100, 100, 0, ALIGN_RIGHT, {}))
-							GUI_CASE_OFS( 2, (3+6+4+4-1)*6+2, GUI_EDIT_INT_EX2(p->max, -100, 100, 0, ALIGN_RIGHT,{}))
-							GUI_CASE_OFS( 3, (3+6+4+4+2-1)*6+2, GUI_EDIT_ENUM(p->reverse, 0, 1, inverse_labels))
+					FOREACH_COL
+					{
+						switch (col) {
+						GUI_CASE_OFS(0, (3 + 6 - 1) * 6 + 2,
+								GUI_EDIT_INT_EX2(p->offset,-1000, 1000, 0 , INT_DIV10|ALIGN_RIGHT, {}))
+							;
+						GUI_CASE_OFS(1, (3 + 6 + 4 - 1) * 6 + 2,
+								GUI_EDIT_INT_EX2(p->min, -100, 100, 0, ALIGN_RIGHT, {}))
+						GUI_CASE_OFS(2, (3 + 6 + 4 + 4 - 1) * 6 + 2,
+								GUI_EDIT_INT_EX2(p->max, -100, 100, 0, ALIGN_RIGHT,{}))
+						GUI_CASE_OFS(3, (3 + 6 + 4 + 4 + 2 - 1) * 6 + 2,
+								GUI_EDIT_ENUM(p->reverse, 0, 1, inverse_labels))
 						}
-					)
-				)
+					}
+				}
 				break;
 
 			case MOD_PAGE_CURVES:
 				context.item_limit = MAX_CURVE5 + MAX_CURVE9 - 1;
 				context.submenu_page = MOD_PAGE_CURVE_EDIT;
-				FOREACH_ROW(
+				FOREACH_ROW
+				{
 					char s[4] = "CV0";
 					s[2] = '1' + row;
 					lcd_write_string(s, context.op_list, TRAILING_SPACE);
-				    int8_t ncv = row >= MAX_CURVE5 ? 9 : 5;
-				    int8_t *crv = ncv == 5 ? g_model.curves9[row-MAX_CURVE5] : g_model.curves5[row];
-
+					int8_t ncv = row >= MAX_CURVE5 ? 9 : 5;
 					lcd_write_int(ncv, LCD_OP_SET, TRAILING_SPACE);
-				)
-				// TODO: draw selected curve
+				}
+				gui_draw_curve(context.item, -1);
 				break;
 
 			case MOD_PAGE_CUST_SW:
@@ -1546,54 +1658,59 @@ void gui_process(uint32_t data) {
 
 			case MOD_PAGE_SAFE_SW:
 				context.item_limit = DIM(g_model.safetySw) - 1;
-				context.col_limit = 3-1;
-				FOREACH_ROW(
+				context.col_limit = 3 - 1;
+				FOREACH_ROW
+				{
 					char s[4] = "CH0";
-					s[2] = '1'+row;
+					s[2] = '1' + row;
 					lcd_write_string(s, context.op_list, TRAILING_SPACE);
-					FOREACH_COL(
+					FOREACH_COL
+					{
 						SafetySwData* d = &g_model.safetySw[row];
-						switch(col)
-						{
-							GUI_CASE_OFS( 0, 4*6, GUI_EDIT_ENUM(d->opt.ss.swtch, 0, 4, switches) )
-							GUI_CASE_OFS( 1, 9*6, GUI_EDIT_ENUM(d->opt.ss.mode, 0, 3, safety_switch_mode_labels ) )
-							GUI_CASE_OFS( 2, 13*6, GUI_EDIT_INT(d->opt.ss.val, -100, 100) )
+						switch (col) {
+						GUI_CASE_OFS(0, 4 * 6,
+								GUI_EDIT_ENUM(d->opt.ss.swtch, 0, 4, switches))
+						GUI_CASE_OFS(1, 9 * 6,
+								GUI_EDIT_ENUM(d->opt.ss.mode, 0, 3, safety_switch_mode_labels ))
+						GUI_CASE_OFS(2, 13 * 6,
+								GUI_EDIT_INT(d->opt.ss.val, -100, 100))
 						}
-					)
-				)
+					}
+				}
 				break;
 
 			case MOD_PAGE_TEMPLATES:
 				// ToDo: Implement!
 				break;
 
-			// SubMenus --- Not navigable through left / right scrolling.
+				// SubMenus --- Not navigable through left / right scrolling.
 
-			case MOD_PAGE_MIX_EDIT:
-			{
+			case MOD_PAGE_MIX_EDIT: {
 				MixData* const mx = &g_model.mixData[sub_edit_item];
 				// print label for this mix on header row (top)
 				{
-					char s[4] = "CH0"; s[2] += mx->destCh;
-					lcd_set_cursor(9*6, 0);
+					char s[4] = "CH0";
+					s[2] += mx->destCh;
+					lcd_set_cursor(9 * 6, 0);
 					lcd_write_string(s, LCD_OP_CLR, FLAGS_NONE);
 				}
 
 				context.item_limit = MIXER_EDIT_LIST1_LEN - 1;
 				context.col_limit = 0;
-				FOREACH_ROW(
-					lcd_write_string((char*) mixer_edit_list1[row], context.op_list, FLAGS_NONE);
+				FOREACH_ROW
+				{
+					lcd_write_string((char*) mixer_edit_list1[row],
+							context.op_list, FLAGS_NONE);
 					lcd_write_string(" ", LCD_OP_SET, FLAGS_NONE);
 
-					switch (row)
-					{
+					switch (row) {
 					GUI_CASE_OFS(0, 96, GUI_EDIT_ENUM( mx->srcRaw, 0, MIX_SRC_MAX-1, mix_src ));
 					GUI_CASE_OFS(1, 96, GUI_EDIT_INT( mx->weight, -125, 125 ));
 					GUI_CASE_OFS(2, 96, GUI_EDIT_INT( mx->sOffset, -125, 125 ));
 					GUI_CASE_OFS(3, 96, GUI_EDIT_ENUM( mx->carryTrim, 0, 1, menu_on_off ));
 					GUI_CASE_OFS(4, 96, GUI_EDIT_ENUM( mx->curve, 0, MIX_CURVE_MAX-1, mix_curve));
 					GUI_CASE_OFS(5, 96, GUI_EDIT_ENUM( mx->swtch, 0, 4, switches ));
-					// #6 phase
+						// #6 phase
 					GUI_CASE_OFS(7, 96, GUI_EDIT_ENUM( mx->mixWarn, 0, 1, menu_on_off ));
 					GUI_CASE_OFS(8, 96, GUI_EDIT_ENUM( mx->mltpx, 0, 3, mix_mode ));
 					GUI_CASE_OFS(9, 96, GUI_EDIT_INT( mx->delayUp, 0, 255 ));
@@ -1601,67 +1718,53 @@ void gui_process(uint32_t data) {
 					GUI_CASE_OFS(11, 96, GUI_EDIT_INT( mx->speedUp, 0, 255 ));
 					GUI_CASE_OFS(12, 96, GUI_EDIT_INT( mx->speedDown, 0, 255 ));
 					}
-				)
+				}
 				break;
 			}
+
 			case MOD_PAGE_CURVE_EDIT: {
 				const int NPTS = sub_edit_item < MAX_CURVE5 ? 5 : 9;
-				int8_t* pCurve = sub_edit_item < MAX_CURVE5 ?
-											&g_model.curves5[sub_edit_item] :
-											&g_model.curves9[sub_edit_item-MAX_CURVE5];
-				context.item_limit = NPTS-1;
-				context.col_limit = 0;
-
-				// draw curve
-				const uint8_t max_y = 10;
-				const uint8_t min_y = 60;
-				const uint8_t min_x = 6*6; // 6 chars to the right
-				const uint8_t W = LCD_WIDTH - min_x;
-				// TODO: correct for W not multiple of 9 or 5
-				uint8_t xstep = sub_edit_item < MAX_CURVE5 ? 5 : 9;// W/NPTS;
-				lcd_draw_line(min_x+xstep*NPTS/2, max_y, min_x+xstep*NPTS/2, min_y, LCD_OP_SET);
-				for(uint8_t pt = 0, x = min_x, yprev; pt < NPTS; pt++)
+				// print label
 				{
-					uint8_t y = offset_curves(-100,100,max_y,min_y,pCurve[pt]);
-					lcd_set_pixel(x, y, LCD_OP_SET);
-					const int R = 2;
-					lcd_draw_rect(x-R,y-R,x+R,y+R, LCD_OP_SET, FLAGS_NONE);
-					if( pt > 0 )
-						lcd_draw_line( x-xstep, yprev, x, y, LCD_OP_SET);
-					x += xstep;
-					yprev = y;
+					char s[4] = "CV1";
+					s[2] += sub_edit_item+1;
+					lcd_set_cursor(6 * 6, 0);
+					lcd_write_string(s, LCD_OP_CLR, FLAGS_NONE);
 				}
-#if 0
-				for(uint8_t x = 65; x < 115; x += xstep) {
-					lcd_set_pixel(x, 35, LCD_OP_SET);
-				}
-				lcd_set_pixel(65, offset_curves(-100,100,max_y,min_y,pCurve[0]),LCD_OP_SET);
-				lcd_set_pixel(77, offset_curves(-100,100,max_y,min_y,pCurve[1]),LCD_OP_SET);
-				lcd_set_pixel(90, offset_curves(-100,100,max_y,min_y,pCurve[2]),LCD_OP_SET);
-				lcd_set_pixel(107, offset_curves(-100,100,max_y,min_y,pCurve[3]),LCD_OP_SET);
-				lcd_set_pixel(115, offset_curves(-100,100,max_y,min_y,pCurve[4]),LCD_OP_SET);
-#endif
+				context.item_limit = NPTS - 1;
+				context.col_limit = 0;
+				gui_draw_curve(sub_edit_item, context.item);
 
-				FOREACH_ROW(
-					switch (row)
-					{
-						GUI_CASE_OFS(0, 12, GUI_EDIT_INT( pCurve[0], -100, 100 ));
-						GUI_CASE_OFS(1, 12, GUI_EDIT_INT( pCurve[1], -100, 100 ));
-						GUI_CASE_OFS(2, 12, GUI_EDIT_INT( pCurve[2], -100, 100 ));
-						GUI_CASE_OFS(3, 12, GUI_EDIT_INT( pCurve[3], -100, 100 ));
-						GUI_CASE_OFS(4, 12, GUI_EDIT_INT( pCurve[4], -100, 100 ));
-						GUI_CASE_OFS(5, 12, GUI_EDIT_INT( pCurve[5], -100, 100 ));
-						GUI_CASE_OFS(6, 12, GUI_EDIT_INT( pCurve[6], -100, 100 ));
-						GUI_CASE_OFS(7, 12, GUI_EDIT_INT( pCurve[7], -100, 100 ));
-						GUI_CASE_OFS(8, 12, GUI_EDIT_INT( pCurve[8], -100, 100 ));
+				int8_t* pCurve =
+						sub_edit_item < MAX_CURVE5 ?
+								&g_model.curves5[sub_edit_item] :
+								&g_model.curves9[sub_edit_item - MAX_CURVE5];
+
+				FOREACH_ROW{
+					lcd_write_int(row, context.op_list, FLAGS_NONE);
+				}
+
+
+				FOREACH_ROW{
+					const int X = 5*6;
+					switch (row) {
+					GUI_CASE_OFS(0, X, GUI_EDIT_INT_EX2( pCurve[0], -100, 100, "", ALIGN_RIGHT, {} ));
+					GUI_CASE_OFS(1, X, GUI_EDIT_INT_EX2( pCurve[1], -100, 100, "", ALIGN_RIGHT, {} ));
+					GUI_CASE_OFS(2, X, GUI_EDIT_INT_EX2( pCurve[2], -100, 100, "", ALIGN_RIGHT, {} ));
+					GUI_CASE_OFS(3, X, GUI_EDIT_INT_EX2( pCurve[3], -100, 100, "", ALIGN_RIGHT, {} ));
+					GUI_CASE_OFS(4, X, GUI_EDIT_INT_EX2( pCurve[4], -100, 100, "", ALIGN_RIGHT, {} ));
+					GUI_CASE_OFS(5, X, GUI_EDIT_INT_EX2( pCurve[5], -100, 100, "", ALIGN_RIGHT, {} ));
+					GUI_CASE_OFS(6, X, GUI_EDIT_INT_EX2( pCurve[6], -100, 100, "", ALIGN_RIGHT, {} ));
+					GUI_CASE_OFS(7, X, GUI_EDIT_INT_EX2( pCurve[7], -100, 100, "", ALIGN_RIGHT, {} ));
+					GUI_CASE_OFS(8, X, GUI_EDIT_INT_EX2( pCurve[8], -100, 100, "", ALIGN_RIGHT, {} ));
 					}
-				)
+				}
 				break;
 			}
-		} // switch (context.page)
-	} // else // GUI_LAYOUT_MODEL_MENU
+			} // switch (context.page)
+		} // else // GUI_LAYOUT_MODEL_MENU
 
-	break;
+		break;
 	} //case GUI_LAYOUT_SYSTEM_MENU GUI_LAYOUT_MODEL_MENU
 
 		/**********************************************************************
@@ -2166,7 +2269,9 @@ static uint32_t gui_bitfield_edit(MenuContext* pCtx, char *string,
  * @param  max: Maximum allowed value.
  * @retval Updated value
  */
-static int32_t gui_int_edit(int32_t data, int32_t delta, int32_t min, int32_t max) {
+static int32_t gui_int_edit(int32_t data, int32_t delta,
+		                    int32_t min, int32_t max)
+{
 	int32_t ret = data;
 
 	ret += delta;

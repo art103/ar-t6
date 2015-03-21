@@ -183,7 +183,7 @@ const char *msg[GUI_MSG_MAX] = {
 		"SAFETY SWITCHES",
 		"TEMPLATES",
 		"EDIT MIX",
-		"CURVE nn",
+		"CURVE",
 };
 
 const char *system_menu_list1[SYS_MENU_LIST1_LEN] = {
