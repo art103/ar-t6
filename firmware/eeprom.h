@@ -22,6 +22,7 @@ void eeprom_init(void);
 void eeprom_read(uint16_t offset, uint16_t length, void *buffer);
 void eeprom_write(uint16_t offset, uint16_t length, void *buffer);
 unsigned eeprom_checksum_memory(uint16_t offset, uint16_t length);
+char eeprom_state();
 
 #define EEPROM_PAGE_SIZE 32
 #define EEPROM_PAGE_MASK 0xFFE0

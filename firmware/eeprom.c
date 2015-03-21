@@ -25,10 +25,6 @@
 
 #include "stm32f10x.h"
 #include "eeprom.h"
-#include "myeeprom.h"
-#include "gui.h"
-#include "lcd.h"
-#include "tasks.h"
 
 // forwards
 void eeprom_wait_complete(void);
@@ -60,6 +56,24 @@ static volatile STATE state = STATE_ERROR;
 static volatile uint8_t read_write = 1;
 static volatile uint16_t addr = 0;
 static volatile DMA_InitTypeDef g_dmaInit;
+
+
+/**
+ * @brief  Returns eeprom state character for display
+ * @note
+ * @retval ' ' - idel; 'E' - error ; 'B' - busy
+ */
+char eeprom_state() {
+	switch(state){
+	case STATE_ERROR:
+		return 'E';
+	case STATE_COMPLETE:
+	case STATE_IDLE:
+		return ' ';
+	default:
+		return 'B';
+	}
+}
 
 /**
  * @brief  Compute simple checksum over eeprom memory
@@ -206,10 +220,6 @@ void eeprom_write(uint16_t offset, uint16_t length, void *buffer) {
 	//if (state == STATE_ERROR)
 	//return;
 
-	lcd_set_cursor(0, 0);
-	lcd_write_char(0x05, LCD_OP_SET, FLAGS_NONE);
-	lcd_update();
-
 	// Make sure nothing else is pending
 	eeprom_wait_complete();
 
@@ -245,10 +255,6 @@ void eeprom_write(uint16_t offset, uint16_t length, void *buffer) {
 	}
 
 	// no need to wait for completion here as it was done in the loop above
-
-	lcd_set_cursor(0, 0);
-	lcd_write_char(state == STATE_ERROR ? 'E' : ' ', LCD_OP_SET, FLAGS_NONE);
-	lcd_update();
 }
 
 /**

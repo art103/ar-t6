@@ -156,6 +156,13 @@ void settings_load_current_model_if_changed() {
 		settings_load_current_model();
 }
 
+void display_busy(uint8_t busy)
+{
+	lcd_set_cursor(0, 0);
+	lcd_write_char(busy ? 0x05 : ' ', LCD_OP_SET, FLAGS_NONE);
+	lcd_update();
+}
+
 /**
  * @brief  Task to perform non time-critical EEPROM work
  * @note
@@ -164,6 +171,9 @@ void settings_load_current_model_if_changed() {
  */
 void settings_process(uint32_t data) {
 	uint16_t chksum;
+
+	char state = eeprom_state();
+	display_busy(state=='B');
 
 	/* do not update eeprom when cal is in progress
 	 * it's changing the data on the fly (IRQ) and will cause spurious error messages
@@ -174,6 +184,7 @@ void settings_process(uint32_t data) {
 				sizeof(EEGeneral) - 2);
 		if (chksum != g_eeGeneral.chkSum) {
 			g_eeGeneral.chkSum = chksum;
+			display_busy(1);
 			eeprom_write(0, sizeof(EEGeneral), (void*) &g_eeGeneral);
 			// check after write
 			unsigned cs = eeprom_checksum_memory(0, sizeof(EEGeneral) - 2);
@@ -185,6 +196,7 @@ void settings_process(uint32_t data) {
 		if (chksum != g_model.chkSum) {
 			uint16_t modelAddress = model_address(g_eeGeneral.currModel);
 			g_model.chkSum = chksum;
+			display_busy(1);
 			eeprom_write(modelAddress, sizeof(g_model), (void*) &g_model);
 			// check after write
 			unsigned cs = eeprom_checksum_memory(modelAddress,
@@ -226,6 +238,7 @@ void settings_init(void) {
 		if (g_eeGeneral.currModel < MAX_MODELS)
 			g_eeGeneral.currModel = MAX_MODELS - 1;
 	}
+	task_register(TASK_PROCESS_EEPROM, settings_process);
 	settings_process(0);
 }
 
