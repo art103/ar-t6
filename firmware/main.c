@@ -35,6 +35,32 @@
 
 
 /**
+  * @brief  Apply radio settings to other modules
+  * @param  None
+  * @retval None
+  */
+void apply_settings()
+{
+	// set contrast but limit to a reasonable value in case settings were corrupted
+	uint16_t contrast = g_eeGeneral.contrast;
+	if( contrast < LCD_CONTRAST_MIN ) contrast = LCD_CONTRAST_MIN;
+	if( contrast > LCD_CONTRAST_MAX ) contrast = LCD_CONTRAST_MAX;
+	lcd_set_contrast(contrast);
+
+	// update volume from global settings
+    sound_set_volume(g_eeGeneral.volume);
+
+	if( !g_eeGeneral.disableSplashScreen )
+	{
+		// Put the logo into out frame buffer
+		memcpy(lcd_buffer, logo, LCD_WIDTH * LCD_HEIGHT / 8);
+		lcd_update();
+		delay_ms(2000);
+	}
+}
+
+
+/**
   * @brief  Main Loop for non-IRQ based work
   * @note   Deals with init and non time critical work.
   * @param  None
@@ -66,25 +92,11 @@ int main(void)
 	// Initalize settings and read data from EEPROM
 	settings_init();
 
-	// set contrast but limit to a reasonable value in case settings were corrupted
-	uint16_t contrast = g_eeGeneral.contrast;
-	if( contrast < LCD_CONTRAST_MIN ) contrast = LCD_CONTRAST_MIN;
-	if( contrast > LCD_CONTRAST_MAX ) contrast = LCD_CONTRAST_MAX;
-	lcd_set_contrast(contrast);
-
-	if( !g_eeGeneral.disableSplashScreen )
-	{
-		// Put the logo into out frame buffer
-		memcpy(lcd_buffer, logo, LCD_WIDTH * LCD_HEIGHT / 8);
-		lcd_update();
-		delay_ms(2000);
-	}
-
-	// update volume from global settings
-    sound_set_volume(g_eeGeneral.volume);
+	// apply settings
+	apply_settings();
 
 	// ToDo: Block here until all switches are set correctly.
-	//check_switches();
+	// check_switches();
 
 	mixer_init();
 

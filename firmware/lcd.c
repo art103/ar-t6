@@ -25,7 +25,7 @@
 #include <string.h>
 
 #include "stm32f10x.h"
-#include "tasks.h"
+#include "system.h"
 #include "lcd.h"
 
 #include "lcd_font_medium.h"

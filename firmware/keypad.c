@@ -27,7 +27,6 @@
 #include "keypad.h"
 #include "tasks.h"
 #include "gui.h"
-#include "sound.h"
 #include "myeeprom.h"
 
 #define ROW_MASK       (0x07 << 12)
@@ -282,9 +281,6 @@ static void keypad_process(uint32_t data) {
 	}
 
 	if( key != KEY_NONE ) {
-		// Play the key tone.
-		if (g_eeGeneral.beeperVal > BEEPER_NOKEY)
-			sound_play_tone(500, 10);
 		// Add the key to the pressed list.
 		keys_pressed |= key;
 		// Send the key to the UI.

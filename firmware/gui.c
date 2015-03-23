@@ -1840,6 +1840,11 @@ void gui_update(UPDATE_TYPE type) {
  * @retval None
  */
 void gui_input_key(KEYPAD_KEY key) {
+
+	// Play the key tone.
+	if (g_eeGeneral.beeperVal > BEEPER_NOKEY)
+		sound_play_tone(500, 10);
+
 	g_key_press |= key;
 	gui_update(UPDATE_KEYPRESS);
 }

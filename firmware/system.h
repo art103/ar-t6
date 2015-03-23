@@ -15,7 +15,7 @@
 
 /* Description:
  *
- * stm32 sys tick interrupt and counter
+ * stm32 sys tick interrupt and counter, delay routines
  *
  */
 
@@ -24,17 +24,22 @@
 
 #include <stdint.h>
 
-// main.c but used only in gui.c
+// 1ms tick counter
+extern volatile uint32_t system_ticks;
+
+// CPU core clock [Hz]
+extern uint32_t SystemCoreClock;
+
+// Jumps to stm32 build-in bootloader
 void enter_bootloader(void);
 
-extern volatile uint32_t system_ticks;
-extern system_init();
-
-// Utility functions
+// Long delay measured with system_ticks
 void delay_ms(uint32_t delay);
+
+// Small delay may be inacurate for long term (use only for <1ms)
 void delay_us(uint32_t delay);
 
-
-extern uint32_t SystemCoreClock;          /*!< System Clock Frequency (Core Clock) */
+// Initialize all things system
+extern void system_init();
 
 #endif /* SYSTEM_H_ */

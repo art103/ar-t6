@@ -64,12 +64,13 @@ void enter_bootloader(void) {
 
 /**
   * @brief  Delay timer using the system tick timer
-  * @param  delay: delay in ms.
+  * @note   for delay <= 2ms may give bigger error
+  * @param  delay: delay in ms
   * @retval None
   */
 void delay_ms(uint32_t delay)
 {
-	uint32_t start = system_ticks;
+	uint32_t start = system_ticks+1;
 	while (system_ticks <  start + delay);
 }
 
