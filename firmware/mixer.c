@@ -24,8 +24,9 @@
  */
 
 #include <stdlib.h>
+#include <stdbool.h>
 
-#include "stm32f10x.h"
+#include "system.h"
 #include "tasks.h"
 
 #include "art6.h"

@@ -822,8 +822,12 @@ struct t_latency
 	// TODO: unused ? uint16_t g_timeMain ;
 } ;
 
-// main.c but used only in gui.c
-void EnterBootLoader(void);
+#ifndef TRUE
+#define TRUE 1
+#endif
+#ifndef FALSE
+#define FALSE 0
+#endif
 
 #endif // art6_h
 

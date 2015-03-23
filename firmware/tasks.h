@@ -15,12 +15,11 @@
 #ifndef _TASKS_H
 #define _TASKS_H
 
- /* 
+ /*
   * Module to provide very simple round robin task scheduler.
   */
 
 #include <stdint.h>
-extern volatile uint32_t system_ticks;
 
 typedef enum
 {

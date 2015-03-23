@@ -20,11 +20,9 @@
  *
  */
 
-#include "stm32f10x.h"
+#include "system.h"
 #include "tasks.h"
 #include "string.h"
-
-volatile uint32_t system_ticks = 0;
 
 static uint32_t tasks[TASK_END];
 static uint32_t task_data[TASK_END];
@@ -45,7 +43,7 @@ void task_init(void)
 
 /**
   * @brief  Register a task function.
-  * @note   
+  * @note
   * @param  task: ID of the task to register.
   * @param  fn: Function pointer for the task ID.
   * @retval None

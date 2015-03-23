@@ -19,7 +19,7 @@
  * display and edit model and system variables.
  */
 
-#include "stm32f10x.h"
+#include "system.h"
 #include "tasks.h"
 #include "lcd.h"
 #include "sticks.h"
@@ -110,7 +110,7 @@ static void gui_show_switches(void);
 static void gui_show_battery(int x, int y);
 static void gui_show_timer(int x, int y);
 static void gui_update_trim(void);
-static void gui_draw_trim(int x, int y, bool h_v, int value);
+static void gui_draw_trim(int x, int y, uint8_t h_v, int value);
 static void gui_draw_slider(int x, int y, int w, int h, int range, int value);
 static void gui_draw_stick_icon(STICK stick, uint8_t inverse);
 
@@ -342,7 +342,7 @@ void gui_init(void) {
  * @retval None
  */
 void gui_process(uint32_t data) {
-	bool full = FALSE;
+	uint8_t full = FALSE;
 
 	// clear popup reult until OK/SEL/CANCEL pressed,
 	// then only allow one chance to process it (for safety of it was not handled)
@@ -1218,7 +1218,7 @@ void gui_process(uint32_t data) {
 				if (deffercount > 0) {
 					// call bootloader when count _reaches_ 0
 					if (--deffercount == 0)
-						EnterBootLoader();
+						enter_bootloader();
 				}
 				break; // SYS_PAGE_VERSION
 
@@ -2051,7 +2051,7 @@ static void gui_update_trim(void) {
  * @param  value: The value of the trim (location of the rectangle) from -100 to +100.
  * @retval None
  */
-static void gui_draw_trim(int x, int y, bool h_v, int value) {
+static void gui_draw_trim(int x, int y, uint8_t h_v, int value) {
 	int w, h, v;
 	w = (h_v) ? 48 : 6;
 	h = (h_v) ? 6 : 48;

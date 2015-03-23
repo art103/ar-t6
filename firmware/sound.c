@@ -26,7 +26,7 @@
  */
 
 #include "stm32f10x.h"
-#include "tasks.h"
+#include "system.h"
 #include "myeeprom.h"
 #include "sound.h"
 
