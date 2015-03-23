@@ -30,6 +30,11 @@ void enter_bootloader(void);
 extern volatile uint32_t system_ticks;
 extern system_init();
 
+// Utility functions
+void delay_ms(uint32_t delay);
+void delay_us(uint32_t delay);
+
+
 extern uint32_t SystemCoreClock;          /*!< System Clock Frequency (Core Clock) */
 
 #endif /* SYSTEM_H_ */

@@ -33,10 +33,6 @@
 #include "settings.h"
 #include "logo.h"
 
-volatile EEGeneral  g_eeGeneral;
-volatile ModelData  g_model;
-volatile uint8_t g_modelInvalid = 1;
-uint8_t SlaveMode;		// Trainer Slave
 
 /**
   * @brief  Main Loop for non-IRQ based work
@@ -46,7 +42,7 @@ uint8_t SlaveMode;		// Trainer Slave
   */
 int main(void)
 {
-	// initialize all things system/board related
+	// Initialize all things system/board related
 	system_init();
 
 	// Initialize the task loop.
@@ -58,7 +54,10 @@ int main(void)
 	// Initialize the LCD
 	lcd_init();
 
-	// gui interface code init
+	// Initialize the buzzer
+	sound_init();
+
+	// Initialize gui task and structure data
 	gui_init();
 
 	// Initialize the EEPROM chip access
@@ -81,11 +80,11 @@ int main(void)
 		delay_ms(2000);
 	}
 
+	// update volume from global settings
+    sound_set_volume(g_eeGeneral.volume);
+
 	// ToDo: Block here until all switches are set correctly.
 	//check_switches();
-
-	// Initialize the buzzer
-	sound_init();
 
 	mixer_init();
 
@@ -95,7 +94,7 @@ int main(void)
 	// Start the radio output.
 	pulses_init();
 
-	// move gui to the startup page
+	// Move gui to the startup page
 	gui_navigate(GUI_LAYOUT_MAIN1);
 
 	/*

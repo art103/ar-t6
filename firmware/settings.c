@@ -26,6 +26,9 @@
 #include "lcd.h"
 #include "tasks.h"
 
+volatile EEGeneral g_eeGeneral;
+volatile ModelData g_model;
+volatile uint8_t g_modelInvalid = 1;
 static volatile uint8_t currModel = 0xFF;
 
 #define PAGE_ALIGN 1
@@ -52,7 +55,6 @@ static uint16_t model_address(uint8_t modelNumber) {
 #endif
 	return modelAddress;
 }
-
 
 /**
  * @brief  Initialize model's mider data in global g_model
@@ -153,7 +155,7 @@ void settings_load_current_model() {
 void settings_read_model_name(char model, char buf[MODEL_NAME_LEN]) {
 	model = model < MAX_MODELS ? model : MAX_MODELS - 1;
 	eeprom_read(model_address(model) + offsetof(ModelData, name),
-			MODEL_NAME_LEN, buf);
+	MODEL_NAME_LEN, buf);
 	buf[MODEL_NAME_LEN - 1] = 0;
 }
 
@@ -171,11 +173,9 @@ void settings_load_current_model_if_changed() {
  * @brief  display EEPROM busy icon
  * @retval None
  */
-void display_busy(uint8_t busy)
-{
+void display_busy(uint8_t busy) {
 	static uint8_t prev = ' ';
-	if( prev != busy )
-	{
+	if (prev != busy) {
 		lcd_set_cursor(0, 0);
 		lcd_write_char(busy ? 0x05 : ' ', LCD_OP_SET, FLAGS_NONE);
 		lcd_update();
@@ -193,7 +193,7 @@ void settings_process(uint32_t data) {
 	uint16_t chksum;
 
 	char state = eeprom_state();
-	display_busy(state=='B');
+	display_busy(state == 'B');
 
 	/* do not update eeprom when cal is in progress
 	 * it's changing the data on the fly (IRQ) and will cause spurious error messages
@@ -230,7 +230,6 @@ void settings_process(uint32_t data) {
 
 	task_schedule(TASK_PROCESS_EEPROM, 0, 1000);
 }
-
 
 /**
  * @brief  Initialise the I2C bus and EEPROM.

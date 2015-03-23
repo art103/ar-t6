@@ -62,6 +62,29 @@ void enter_bootloader(void) {
 }
 
 
+/**
+  * @brief  Delay timer using the system tick timer
+  * @param  delay: delay in ms.
+  * @retval None
+  */
+void delay_ms(uint32_t delay)
+{
+	uint32_t start = system_ticks;
+	while (system_ticks <  start + delay);
+}
+
+/**
+  * @brief  Spin loop us delay routine
+  * @param  delay: delay in us.
+  * @retval None
+  */
+static uint8_t delay_scale = 1;
+void delay_us(uint32_t delay)
+{
+	volatile uint32_t i;
+	for (i = delay * delay_scale; i > 0; --i);
+}
+
 
 /**
   * @brief  This function handles the SysTick.
@@ -75,16 +98,37 @@ void SysTick_Handler(void)
 
 
 
+/**
+  * @brief  Initialize all things system/board realted
+  * @param  None
+  * @retval None
+  */
 void system_init()
 {
 	// PLL and stack setup has aready been done.
 	SystemCoreClockUpdate();
 
-	NVIC_PriorityGroupConfig(NVIC_PriorityGroup_4);    // 4 bits for preemption priority; 0 bit for sub priority (hence ignored)
+	 // 4 bits for preemption priority; 0 bit for sub priority (hence ignored)
+	NVIC_PriorityGroupConfig(NVIC_PriorityGroup_4);
 
 	// 1ms System tick
 	SysTick_Config(SystemCoreClock / 1000);
 	RCC_APB1PeriphClockCmd(RCC_APB1Periph_PWR, ENABLE);
+
+	// adjust delay_scale
+	while(1)
+	{
+		// get current ticks+1
+		uint32_t ts = system_ticks+1;
+		// wait for ticks to change so we start close to the tick start
+		while(system_ticks-ts==0);
+		// delay 1ms with current delay_scale (starting in 1)
+		delay_us(1000);
+		// if we have a delta of 1 tick then we're done
+		if(system_ticks-ts==1) break;
+		// otherwise increase scale and start over
+		delay_scale++;
+	}
 }
 
 

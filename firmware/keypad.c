@@ -25,7 +25,6 @@
 #include "stm32f10x.h"
 #include "system.h"
 #include "keypad.h"
-#include "mixer.h"
 #include "tasks.h"
 #include "gui.h"
 #include "sound.h"

@@ -54,6 +54,8 @@ volatile struct t_latency g_latency = { 0xFF, 0 } ;
 // for now they are relative and conv to us is in pulses.c
 volatile int16_t g_chans[NUM_CHNOUT]; 	// -1024 - 1024
 
+static uint8_t SlaveMode;		// Trainer Slave
+
 // Private globals
 static union p1mhz_t
 {

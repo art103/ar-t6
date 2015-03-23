@@ -25,8 +25,6 @@
 #define DIM(array) (sizeof(array)/sizeof(array[0]))
 #endif
 
-extern uint8_t SlaveMode;
-
 //#include "file.h"
 
 //#ifdef FIX_MODE
