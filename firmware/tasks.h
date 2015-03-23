@@ -36,8 +36,4 @@ void task_schedule(Tasks task, uint32_t data, uint32_t time_ms);
 void task_deschedule(Tasks task);
 void task_process_all(void);
 
-// Utility functions (implemented in main.c)
-void delay_ms(uint32_t delay);
-void delay_us(uint32_t delay);
-
 #endif // _TASKS_H
