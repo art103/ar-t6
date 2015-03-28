@@ -99,7 +99,7 @@ void pulses_init(void)
 	GPIO_ResetBits(GPIOA, PPM_IN | PPM_OUT);
 	gpioInit.GPIO_Speed = GPIO_Speed_50MHz;
 
-	gpioInit.GPIO_Mode = GPIO_Mode_IPU;
+	gpioInit.GPIO_Mode = GPIO_Mode_AF_OD;
 	gpioInit.GPIO_Pin = PPM_IN;
 	GPIO_Init(GPIOA, &gpioInit);
 
@@ -124,11 +124,19 @@ void pulses_init(void)
 
 	// TIM3 (PPM Input)
 	timIcInit.TIM_Channel = TIM_Channel_2;
+	timIcInit.TIM_ICPolarity = TIM_ICPolarity_Falling;
+	timIcInit.TIM_ICSelection = TIM_ICSelection_DirectTI;
+	timIcInit.TIM_ICPrescaler = TIM_ICPSC_DIV1;
+	timIcInit.TIM_ICFilter = 0x0F;
+
 	TIM_ICInit(TIM3, &timIcInit);
+
+	TIM_SelectInputTrigger(TIM3, TIM_TS_TI1F_ED);
+	TIM_CCxCmd(TIM3, TIM_Channel_2, TIM_CCx_Enable);
 
 	// Enable Timer interrupts
 	TIM_ITConfig(TIM2, TIM_FLAG_CC1, ENABLE);
-	TIM_ITConfig(TIM3, TIM_FLAG_CC1, ENABLE);
+	TIM_ITConfig(TIM3, TIM_FLAG_CC2, ENABLE);
 
 	// configure to the highest priority 0:0 (above stick's DMA)
     nvicInit.NVIC_IRQChannelPreemptionPriority = 0;
@@ -434,15 +442,16 @@ void TIM3_IRQHandler(void)
     uint16_t capture = TIM_GetCapture1(TIM3);
     int16_t val = (capture - lastCapt) / 2;
 	int16_t PPM_range;
+
     lastCapt = capture;
 
-    // We process g_ppmInsright here to make servo movement as smooth as possible
+    // We process g_ppmIns right here to make servo movement as smooth as possible
     // while under trainee control
     if(ppmInState && ppmInState <= 8)
     {
     	PPM_range = g_model.extendedLimits ? PPM_LIMIT_EXTENDED : PPM_LIMIT_NORMAL;   // range of 0.5 - 2.5ms or  0.8 - 2.2ms
     	val -= PPM_CENTER;
-        if(val > -PPM_range && val < PPM_range)
+        if (val > -PPM_range && val < PPM_range)
         {
         	// -700 - 700 Max
             g_ppmIns[ppmInState++ - 1] = val * (g_eeGeneral.PPM_Multiplier + 10) / 10; // +/- 700 != 512, but close enough.
@@ -454,10 +463,16 @@ void TIM3_IRQHandler(void)
     }
     else
     {
-        if(val>4000 && val < 16000)
+        if(val > 4000 && val < 16000)
         {
-            ppmInState=1; // triggered
+            ppmInState = 1; // triggered
+            TIM_SetCounter(TIM3, 0);
+            last_cap = 0;
         }
     }
-    TIM_ClearITPendingBit(TIM3, TIM_FLAG_CC1);
+
+    if (TIM_GetITStatus(TIM3, TIM_IT_CC2) != RESET)
+    {
+        TIM_ClearITPendingBit(TIM3, TIM_FLAG_CC2);
+    }
 }
