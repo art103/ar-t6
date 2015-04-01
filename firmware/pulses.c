@@ -467,7 +467,7 @@ void TIM3_IRQHandler(void)
         {
             ppmInState = 1; // triggered
             TIM_SetCounter(TIM3, 0);
-            last_cap = 0;
+            //last_cap = 0;
         }
     }
 
