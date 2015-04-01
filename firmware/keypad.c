@@ -106,7 +106,7 @@ void keypad_init(void) {
 	EXTI_Init(&extiInit);
 
 	// Configure the Interrupt to the lowest priority
-	nvicInit.NVIC_IRQChannelPreemptionPriority = 0x0F;
+	nvicInit.NVIC_IRQChannelPreemptionPriority = 15;
 	nvicInit.NVIC_IRQChannelSubPriority = 0x0F;
 	nvicInit.NVIC_IRQChannelCmd = ENABLE;
 	nvicInit.NVIC_IRQChannel = EXTI15_10_IRQn;

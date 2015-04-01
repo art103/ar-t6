@@ -97,7 +97,7 @@ void sound_init(void)
 	TIM_ITConfig(TIM1, TIM_FLAG_CC1, ENABLE);
 
     // Configure the Interrupt priority to low.
-    nvicInit.NVIC_IRQChannelPreemptionPriority = 15;
+    nvicInit.NVIC_IRQChannelPreemptionPriority = 14;
     nvicInit.NVIC_IRQChannelSubPriority = 15;
     nvicInit.NVIC_IRQChannelCmd = ENABLE;
     nvicInit.NVIC_IRQChannel = TIM1_CC_IRQn;

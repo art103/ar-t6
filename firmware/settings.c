@@ -57,7 +57,7 @@ static uint16_t model_address(uint8_t modelNumber) {
 }
 
 /**
- * @brief  Initialize model's mider data in global g_model
+ * @brief  Initialize model's mixer data in global g_model
  * @note   current model is g_eeGeneral.currModel
  * @retval None
  */
@@ -173,7 +173,7 @@ void settings_load_current_model_if_changed() {
  * @brief  display EEPROM busy icon
  * @retval None
  */
-void display_busy(uint8_t busy) {
+static void display_busy(uint8_t busy) {
 	static uint8_t prev = ' ';
 	if (prev != busy) {
 		lcd_set_cursor(0, 0);
@@ -189,7 +189,7 @@ void display_busy(uint8_t busy) {
  * @param  data: task specific data
  * @retval None
  */
-void settings_process(uint32_t data) {
+static void settings_process(uint32_t data) {
 	uint16_t chksum;
 
 	char state = eeprom_state();
