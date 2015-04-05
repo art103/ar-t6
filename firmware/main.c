@@ -20,6 +20,7 @@
  */
 
 #include "system.h"
+#include "usart.h"
 #include "tasks.h"
 #include "keypad.h"
 #include "sticks.h"
@@ -71,6 +72,9 @@ int main(void)
 	// Initialize all things system/board related
 	system_init();
 
+	// inistalize uart port
+	usart_init();
+
 	// Initialize the task loop.
 	task_init();
 
@@ -92,21 +96,22 @@ int main(void)
 	// Initalize settings and read data from EEPROM
 	settings_init();
 
-	// apply settings
+	// Apply radio settings
 	apply_settings();
 
 	// ToDo: Block here until all switches are set correctly.
 	// check_switches();
 
+	// Initialize mixer data
 	mixer_init();
 
-	// Initialize the ADC / DMA
+	// Initialize the ADC / DMA (sticks)
 	sticks_init();
 
-	// Start the radio output.
+	// Start the radio output
 	pulses_init();
 
-	// Move gui to the startup page
+	// Navigate gui to the startup page
 	gui_navigate(GUI_LAYOUT_MAIN1);
 
 	/*
@@ -136,8 +141,14 @@ int main(void)
 		// Process any tasks.
 		task_process_all();
 
-
-		// Wait for an interrupt
-		//PWR_EnterSTANDBYMode();
+// the waiting for interrupt does work,
+// however, it makes debugger to lose connection
+// even beyound ability to reprogram the CPU with debugger
+// however, a recovery is possible with STM-UTIL
+#if 0 //!DEBUG
+		// Wait For an Interrupt
+		// __WFI();
+		__asm("wfi");
+#endif
 	}
 }
