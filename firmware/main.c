@@ -61,6 +61,52 @@ void apply_settings()
 }
 
 
+// for now / TBD
+// commands are in form:
+// [c]xx..x\r
+// where [c] is a single character command
+// xx.xx is an optional, command specific character data (max 62 chars as queue length is 64)
+static void remote_process(uint32_t data)
+{
+	char cmd = (char)usart_getc();
+	switch( cmd ) {
+	case 'v' :
+		usart_puts("ART6-");
+		char ver[] = {'0'+VERSION_MAJOR,'.','0'+VERSION_MINOR,'.','0'+VERSION_PATCH};
+		usart_puts(ver);
+		usart_puts(" " __DATE__ " "__TIME__);
+		break;
+	case 'w':
+		usart_puts("todo write");
+		break;
+	case 'r':
+		usart_puts("todo read");
+		break;
+	case '?' :
+		usart_puts(" ?rw");
+		break;
+	default:
+		usart_putc('?');
+		break;
+	}
+	while(usart_getc()!=0);
+	usart_puts("\r\n");
+}
+
+/**
+  * @brief  Usart receive notification handler
+  * @param  data - character received
+  * @note   called in interrupt context
+  * @retval None
+  */
+static void rx_handler(char data)
+{
+	// schedule command action when CR is received (end of command)
+	if( data == '\r' )
+		task_schedule(TASK_PROCESS_REMOTE, 0, 0);
+}
+
+
 /**
   * @brief  Main Loop for non-IRQ based work
   * @note   Deals with init and non time critical work.
@@ -114,6 +160,10 @@ int main(void)
 	// Navigate gui to the startup page
 	gui_navigate(GUI_LAYOUT_MAIN1);
 
+	// for remote commands over usart
+	task_register(TASK_PROCESS_REMOTE, remote_process);
+	usart_register_rx_handler(rx_handler);
+
 	/*
 	 * The main loop will sit in low power mode waiting for an interrupt.
 	 *
@@ -141,11 +191,11 @@ int main(void)
 		// Process any tasks.
 		task_process_all();
 
-// the waiting for interrupt does work,
-// however, it makes debugger to lose connection
-// even beyound ability to reprogram the CPU with debugger
-// however, a recovery is possible with STM-UTIL
-#if 0 //!DEBUG
+// The waiting for interrupt does work,
+// However, it makes debugger to lose connection
+// even beyond ability to reprogram the CPU with the debugger.
+// However, a recovery is possible with STM-UTIL.
+#ifdef USE_WFI
 		// Wait For an Interrupt
 		// __WFI();
 		__asm("wfi");

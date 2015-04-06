@@ -31,7 +31,14 @@
 #define USE_QUEUE
 
 ///////////////////////////////////////////////////////////////////////////////
-// QUEUE - a circular buffer
+// QUEUE - a simple circular buffer
+// The _get _put are interrupt-safe as long as only opposites (get vs put)
+// are used from task vs interrupt on the same queue.
+// This is guaranteed as routines use separate indexes gidx/pidx.
+// Note that this implementation wastes one entry in the queue as pixd & gidx
+// overlap means empty. One could add a count of #of entries and hence fix it
+// but the count itself is yet another byte...so no cookie. Also, with count it
+// would be harder to make it IRQ-safe as ++ and -- would be from IRQ and task.
 
 #define QUEUE_SIZE 64
 
@@ -52,15 +59,15 @@ void Queue_init(Queue* pCB) {
 }
 
 /**
- * @brief  Returns numbers of pernding entries in the queue (chars)
+ * @brief  Returns numbers of pending entries in the queue (chars)
  * @param  pCB pointer to QUEUE
  * @retval number of chars in the QUEUE
  */
 uint8_t Queue_count(Queue* pCB, char c) {
 	int16_t n = (int16_t)pCB->pidx - (int16_t)pCB->gidx;
 	if (n < 0)
-		n = QUEUE_SIZE - n;
-	return n;
+		n += QUEUE_SIZE;
+	return (uint8_t)n;
 }
 
 /**
@@ -72,7 +79,7 @@ uint8_t Queue_count(Queue* pCB, char c) {
 uint8_t Queue_put(Queue* pCB, char c) {
 	uint8_t newIdx = (pCB->pidx + 1) % QUEUE_SIZE;
 	if (newIdx != pCB->gidx) {
-		pCB->buf[newIdx] = c;
+		pCB->buf[pCB->pidx] = c;
 		pCB->pidx = newIdx;
 		return 1;
 	} else {
@@ -100,8 +107,20 @@ uint16_t Queue_get(Queue* pCB) {
 static volatile uint8_t txrunning = 0;
 static Queue txbuf;
 static Queue rxbuf;
+static void (*registered_rx_handler)(uint8_t data) = 0;
 
 ///////////////////////////////////////////////////////////////////////////////
+
+
+/**
+ * @brief  Register receive event handler
+ * @param  rx_handler function to call when a char is received
+ * @note   the "data" char is for information only as it's also added to rx queue
+ * @retval None
+ */
+void usart_register_rx_handler(void (*rx_handler)(uint8_t data)) {
+	registered_rx_handler = rx_handler;
+}
 
 /**
  * @brief  print char on uart1
@@ -129,6 +148,17 @@ void usart_puts(char* s) {
 	while (*s)
 		usart_putc(*s++);
 }
+
+
+/**
+ * @brief  Retrieve received char
+ * @note   non-blocking call, would return 0 if nothing received
+ * @retval non-zero with 8 lower bits being the char, zero if queue was empty
+ */
+uint16_t usart_getc() {
+	return Queue_get(&rxbuf);
+}
+
 
 /**
  * @brief  Initialize the USART1 serial port
@@ -203,7 +233,7 @@ void USART1_IRQHandler() {
 		uint8_t data = USART_ReceiveData(USART1);
 		USART_ClearITPendingBit(USART1, USART_IT_RXNE); // Clear interrupt flag
 		Queue_put(&rxbuf, data);
-		// schedule task to handle the input
+		if( registered_rx_handler ) registered_rx_handler(data);
 	}
 	if (USART_GetITStatus(USART1, USART_IT_TXE)) {
 		USART_ClearITPendingBit(USART1, USART_IT_TXE); // Clear interrupt flag

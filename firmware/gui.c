@@ -308,6 +308,13 @@ static void prepare_context_for_list_row(MenuContext* pCtx, uint8_t row) {
 	prepare_context_for_list_rowcol(pCtx, row, 0);
 }
 
+/**
+ * @brief  sets up menu context parameters for a given field we are on
+ * @note
+ * @param  pCtx pointer to menu context
+ * @param  field field number
+ * @retval None
+ */
 static void prepare_context_for_field(MenuContext* pCtx, uint8_t field) {
 	pCtx->edit = 0;
 	if (field == pCtx->item) {
