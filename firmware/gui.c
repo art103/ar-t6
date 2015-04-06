@@ -823,8 +823,14 @@ void gui_process(uint32_t data) {
 			 * System Menu Pages
 			 */
 			switch (context.page) {
-			case SYS_PAGE_SETUP:
+			case SYS_PAGE_SETUP: {
 				context.item_limit = SYS_MENU_LIST1_LEN - 1;
+				context.popup = GUI_MSG_OK_TO_PRESET_ALL;
+				char popupRes = gui_popup_get_result();
+				if (popupRes == 1) {
+					settings_preset_all();
+				}
+
 				for (uint8_t row = context.top_row;
 						(row < context.top_row + LIST_ROWS)
 								&& (row <= context.item_limit); ++row) {
@@ -1034,8 +1040,9 @@ void gui_process(uint32_t data) {
 					}
 				}
 				break; // SYS_PAGE_SETUP
+			}
 
-			case SYS_PAGE_TRAINER:
+			case SYS_PAGE_TRAINER: {
 				context.item_limit = 6;
 				context.col_limit = context.item != 5 ? 3 : 0;
 				for (uint8_t row = context.top_row;
@@ -1160,8 +1167,9 @@ void gui_process(uint32_t data) {
 					}
 				}
 				break; // SYS_PAGE_TRAINER
+			}
 
-			case SYS_PAGE_VERSION:
+			case SYS_PAGE_VERSION: {
 				lcd_set_cursor(30, 2 * 8);
 				lcd_write_string("Vers:", LCD_OP_SET, ALIGN_RIGHT);
 				lcd_set_cursor(36, 2 * 8);
@@ -1221,6 +1229,7 @@ void gui_process(uint32_t data) {
 						enter_bootloader();
 				}
 				break; // SYS_PAGE_VERSION
+			}
 
 			case SYS_PAGE_DIAG: {
 				uint8_t sw = keypad_get_switches();
@@ -1374,6 +1383,7 @@ void gui_process(uint32_t data) {
 			switch (context.page) {
 			case MOD_PAGE_SELECT: {
 				context.item_limit = MAX_MODELS - 1;
+				context.popup = GUI_MSG_OK_TO_PRESET_MODEL;
 				for (uint8_t row = context.top_row;
 						(row < context.top_row + LIST_ROWS)
 								&& (row <= context.item_limit); ++row) {
@@ -1397,15 +1407,15 @@ void gui_process(uint32_t data) {
 					// "preset" popup was answered "OK" so preset the model
 					if (popupRes > 0) {
 						g_eeGeneral.currModel = context.item;
-						settings_init_current_model();
+						settings_preset_current_model();
 					}
 				} else {
-					if (context.menu_mode == MENU_MODE_LIST) {
+					/*if (context.menu_mode == MENU_MODE_LIST) {
 						if (g_key_press & KEY_MENU) {
 							g_eeGeneral.currModel = context.item;
 							gui_popup(GUI_MSG_OK_TO_RESET_MODEL, 0);
 						}
-					}
+					}*/
 					if (context.menu_mode == MENU_MODE_EDIT) {
 						// select the model to use
 						g_eeGeneral.currModel = context.item;
@@ -1557,7 +1567,7 @@ void gui_process(uint32_t data) {
 					switch (popupRes) {
 					// preset
 					case 1:
-						settings_init_current_model_mixers();
+						settings_preset_current_model_mixers();
 						break;
 						// insert (duplicate?)
 					case 2:

@@ -158,7 +158,8 @@ const char *msg[GUI_MSG_MAX] = {
 		"OK:Save Cancel:Abort",
 		"Please zero throttle to continue.",
 		"Calibration data invalid, please calibrate the sticks.",
-		"OK to preset the model?",
+		"OK to preset this model?",
+		"OK to preset all settings?",
 		"Preset\nInsert\nDelete\nCopy\nPaste",/*GUI_MSG_ROW_MENU*/
 		"OK to Enter Firmware Upgrade?",/*GUI_MSG_FW_UPGRADE*/
 

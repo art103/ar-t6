@@ -92,7 +92,7 @@ uint16_t eeprom_checksum_memory(uint16_t offset, uint16_t length) {
 /**
  * @brief  Returns eeprom state character for display
  * @note
- * @retval ' ' - idel; 'E' - error ; 'B' - busy
+ * @retval ' ' - idle; 'E' - error ; 'B' - busy
  */
 char eeprom_state() {
 	switch(state){

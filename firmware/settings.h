@@ -19,9 +19,11 @@
 #include <stdint.h>
 
 void settings_init();
-void settings_load_current_model_if_changed();
-void settings_init_current_model();
-void settings_init_current_model_mixers();
+void settings_preset_all();
+void settings_preset_general();
+void settings_preset_current_model();
+void settings_preset_current_model_mixers();
+void settings_preset_current_model_limits();
 void settings_read_model_name(char model, char buf[]);
 
 #endif // _EEPROM_H
