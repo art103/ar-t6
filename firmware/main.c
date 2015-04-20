@@ -33,6 +33,104 @@
 #include "eeprom.h"
 #include "settings.h"
 #include "logo.h"
+#include "debug.h"
+#include "eeprom.h"
+
+
+// for now / TBD
+// commands are in form:
+// [cmd]xx..x\r
+// where [cmd] is command
+// xx.xx is an optional, command specific character data
+// (up to total rcv queue length of 64)
+static void remote_process(uint32_t data)
+{
+	uint16_t cmd = (char)usart_getc();
+	if( cmd )
+	switch( cmd & 0xFF ) {
+	case 'v' :
+		usart_puts("ART6-");
+		char ver[] = {'0'+VERSION_MAJOR,'.','0'+VERSION_MINOR,'.','0'+VERSION_PATCH};
+		usart_puts(ver);
+		usart_puts(" " __DATE__ " "__TIME__ " | ");
+		puts_dec(sizeof(g_eeGeneral));
+		usart_putc(' ');
+		puts_dec(sizeof(g_model));
+		usart_putc(' ');
+		puts_dec(SystemCoreClock / 1000000);
+		usart_putc(' ');
+		puts_dec(g_latency.g_tmr1Latency_min);
+		usart_putc(' ');
+		puts_dec(g_latency.g_tmr1Latency_max);
+		break;
+	case 'd' :
+		cmd = usart_getc();
+		switch(cmd & 0xFF) {
+		// dm - dump model
+		case 'm':
+			puts_mem(&g_model, sizeof(g_model));
+			break;
+		// dg - dump general
+		case 'g':
+			puts_mem(&g_eeGeneral,sizeof(g_eeGeneral));
+			break;
+		// dump eeprom
+		case 'e': {
+			for(int i = 0; i < 1<<16; i+= 32) {
+				uint8_t buf[32];
+				eeprom_read(i,sizeof(buf),&buf);
+				puts_mem(&buf,sizeof(buf));
+			}
+			break;
+		}
+		}
+		break;
+	case 'c': {
+		puts_hex4( g_eeGeneral.chkSum );
+		usart_putc(' ');
+		puts_hex4( eeprom_checksum_memory(0, sizeof(g_eeGeneral)-sizeof(g_eeGeneral.chkSum)) );
+		usart_putc(' ');
+		puts_hex4( eeprom_calc_chksum(&g_eeGeneral, sizeof(g_eeGeneral)-sizeof(g_eeGeneral.chkSum)) );
+		usart_putc(' ');
+		puts_hex4( g_model.chkSum );
+		usart_putc(' ');
+		puts_hex4( eeprom_checksum_memory(settings_model_address(g_eeGeneral.currModel),sizeof(g_model)-sizeof(g_model.chkSum)) );
+		usart_putc(' ');
+		puts_hex4( eeprom_calc_chksum(&g_model,sizeof(g_model)-sizeof(g_eeGeneral.chkSum)) );
+		}
+		break;
+	case 'l' :
+		settings_load_current_model();
+		break;
+	case 'w' :
+		usart_puts("todo write");
+		break;
+	case 'r' :
+		usart_puts("todo read");
+		break;
+	case '?' :
+		usart_puts("? r<adr>,<len> w<adr>,<len> ");
+		break;
+	default:
+		usart_putc('?');
+		break;
+	}
+	while(usart_getc()!=0);
+	usart_puts("\r\n");
+}
+
+/**
+  * @brief  Usart receive notification handler
+  * @param  data - character received
+  * @note   called in interrupt context
+  * @retval None
+  */
+static void rx_handler(char data)
+{
+	// schedule command action when CR is received (end of command)
+	if( data == '\r' )
+		task_schedule(TASK_PROCESS_REMOTE, 0, 0);
+}
 
 
 /**
@@ -59,53 +157,6 @@ void apply_settings()
 		delay_ms(2000);
 	}
 }
-
-
-// for now / TBD
-// commands are in form:
-// [c]xx..x\r
-// where [c] is a single character command
-// xx.xx is an optional, command specific character data (max 62 chars as queue length is 64)
-static void remote_process(uint32_t data)
-{
-	char cmd = (char)usart_getc();
-	switch( cmd ) {
-	case 'v' :
-		usart_puts("ART6-");
-		char ver[] = {'0'+VERSION_MAJOR,'.','0'+VERSION_MINOR,'.','0'+VERSION_PATCH};
-		usart_puts(ver);
-		usart_puts(" " __DATE__ " "__TIME__);
-		break;
-	case 'w':
-		usart_puts("todo write");
-		break;
-	case 'r':
-		usart_puts("todo read");
-		break;
-	case '?' :
-		usart_puts(" ?rw");
-		break;
-	default:
-		usart_putc('?');
-		break;
-	}
-	while(usart_getc()!=0);
-	usart_puts("\r\n");
-}
-
-/**
-  * @brief  Usart receive notification handler
-  * @param  data - character received
-  * @note   called in interrupt context
-  * @retval None
-  */
-static void rx_handler(char data)
-{
-	// schedule command action when CR is received (end of command)
-	if( data == '\r' )
-		task_schedule(TASK_PROCESS_REMOTE, 0, 0);
-}
-
 
 /**
   * @brief  Main Loop for non-IRQ based work

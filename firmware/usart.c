@@ -12,7 +12,7 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
  *
- * Author: Michal Krombholz michkrom@github.com
+ * Author: Michal Krombholz (michkrom@github.com)
  */
 
 /* Description:
@@ -102,6 +102,23 @@ uint16_t Queue_get(Queue* pCB) {
 	return ret;
 }
 
+/**
+ * @brief  Peeks into receive buffer to see if given char was received
+ * @param  b byte to check the queue for
+ * @retval returns position in the buffer starting at 1 or 0 when not present
+ */
+uint8_t Queue_peek(Queue* pCB, uint8_t b) {
+	uint8_t i = 0;
+	uint8_t gidx = pCB->gidx;
+	while( gidx != pCB->pidx ) {
+		 if( pCB->buf[gidx] == b )
+			 return i+1;
+		 i++;
+		 gidx = (gidx + i) % QUEUE_SIZE;
+	}
+	return 0;
+}
+
 ///////////////////////////////////////////////////////////////////////////////
 
 static volatile uint8_t txrunning = 0;
@@ -120,6 +137,21 @@ static void (*registered_rx_handler)(uint8_t data) = 0;
  */
 void usart_register_rx_handler(void (*rx_handler)(uint8_t data)) {
 	registered_rx_handler = rx_handler;
+}
+
+
+/**
+ * @brief  print char on uart1 non-blocking
+ * @param  c char
+ * @retval None
+ */
+void usart_putc_nb(char c) {
+#ifdef USE_QUEUE
+	Queue_put(&txbuf, c);
+	USART_ITConfig(USART1, USART_IT_TXE, ENABLE);
+#else
+	USART_SendData(USART1, c);
+#endif
 }
 
 /**
@@ -157,6 +189,17 @@ void usart_puts(char* s) {
  */
 uint16_t usart_getc() {
 	return Queue_get(&rxbuf);
+}
+
+
+
+/**
+ * @brief  Peeks into receive buffer to see if given char was received
+ * @param  b byte to check the queue for
+ * @retval returns position in the buffer or 0 when not present
+ */
+uint8_t usart_peekc(uint8_t b) {
+	return Queue_peek(&rxbuf, b);
 }
 
 

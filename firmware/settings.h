@@ -11,6 +11,8 @@
  * GNU General Public License for more details.
  *
  * Author: Richard Taylor (richard@artaylor.co.uk)
+ * Author: Michal Krombholz (michkrom@github.com)
+ *
  */
 
 #ifndef _SETTINGS_H
@@ -25,5 +27,8 @@ void settings_preset_current_model();
 void settings_preset_current_model_mixers();
 void settings_preset_current_model_limits();
 void settings_read_model_name(char model, char buf[]);
+
+uint16_t model_address(uint8_t modelNumber);
+void settings_load_current_model();
 
 #endif // _EEPROM_H

@@ -22,6 +22,9 @@
 #include "stm32f10x.h"
 #include "eeprom.h"
 
+//#define PUTS
+#include "debug.h"
+
 // forwards
 void eeprom_wait_complete(void);
 
@@ -45,7 +48,7 @@ typedef enum _state {
 // locals
 
 static volatile STATE state = STATE_ERROR;
-static volatile uint8_t read_write = 1;
+static volatile uint8_t is_read = 1;
 static volatile uint16_t addr = 0;
 static volatile DMA_InitTypeDef g_dmaInit;
 
@@ -199,7 +202,7 @@ void eeprom_read(uint16_t offset, uint16_t length, void *buffer) {
 	eeprom_wait_complete();
 
 	addr = offset;
-	read_write = 1;
+	is_read = 1;
 
 	// Configure the DMA controller, but don't enable it yet.
 	g_dmaInit.DMA_MemoryBaseAddr = (uint32_t) buffer;
@@ -236,7 +239,7 @@ void eeprom_write(uint16_t offset, uint16_t length, void *buffer) {
 	// We have to split the transfer into page writes.
 	while (written < length) {
 		addr = offset + written;
-		read_write = 0;
+		is_read = 0;
 
 		// Compute this write size but check to see if we need to round up to a page.
 		// Check only on first write when written==0
@@ -303,6 +306,7 @@ void I2C1_ER_IRQHandler(void) {
 		} else // really an error
 		{
 			state = STATE_ERROR;
+			dputcnb('E');
 		}
 	}
 }
@@ -316,6 +320,8 @@ void I2C1_ER_IRQHandler(void) {
 void I2C1_EV_IRQHandler(void) {
 	uint32_t event = I2C_GetLastEvent(I2C1);
 #define ISEV(EV) ((event & EV)==EV)
+
+	if( state != STATE_TRANSFERRING ) dputcnb('0'+state);
 
 	switch (state) {
 	case STATE_IDLE:
@@ -341,7 +347,7 @@ void I2C1_EV_IRQHandler(void) {
 
 	case STATE_ADDRESSED2:
 		if (ISEV(I2C_EVENT_MASTER_BYTE_TRANSMITTED)) {
-			if (read_write) {
+			if (is_read) {
 				state = STATE_RESTART;
 				I2C_GenerateSTART(I2C1, ENABLE);
 			} else {
@@ -359,9 +365,9 @@ void I2C1_EV_IRQHandler(void) {
 
 	case STATE_TRANSFER_START: {
 		if ((event & I2C_FLAG_ADDR) || // already master, only ADDR now hence this does not work: ISEV(I2C_EVENT_MASTER_TRANSMITTER_MODE_SELECTED) ||
-				ISEV(I2C_EVENT_MASTER_BYTE_TRANSMITTED)) {
+			ISEV(I2C_EVENT_MASTER_BYTE_TRANSMITTED)) {
 			state = STATE_TRANSFERRING;
-			DMA_Channel_TypeDef *channel = (read_write) ? DMA1_Channel7 :
+			DMA_Channel_TypeDef *channel = (is_read) ? DMA1_Channel7 :
 			DMA1_Channel6;
 			DMA_Cmd(channel, DISABLE);
 			DMA_ClearFlag(DMA1_FLAG_TC7);
@@ -370,8 +376,8 @@ void I2C1_EV_IRQHandler(void) {
 			I2C_DMALastTransferCmd(I2C1, ENABLE);
 			DMA_Cmd(channel, ENABLE);
 		}
-	}
 		break;
+	}
 	case STATE_TRANSFERRING: {
 		// transfer finished hence complete write
 		if (event & I2C_FLAG_TXE) {
@@ -382,8 +388,8 @@ void I2C1_EV_IRQHandler(void) {
 				;
 			I2C_GenerateSTART(I2C1, ENABLE);
 		}
-	}
 		break;
+	}
 
 	case STATE_COMPLETING: {
 		// addressing the eeprom successfully marks the end of write
@@ -396,12 +402,14 @@ void I2C1_EV_IRQHandler(void) {
 			I2C_ClearFlag(I2C1, I2C_FLAG_AF);
 			I2C_GenerateSTART(I2C1, ENABLE);
 		}
-
-	}
 		break;
+	}
 
 	case STATE_ERROR:
+		dputs("ER");
+		break;
 	case STATE_COMPLETE:
+		dputs("CP");
 		break;
 	}
 }
@@ -416,6 +424,7 @@ void DMA1_Channel6_IRQHandler(void) {
 	DMA_Cmd(DMA1_Channel6, DISABLE);
 	DMA_ClearFlag(DMA1_FLAG_TC6);
 	DMA_ClearITPendingBit(DMA_IT_TC);
+	dputcnb('f');
 	// dma finished transferring to the I2C but the I2C did not finished yet
 }
 
@@ -431,4 +440,5 @@ void DMA1_Channel7_IRQHandler(void) {
 	DMA_ClearITPendingBit(DMA_IT_TC);
 	state = STATE_COMPLETE;
 	I2C_GenerateSTOP(I2C1, ENABLE);
+	dputcnb('e');
 }

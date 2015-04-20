@@ -1213,20 +1213,6 @@ void gui_process(uint32_t data) {
 							TRAILING_SPACE | NEW_LINE);
 					lcd_write_string("!!DO NOT INTERRUPT!!!", LCD_OP_SET,
 							TRAILING_SPACE | NEW_LINE);
-				} else {
-					lcd_set_cursor(0, 6 * 8);
-					lcd_write_string("EPRM", LCD_OP_SET, TRAILING_SPACE);
-					lcd_write_int(sizeof(g_eeGeneral), LCD_OP_SET,
-							TRAILING_SPACE);
-					lcd_write_int(sizeof(g_model), LCD_OP_SET, TRAILING_SPACE);
-					lcd_write_string("SCCk", LCD_OP_SET, TRAILING_SPACE);
-					lcd_write_int(SystemCoreClock / 1000000, LCD_OP_SET,
-							TRAILING_SPACE | NEW_LINE);
-					lcd_write_string("Ltcy", LCD_OP_SET, TRAILING_SPACE);
-					lcd_write_int(g_latency.g_tmr1Latency_min, LCD_OP_SET,
-							INT_PAD10 | TRAILING_SPACE);
-					lcd_write_int(g_latency.g_tmr1Latency_max, LCD_OP_SET,
-							INT_PAD10 | TRAILING_SPACE);
 				}
 				// defer bootloader so the scr can get updated
 				// count down when count still non-zero

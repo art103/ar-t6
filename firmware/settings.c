@@ -11,6 +11,7 @@
  * GNU General Public License for more details.
  *
  * Author: Richard Taylor (richard@artaylor.co.uk)
+ * Author: Michal Krombholz (michkrom@github.com)
  */
 
 /* Description:
@@ -26,6 +27,9 @@
 #include "lcd.h"
 #include "tasks.h"
 
+#define DPUTS
+#include "debug.h"
+
 volatile EEGeneral g_eeGeneral;
 volatile ModelData g_model;
 volatile uint8_t g_modelInvalid = 1;
@@ -39,7 +43,7 @@ static volatile uint8_t currModel = 0xFF;
  * @param  modelNumber
  * @retval eeprom address for model
  */
-static uint16_t model_address(uint8_t modelNumber) {
+uint16_t settings_model_address(uint8_t modelNumber) {
 	if (modelNumber > MAX_MODELS - 1)
 		modelNumber = MAX_MODELS - 1;
 #if PAGE_ALIGN
@@ -73,6 +77,15 @@ static void display_busy(uint8_t busy) {
 	}
 }
 
+/**
+ * @brief  return cheksum for current model
+ * @retval checksum
+ */
+static uint16_t checksum_current_model()
+{
+	return eeprom_calc_chksum((void*)&g_model,
+				sizeof(g_model) - sizeof(g_model.chkSum));
+}
 
 /**
  * @brief  saves current model if it's checksum does not match
@@ -81,16 +94,15 @@ static void display_busy(uint8_t busy) {
  */
 static void save_current_model_if_modified() {
 	// see if current model's settings need to be saved
-	uint16_t chksum = eeprom_calc_chksum((void*) &g_model,
-						sizeof(g_model) - sizeof(g_model.chkSum));
+	uint16_t chksum = checksum_current_model();
 	if (chksum != g_model.chkSum) {
-		uint16_t modelAddress = model_address(g_eeGeneral.currModel);
+		uint16_t modelAddress = settings_model_address(g_eeGeneral.currModel);
 		g_model.chkSum = chksum;
 		display_busy(1);
 		eeprom_write(modelAddress, sizeof(g_model), (void*) &g_model);
 		// check after write
-		unsigned cs =
-				eeprom_checksum_memory(modelAddress, sizeof(g_model) - 2);
+		unsigned cs = eeprom_checksum_memory(modelAddress,
+				sizeof(g_model) - sizeof(g_model.chkSum));
 		if (chksum != cs) {
 			gui_popup(GUI_MSG_EEPROM_INVALID, 0);
 		}
@@ -129,11 +141,6 @@ void settings_preset_general() {
 	g_eeGeneral.inactivityTimer = 10;
 	if (g_eeGeneral.currModel < MAX_MODELS)
 		g_eeGeneral.currModel = MAX_MODELS - 1;
-
-	/*
-	g_eeGeneral.chkSum =
-			eeprom_calc_chksum((void*) &g_eeGeneral, sizeof(EEGeneral) - 2);
-	*/
 }
 
 /**
@@ -208,15 +215,26 @@ void settings_load_current_model() {
 		g_eeGeneral.currModel = MAX_MODELS - 1;
 	// prevent others to use model data as it may be invalid for a moment
 	g_modelInvalid = 1;
-	eeprom_read(model_address(g_eeGeneral.currModel), sizeof(g_model),
+	int modelAddr = settings_model_address(g_eeGeneral.currModel);
+	eeprom_read(modelAddr, sizeof(g_model),
 			(void*) &g_model);
-	uint16_t chksum = eeprom_calc_chksum((void*) &g_model,
-			sizeof(g_model) - - sizeof(g_model.chkSum));
+	uint16_t chksum = checksum_current_model();
 	if (chksum != g_model.chkSum) {
+		dputs("model CS bad on load ");
+		dputs_hex4(chksum);
+		dputs(" ");
+		dputs_hex4(g_model.chkSum);
+		dputs(" ");
+		uint16_t chksum2 = eeprom_checksum_memory(modelAddr,
+				sizeof(g_model) - sizeof(g_model.chkSum));
+		dputs_hex4( chksum2 );
+		dputs("\r\n");
+
 		settings_preset_current_model();
 		// set the checksum so the empty model does not get saved
 		g_model.chkSum = eeprom_calc_chksum((void*) &g_model,
 				sizeof(g_model) - sizeof(g_model.chkSum));
+
 		//TODO: give user a warning
 	}
 	// make sure the string is terminated, by all means!
@@ -234,7 +252,7 @@ void settings_load_current_model() {
  */
 void settings_read_model_name(char model, char buf[MODEL_NAME_LEN]) {
 	model = model < MAX_MODELS ? model : MAX_MODELS - 1;
-	eeprom_read(model_address(model) + offsetof(ModelData, name),
+	eeprom_read(settings_model_address(model) + offsetof(ModelData, name),
 	MODEL_NAME_LEN, buf);
 	buf[MODEL_NAME_LEN - 1] = 0;
 }
@@ -283,6 +301,11 @@ static void settings_process(uint32_t data) {
 	save_current_model_if_modified();
 	load_current_model_if_changed();
 
+#if 0
+	dputs_hex4(eeprom_calc_chksum((void*) &g_model,
+			sizeof(g_model) - sizeof(g_model.chkSum)));
+#endif
+
 	task_schedule(TASK_PROCESS_EEPROM, 0, 1000);
 }
 
@@ -300,6 +323,12 @@ void settings_init(void) {
 	uint16_t chksum =
 			eeprom_calc_chksum((void*) &g_eeGeneral, sizeof(EEGeneral) - 2);
 	if (chksum != g_eeGeneral.chkSum) {
+		dputs("eeprom general CS bad ");
+		dputs_hex4(chksum);
+		dputs_hex4(g_eeGeneral.chkSum);
+		dputs("\r\n");
+		puts_mem(&g_eeGeneral, sizeof(g_eeGeneral));
+
 		gui_popup(GUI_MSG_EEPROM_INVALID, 0);
 		settings_preset_general();
 	}
