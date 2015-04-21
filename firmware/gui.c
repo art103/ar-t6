@@ -1727,7 +1727,7 @@ void gui_process(uint32_t data) {
 				// print label
 				{
 					char s[4] = "CV1";
-					s[2] += sub_edit_item+1;
+					s[2] = '1'+sub_edit_item;
 					lcd_set_cursor(6 * 6, 0);
 					lcd_write_string(s, LCD_OP_CLR, FLAGS_NONE);
 				}
