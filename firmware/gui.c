@@ -81,6 +81,7 @@ static volatile uint8_t g_update_type = 0;
 static GUI_LAYOUT g_main_layout = GUI_LAYOUT_MAIN1;
 static int8_t g_menu_mode_dir = 1;
 
+
 // MenuContext used for Page/Subpage edits (System&Model)
 typedef struct {
 	uint8_t page; // current menu page
@@ -108,7 +109,7 @@ typedef struct {
 static void gui_show_sticks(void);
 static void gui_show_switches(void);
 static void gui_show_battery(int x, int y);
-static void gui_show_timer(int x, int y);
+static void gui_show_timer(int x, int y, int seconds);
 static void gui_update_trim(void);
 static void gui_draw_trim(int x, int y, uint8_t h_v, int value);
 static void gui_draw_slider(int x, int y, int w, int h, int range, int value);
@@ -256,6 +257,56 @@ static char* prefill_string(char* str, int len) {
 	return str;
 }
 
+///////////////////////////////////////////////////////////////////////////////
+// TODO: timers deserve separate module
+
+static uint32_t minute_tick = 0;
+static uint32_t timer_tick = 0;
+static int16_t timer = 0;
+
+static void timer_update() {
+	if (timer_tick != 0) {
+		if (system_ticks >= timer_tick + 1000) {
+			timer += g_model.tmrDir ? 1 : -1;
+			timer_tick += 1000;
+			// reached timer val
+			if( g_model.tmrVal - timer == 0  )
+				sound_play_tune(AU_INACTIVITY);
+			// count down
+			if( g_eeGeneral.preBeep ) {
+				int d = (int)timer - (int)g_model.tmrVal;
+				d = g_model.tmrDir ? -d : d;
+				if( d > 0 && d  < 10 )
+				{
+					sound_play_tone(700-d*50, 20);
+				}
+			}
+		}
+	}
+	// one mninute beeps
+	if( g_eeGeneral.minuteBeep && system_ticks - minute_tick > 1000*60 ) {
+		minute_tick = system_ticks;
+		sound_play_tone(800, 20);
+		//sound_play_tune(AU_INACTIVITY);
+	}
+}
+
+static void timer_pause() {
+	if (timer_tick == 0)
+		timer_tick = system_ticks;
+	else
+		timer_tick = 0;
+}
+
+
+static void timer_restart() {
+	timer = g_model.tmrDir ? 0 : g_model.tmrVal;
+	timer_tick = system_ticks;
+}
+
+///////////////////////////////////////////////////////////////////////////////
+
+
 /**
  * @brief  sets up menu context parameters for menu and given list row
  * @note
@@ -264,7 +315,8 @@ static char* prefill_string(char* str, int len) {
  * @param  col list col we are working on
  * @retval None
  */
-static void prepare_context_for_list_rowcol(MenuContext* pCtx, uint8_t row,
+static void prepare_context_for_list_rowcol(
+		MenuContext* pCtx, uint8_t row,
 		uint8_t col) {
 	if (pCtx->col_limit == 0)
 		pCtx->col = 0;
@@ -351,6 +403,9 @@ void gui_init(void) {
 void gui_process(uint32_t data) {
 	uint8_t full = FALSE;
 
+	// TODO: separate task
+	timer_update();
+
 	// clear popup reult until OK/SEL/CANCEL pressed,
 	// then only allow one chance to process it (for safety of it was not handled)
 	g_popup_result = GUI_POPUP_RESULT_NONE;
@@ -406,16 +461,13 @@ void gui_process(uint32_t data) {
 		lcd_set_cursor(0, 0);
 
 		if (g_current_layout >= GUI_LAYOUT_MAIN1
-				&& g_current_layout <= GUI_LAYOUT_MAIN4) {
+			&& g_current_layout <= GUI_LAYOUT_MAIN4) {
 			// Trim
 			gui_update_trim();
-
 			// Update Battery icon
 			gui_show_battery(83, 0);
-
 			// Update the timer
-			gui_show_timer(39, 17);
-
+			gui_show_timer(37, 17, timer);
 			// Model Name
 			lcd_set_cursor(8, 0);
 			lcd_write_string((char*) g_model.name, LCD_OP_SET, CHAR_2X);
@@ -424,6 +476,7 @@ void gui_process(uint32_t data) {
 		full = TRUE;
 		g_new_layout = GUI_LAYOUT_NONE;
 	}
+
 
 	// If we have a new popup to display, do it now.
 	if (g_new_msg) {
@@ -469,9 +522,9 @@ void gui_process(uint32_t data) {
 		}
 
 		// Update the timer
-		if ((g_update_type & UPDATE_TIMER) != 0) {
-			gui_show_timer(39, 17);
-		}
+		//if ((g_update_type & UPDATE_TIMER) != 0) {
+			gui_show_timer(37, 17, timer);
+		//}
 	}
 
 	switch (g_current_layout) {
@@ -603,20 +656,8 @@ void gui_process(uint32_t data) {
 		 * Displays model name, trim, battery and timer plus runtime timer
 		 */
 	case GUI_LAYOUT_MAIN4: {
-		static uint32_t timer_tick = 0;
-		static uint16_t timer = 0;
 
-		if (timer_tick != 0) {
-			if (system_ticks >= timer_tick + 1000) {
-				timer++;
-				timer_tick = system_ticks;
-			}
-		}
-
-		lcd_set_cursor(37, 40);
-		lcd_write_int(timer / 60, LCD_OP_SET, INT_PAD10 | CHAR_4X);
-		lcd_write_char(':', LCD_OP_SET, CHAR_4X);
-		lcd_write_int(timer % 60, LCD_OP_SET, INT_PAD10 | CHAR_4X);
+		gui_show_timer(37, 40, g_model.tmrVal);
 
 		if ((g_update_type & UPDATE_KEYPRESS) != 0) {
 			if (g_key_press & KEY_RIGHT)
@@ -624,12 +665,9 @@ void gui_process(uint32_t data) {
 			else if (g_key_press & KEY_LEFT)
 				gui_navigate(GUI_LAYOUT_MAIN3);
 			else if (g_key_press & (KEY_MENU | KEY_CANCEL))
-				timer = 0;
+				timer_pause();
 			else if (g_key_press & (KEY_OK | KEY_SEL)) {
-				if (timer_tick == 0)
-					timer_tick = system_ticks;
-				else
-					timer_tick = 0;
+				timer_restart();
 			}
 		}
 	}
@@ -2029,12 +2067,12 @@ static void gui_show_battery(int x, int y) {
  * @param  x, y: Position on screen (starting cursor)
  * @retval None
  */
-static void gui_show_timer(int x, int y) {
+static void gui_show_timer(int x, int y, int seconds) {
 	// Timer
 	lcd_set_cursor(x, y);
-	lcd_write_int(g_model.tmrVal / 60, LCD_OP_SET, INT_PAD10 | CHAR_4X);
-	lcd_write_string(":", LCD_OP_SET, CHAR_2X);
-	lcd_write_int(g_model.tmrVal % 60, LCD_OP_SET, INT_PAD10 | CHAR_4X);
+	lcd_write_int(seconds / 60, LCD_OP_SET, INT_PAD10 | CHAR_4X);
+	lcd_write_string(":", LCD_OP_SET, CHAR_4X);
+	lcd_write_int(seconds % 60, LCD_OP_SET, INT_PAD10 | CHAR_4X);
 }
 
 /**

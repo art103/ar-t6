@@ -303,7 +303,7 @@ static void settings_process(uint32_t data) {
 
 #if 0
 	dputs_hex4(eeprom_calc_chksum((void*) &g_model,
-			sizeof(g_model) - sizeof(g_model.chkSum)));
+			   sizeof(g_model) - sizeof(g_model.chkSum)));
 #endif
 
 	task_schedule(TASK_PROCESS_EEPROM, 0, 1000);
@@ -330,7 +330,7 @@ void settings_init(void) {
 		puts_mem(&g_eeGeneral, sizeof(g_eeGeneral));
 
 		gui_popup(GUI_MSG_EEPROM_INVALID, 0);
-		settings_preset_general();
+		//settings_preset_general();
 	}
 	task_register(TASK_PROCESS_EEPROM, settings_process);
 	settings_process(0);
