@@ -8,6 +8,10 @@ _estack = 0x20002000;    /* SRAM end (8KB) */
 _Min_Heap_Size = 0;      /* required amount of heap  */
 _Min_Stack_Size = 0x800; /* required amount of stack */
 
+/* keep consistent with MEMEORY RAM  below */
+_RAM_Start_ = 0x20000000;
+_RAM_End_   = 0x20002000;
+
 /* Specify the memory areas */
 MEMORY
 {

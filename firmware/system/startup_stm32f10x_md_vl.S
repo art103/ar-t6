@@ -60,34 +60,42 @@ defined in linker script */
   .section  .text.Reset_Handler
   .weak  Reset_Handler
   .type  Reset_Handler, %function
+
 Reset_Handler:
 
+/* Zero all RAM */
+  movs r0, #0
+  ldr  r1, =_RAM_Start_
+  ldr  r2, =_RAM_End_
+ZeroRamLoop:
+  str   r0,[r1],#4
+  cmp   r1,r2
+  bcc   ZeroRamLoop
+
 /* Copy the data segment initializers from flash to SRAM */
-  movs r4, #0
   ldr  r1, =_sidata
   ldr  r2, =_sdata
   ldr  r3, =_edata
   b    CopyDataStart
-LoopCopyData:
-  ldr   r5,[r1, r4]
-  str   r5,[r2, r4]
-  adds  r4,r4,#4
+CopyDataLoop:
+  ldr   r5,[r1],#4
+  str   r5,[r2],#4
 CopyDataStart:
-  adds  r5,r2,r4
-  cmp   r5,r3
-  bcc   LoopCopyData
+  cmp   r2,r3
+  bcc   CopyDataLoop
 
 /* Zero fill the bss segment. */
+/** zeroing all RAM at the start so no need to do this here
   movs  r1, #0
   ldr   r2, =_sbss
   ldr   r3, =_ebss
-  b     LoopFillZeroStart
-LoopFillZero:
-  str   r1,[r2]
-  adds  r2,r2,#4
-LoopFillZeroStart:
+  b     FillZeroStart
+FillZeroLoop:
+  str   r1,[r2],#4
+FillZeroStart:
   cmp   r2,r3
-  bcc   LoopFillZero
+  bcc   FillZeroLoop
+**/
 
 /* Call the clock system intitialization function.*/
   bl  SystemInit
