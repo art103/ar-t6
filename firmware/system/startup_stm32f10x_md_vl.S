@@ -10,7 +10,7 @@
  *                - Set the initial SP
  *                - Set the initial PC == Reset_Handler,
  *                - Set the vector table entries with the exceptions ISR address
- *                - Configure the clock system                 
+ *                - Configure the clock system
  *                - Branches to main in the C library (which eventually
  *                  calls main()).
  *            After Reset the Cortex-M3 processor is in Thread mode,
@@ -35,10 +35,10 @@
 .global  g_pfnVectors
 .global  Default_Handler
 
-/* start address for the initialization values of the .data section. 
+/* start address for the initialization values of the .data section.
 defined in linker script */
 .word  _sidata
-/* start address for the .data section. defined in linker script */  
+/* start address for the .data section. defined in linker script */
 .word  _sdata
 /* end address for the .data section. defined in linker script */
 .word  _edata
@@ -52,7 +52,7 @@ defined in linker script */
  * @brief  This is the code that gets called when the processor first
  *          starts execution following a reset event. Only the absolutely
  *          necessary set is performed, after which the application
- *          supplied main() routine is called. 
+ *          supplied main() routine is called.
  * @param  None
  * @retval None
 */
@@ -62,46 +62,46 @@ defined in linker script */
   .type  Reset_Handler, %function
 Reset_Handler:
 
-/* Copy the data segment initializers from flash to SRAM */  
-  movs  r1, #0
-  b     LoopCopyDataInit
+/* Copy the data segment initializers from flash to SRAM */
+  movs r4, #0
+  ldr  r1, =_sidata
+  ldr  r2, =_sdata
+  ldr  r3, =_edata
+  b    CopyDataStart
+LoopCopyData:
+  ldr   r5,[r1, r4]
+  str   r5,[r2, r4]
+  adds  r4,r4,#4
+CopyDataStart:
+  adds  r5,r2,r4
+  cmp   r5,r3
+  bcc   LoopCopyData
 
-CopyDataInit:
-  ldr   r3, =_sidata
-  ldr   r3, [r3, r1]
-  str   r3, [r0, r1]
-  adds  r1, r1, #4
-    
-LoopCopyDataInit:
-  ldr   r0, =_sdata
-  ldr   r3, =_edata
-  adds  r2, r0, r1
-  cmp   r2, r3
-  bcc   CopyDataInit
+/* Zero fill the bss segment. */
+  movs  r1, #0
   ldr   r2, =_sbss
-  b     LoopFillZerobss
-/* Zero fill the bss segment. */  
-FillZerobss:
-  movs  r3, #0
-  str   r3, [r2], #4
-    
-LoopFillZerobss:
-  ldr   r3, = _ebss
-  cmp   r2, r3
-  bcc   FillZerobss
+  ldr   r3, =_ebss
+  b     LoopFillZeroStart
+LoopFillZero:
+  str   r1,[r2]
+  adds  r2,r2,#4
+LoopFillZeroStart:
+  cmp   r2,r3
+  bcc   LoopFillZero
+
 /* Call the clock system intitialization function.*/
-  bl  SystemInit   
+  bl  SystemInit
 /* Call the application's entry point.*/
   bl    main
-  bx    lr    
+  bx    lr
 .size   Reset_Handler, .-Reset_Handler
 
 /**
- * @brief  This is the code that gets called when the processor receives an 
+ * @brief  This is the code that gets called when the processor receives an
  *         unexpected interrupt. This simply enters an infinite loop, preserving
  *         the system state for examination by a debugger.
- * @param  None     
- * @retval None       
+ * @param  None
+ * @retval None
 */
   .section  .text.Default_Handler,"ax",%progbits
 Default_Handler:
@@ -113,8 +113,8 @@ Infinite_Loop:
 * The minimal vector table for a Cortex M3. Note that the proper constructs
 * must be placed on this to ensure that it ends up at physical address
 * 0x0000.0000.
-* 
-******************************************************************************/    
+*
+******************************************************************************/
   .section  .isr_vector,"a",%progbits
   .type  g_pfnVectors, %object
   .size  g_pfnVectors, .-g_pfnVectors
@@ -178,7 +178,7 @@ g_pfnVectors:
   .word  USART3_IRQHandler
   .word  EXTI15_10_IRQHandler
   .word  RTCAlarm_IRQHandler
-  .word  CEC_IRQHandler  
+  .word  CEC_IRQHandler
   .word  0
   .word  0
   .word  0
@@ -186,12 +186,12 @@ g_pfnVectors:
   .word  0
   .word  0
   .word  0
-  .word  0  
+  .word  0
   .word  0
   .word  0
   .word  0
   .word  TIM6_DAC_IRQHandler
-  .word  TIM7_IRQHandler  
+  .word  TIM7_IRQHandler
   .word  0
   .word  0
   .word  0
@@ -235,24 +235,24 @@ g_pfnVectors:
   .word  0
   .word  0
   .word  0
-  .word  BootRAM          /* @0x01CC. This is for boot in RAM mode for 
+  .word  BootRAM          /* @0x01CC. This is for boot in RAM mode for
                             STM32F10x Medium Value Line Density devices. */
-   
+
 /*******************************************************************************
-* Provide weak aliases for each Exception handler to the Default_Handler. 
-* As they are weak aliases, any function with the same name will override 
+* Provide weak aliases for each Exception handler to the Default_Handler.
+* As they are weak aliases, any function with the same name will override
 * this definition.
 *******************************************************************************/
-    
+
   .weak  NMI_Handler
   .thumb_set NMI_Handler,Default_Handler
-  
+
   .weak  HardFault_Handler
   .thumb_set HardFault_Handler,Default_Handler
-  
+
   .weak  MemManage_Handler
   .thumb_set MemManage_Handler,Default_Handler
-  
+
   .weak  BusFault_Handler
   .thumb_set BusFault_Handler,Default_Handler
 
@@ -392,6 +392,6 @@ g_pfnVectors:
   .thumb_set TIM6_DAC_IRQHandler,Default_Handler
 
   .weak  TIM7_IRQHandler
-  .thumb_set TIM7_IRQHandler,Default_Handler  
-  
+  .thumb_set TIM7_IRQHandler,Default_Handler
+
 /******************* (C) COPYRIGHT 2010 STMicroelectronics *****END OF FILE****/
