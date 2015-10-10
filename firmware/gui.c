@@ -146,7 +146,7 @@ for(int col = 0;\
 
 #define GUI_EDIT_ENUM( VAR, MIN, MAX, LABELS ) \
 		if (context.edit) VAR = gui_int_edit(VAR, context.inc, MIN, MAX); \
-		lcd_write_string((char*)LABELS[VAR], context.op_item, FLAGS_NONE);
+		lcd_write_string(LABELS[VAR], context.op_item, FLAGS_NONE);
 
 #define GUI_EDIT_STR( VAR ) \
 			prefill_string((char*)VAR, sizeof(VAR));\

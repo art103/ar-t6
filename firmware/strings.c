@@ -13,10 +13,14 @@
  * Author: Richard Taylor (richard@artaylor.co.uk)
  */
 
-#include "stm32f10x.h"
 #include "strings.h"
 
-const char *switches[NUM_SWITCHES+1] = {
+
+// declaring arrays to hold *const (constant pointers)
+// makes gcc put these arrays in rodata hence in flash
+// otherwise they would have to me marked with __attribute__((section(".rodata")))
+
+const char * const switches[NUM_SWITCHES+1]  = {
 		"---",
 		"SWA",
 		"SWB",
@@ -24,19 +28,22 @@ const char *switches[NUM_SWITCHES+1] = {
 		"SWD",
 };
 
-const char *sticks[NUM_STICKS] = {
+
+const char * const sticks[NUM_STICKS] = {
 		"AIL",
 		"ELE",
 		"THR",
 		"RUD",
 };
 
-const char *pots[NUM_POTS] = {
+
+const char * const pots[NUM_POTS] = {
 		"VRA",
 		"VRB",
 };
 
-const char *sources[SRC_MAX] = {
+
+const char * const sources[SRC_MAX] = {
 		"HALF",
 		"FULL",
 		"CYC",	// CYC1-CYC3
@@ -45,14 +52,16 @@ const char *sources[SRC_MAX] = {
 		"ch"	// Trainer SRC
 };
 
-const char * mix_warm[MIX_WARN_MAX] = {
+
+const char * const mix_warm[MIX_WARN_MAX] = {
 		"off"
 		"W1",
 		"W2",
 		"W3",
 };
 
-const char * mix_src[MIX_SRCS_MAX] = {
+
+const char * const mix_src[MIX_SRCS_MAX] = {
 		"off",
 		"AIL",
 		"ELE",
@@ -86,15 +95,18 @@ const char * mix_src[MIX_SRCS_MAX] = {
 };
 
 // must follow _mix_mode and
-const char *mix_mode_hdr = "mode";
-const char *mix_mode[MIX_MODE_MAX] = {
+const char * const mix_mode_hdr = "mode";
+
+
+const char * const mix_mode[MIX_MODE_MAX] = {
 		"+=",
 		"*=",
 		":=",
 };
 
 
-const char *mix_curve[MIX_CURVE_MAX] = {
+
+const char * const mix_curve[MIX_CURVE_MAX] = {
 		"x",
 		"x>0",
 		"x<0",
@@ -112,7 +124,8 @@ const char *mix_curve[MIX_CURVE_MAX] = {
 		"cv8",
 };
 
-const char* expodr[EXPODR_MAX] = {
+
+const char * const expodr[EXPODR_MAX] = {
 		"CH ",   // 0: 0
 		"EXPO",  // 1:
 		"",      // 2: 1 2
@@ -122,33 +135,38 @@ const char* expodr[EXPODR_MAX] = {
 		"Sw2"    // 6: 6
 };
 
-const char* drlevel[3] = {
+
+const char * const drlevel[3] = {
 		"Hi",
 		"Md",
 		"Lo"
 };
 
-const char *menu_on_off[4] = {
+
+const char * const menu_on_off[4] = {
 		"OFF",
 		"ON",
 		"off",
 		"on"
 };
 
-const char *channel_order[CHAN_ORDER_MAX] = {
+
+const char * const channel_order[CHAN_ORDER_MAX] = {
 		"ATER",
 		"AETR",
 		"RTEA",
 		"RETA",
 };
 
-const char *system_menu_beeper[BEEPER_MAX] = {
+
+const char * const system_menu_beeper[BEEPER_MAX] = {
 		"Silent",
 		"NoKey",
 		"Normal",
 };
 
-const char *msg[GUI_MSG_MAX] = {
+
+const char * const msg[GUI_MSG_MAX] = {
 		"",
 		"Press [OK] to start Calibration.",
 		"Move all controls to their extents then press [OK].",
@@ -186,7 +204,8 @@ const char *msg[GUI_MSG_MAX] = {
 		"CURVE",
 };
 
-const char *system_menu_list1[SYS_MENU_LIST1_LEN] = {
+
+const char * const system_menu_list1[SYS_MENU_LIST1_LEN] = {
 		"Owner Name",
 		"Beeper",
 		"Volume",
@@ -211,7 +230,8 @@ const char *system_menu_list1[SYS_MENU_LIST1_LEN] = {
 		"Mode",
 };
 
-const char *model_menu_list1[MOD_MENU_LIST1_LEN] = {
+
+const char * const model_menu_list1[MOD_MENU_LIST1_LEN] = {
 		"Model Name",
 		"Timer Mode",
 		"Timer Dir",
@@ -226,7 +246,8 @@ const char *model_menu_list1[MOD_MENU_LIST1_LEN] = {
 		"PPM Ex Frm Wdth",
 };
 
-const char *mixer_edit_list1[MIXER_EDIT_LIST1_LEN] = {
+
+const char * const mixer_edit_list1[MIXER_EDIT_LIST1_LEN] = {
 		"Source",
 		"Weight",
 		"Offset",
@@ -244,7 +265,8 @@ const char *mixer_edit_list1[MIXER_EDIT_LIST1_LEN] = {
 };
 
 
-const char* timer_modes[] = {
+
+const char * const timer_modes[] = {
 		"Off",
 		"Abs",
 		"Stk",
@@ -253,23 +275,25 @@ const char* timer_modes[] = {
 		"!m_sw/!m_sw"
 };
 
-const char* dir_labels[] = {
+
+const char * const dir_labels[] = {
 		"Down",
 		"Up",
 };
 
 
-const char* inverse_labels[] = {
+
+const char * const inverse_labels[] = {
 		"---",
 		"INV"
 };
 
 
 // TODO: what are they?
-const char* safety_switch_mode_labels[] = {
+
+const char * const safety_switch_mode_labels[] = {
 		"M0?",
 		"M1?",
 		"M2?",
 		"M3?"
 };
-

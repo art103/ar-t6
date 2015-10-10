@@ -112,27 +112,27 @@ enum _menu_beeper {
 	BEEPER_SILENT = 0, BEEPER_NOKEY, BEEPER_NORMAL, BEEPER_MAX
 };
 
-extern const char *switches[NUM_SWITCHES + 1];
-extern const char *sticks[NUM_STICKS];
-extern const char *pots[NUM_POTS];
-extern const char *sources[SRC_MAX];
-extern const char *mix_mode_hdr;
-extern const char *mix_mode[MIX_MODE_MAX];
-extern const char *mix_src[MIX_SRCS_MAX];
-extern const char *mix_warn[MIX_WARN_MAX];
-extern const char *mix_curve[MIX_CURVE_MAX];
-extern const char *expodr[EXPODR_MAX];
-extern const char* drlevel[3];
-extern const char *menu_on_off[4];
-const char *channel_order[CHAN_ORDER_MAX];
-extern const char *system_menu_beeper[BEEPER_MAX];
-extern const char *msg[GUI_MSG_MAX];
-extern const char *system_menu_list1[SYS_MENU_LIST1_LEN];
-extern const char *model_menu_list1[MOD_MENU_LIST1_LEN];
-extern const char *mixer_edit_list1[MIXER_EDIT_LIST1_LEN];
-extern const char *timer_modes[];
-extern const char *dir_labels[];
-extern const char *inverse_labels[];
-extern const char* safety_switch_mode_labels[];
+extern const char * const switches[NUM_SWITCHES + 1];
+extern const char * const sticks[NUM_STICKS];
+extern const char * const pots[NUM_POTS];
+extern const char * const sources[SRC_MAX];
+extern const char * const mix_mode_hdr;
+extern const char * const mix_mode[MIX_MODE_MAX];
+extern const char * const mix_src[MIX_SRCS_MAX];
+extern const char * const mix_warn[MIX_WARN_MAX];
+extern const char * const mix_curve[MIX_CURVE_MAX];
+extern const char * const expodr[EXPODR_MAX];
+extern const char * const drlevel[3];
+extern const char * const menu_on_off[4];
+extern const char * const channel_order[CHAN_ORDER_MAX];
+extern const char * const system_menu_beeper[BEEPER_MAX];
+extern const char * const msg[GUI_MSG_MAX];
+extern const char * const system_menu_list1[SYS_MENU_LIST1_LEN];
+extern const char * const model_menu_list1[MOD_MENU_LIST1_LEN];
+extern const char * const mixer_edit_list1[MIXER_EDIT_LIST1_LEN];
+extern const char * const timer_modes[];
+extern const char * const dir_labels[];
+extern const char * const inverse_labels[];
+extern const char * const safety_switch_mode_labels[];
 
 #endif // _STRINGS_H

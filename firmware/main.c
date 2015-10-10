@@ -50,7 +50,7 @@ static void remote_process(uint32_t data)
 	switch( cmd & 0xFF ) {
 	case 'v' :
 		usart_puts("ART6-");
-		char ver[] = {'0'+VERSION_MAJOR,'.','0'+VERSION_MINOR,'.','0'+VERSION_PATCH};
+		const char ver[] = {'0'+VERSION_MAJOR,'.','0'+VERSION_MINOR,'.','0'+VERSION_PATCH};
 		usart_puts(ver);
 		usart_puts(" " __DATE__ " "__TIME__ " | ");
 		puts_dec(sizeof(g_eeGeneral));

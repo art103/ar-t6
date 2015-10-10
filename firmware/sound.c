@@ -32,30 +32,20 @@
 #define BUZZER_PIN	(1 << 8)
 
 static volatile uint32_t stop_time = 0;
-
-static const uint16_t tune_1[] = {
-		400, 100,
-		500, 100,
-		600, 100,
-		800, 100,
-		0, 0
-};
-
-static const uint16_t *tunes[] = {
-	tune_1
-};
-
 static volatile const uint16_t *tune = 0;
 
+static const uint16_t tune_1[] =
+		{ 400, 100, 500, 100, 600, 100, 800, 100, 0, 0 };
+
+static const uint16_t * const tunes[] = { tune_1 };
 
 /**
-  * @brief  Initialise the sound timer
-  * @note	Once running, this is an autonomous IRQ driven setup.
-  * @param  None.
-  * @retval None.
-  */
-void sound_init(void)
-{
+ * @brief  Initialise the sound timer
+ * @note	Once running, this is an autonomous IRQ driven setup.
+ * @param  None.
+ * @retval None.
+ */
+void sound_init(void) {
 	GPIO_InitTypeDef gpioInit;
 	NVIC_InitTypeDef nvicInit;
 	TIM_TimeBaseInitTypeDef timInit;
@@ -78,7 +68,7 @@ void sound_init(void)
 	TIM_OCStructInit(&timOcInit);
 
 	// 1MHz time base
-	timInit.TIM_Prescaler =  SystemCoreClock/1000000 - 1;
+	timInit.TIM_Prescaler = SystemCoreClock / 1000000 - 1;
 	TIM_TimeBaseInit(TIM1, &timInit);
 
 	// TIM1 (Tone Output)
@@ -96,18 +86,17 @@ void sound_init(void)
 	// Enable Timer interrupts
 	TIM_ITConfig(TIM1, TIM_FLAG_CC1, ENABLE);
 
-    // Configure the Interrupt priority to low.
-    nvicInit.NVIC_IRQChannelPreemptionPriority = 14;
-    nvicInit.NVIC_IRQChannelSubPriority = 15;
-    nvicInit.NVIC_IRQChannelCmd = ENABLE;
-    nvicInit.NVIC_IRQChannel = TIM1_CC_IRQn;
-    NVIC_Init(&nvicInit);
+	// Configure the Interrupt priority to low.
+	nvicInit.NVIC_IRQChannelPreemptionPriority = 14;
+	nvicInit.NVIC_IRQChannelSubPriority = 15;
+	nvicInit.NVIC_IRQChannelCmd = ENABLE;
+	nvicInit.NVIC_IRQChannel = TIM1_CC_IRQn;
+	NVIC_Init(&nvicInit);
 
-    sound_play_tune(0);
+	sound_play_tune(0);
 }
 
-void sound_set_volume(uint8_t volume)
-{
+void sound_set_volume(uint8_t volume) {
 	TIM_OCInitTypeDef timOcInit;
 
 	TIM_OCStructInit(&timOcInit);
@@ -123,37 +112,34 @@ void sound_set_volume(uint8_t volume)
 }
 
 /**
-  * @brief  Play a tune at index n.
-  * @note
-  * @param  tune: Index of the tune.
-  * @retval None.
-  */
-void sound_play_tune(TUNE index)
-{
+ * @brief  Play a tune at index n.
+ * @note
+ * @param  tune: Index of the tune.
+ * @retval None.
+ */
+void sound_play_tune(TUNE index) {
 	// ToDo: Add some more tunes :)
 	index = 0;
 
 	tune = tunes[index];
 
-    if (tune != 0)
-    {
+	if (tune != 0) {
 		sound_play_tone(tune[0], tune[1]);
 		tune += 2;
 
 		if (*tune == 0)
 			tune = 0;
-    }
+	}
 }
 
 /**
-  * @brief  Play a tone at freq Hz for duration ms.
-  * @note
-  * @param  freq: Frequency of the tone in Hz.
-  * @param  duration: Duration of the tone in ms.
-  * @retval None.
-  */
-void sound_play_tone(uint16_t freq, uint16_t duration)
-{
+ * @brief  Play a tone at freq Hz for duration ms.
+ * @note
+ * @param  freq: Frequency of the tone in Hz.
+ * @param  duration: Duration of the tone in ms.
+ * @retval None.
+ */
+void sound_play_tone(uint16_t freq, uint16_t duration) {
 	stop_time = system_ticks + duration;
 
 	TIM_SetAutoreload(TIM1, 1000000 / freq);
@@ -161,27 +147,23 @@ void sound_play_tone(uint16_t freq, uint16_t duration)
 }
 
 /**
-  * @brief  Timer 1 CC Interrupt Handler
-  * @note	Used as a tone generator.
-  * @param  None
-  * @retval None
-  */
-void TIM1_CC_IRQHandler(void)
-{
-    TIM_ClearITPendingBit(TIM1, TIM_FLAG_CC1);
+ * @brief  Timer 1 CC Interrupt Handler
+ * @note	Used as a tone generator.
+ * @param  None
+ * @retval None
+ */
+void TIM1_CC_IRQHandler(void) {
+	TIM_ClearITPendingBit(TIM1, TIM_FLAG_CC1);
 
-    if (system_ticks > stop_time)
-    {
-        if (tune != 0)
-        {
+	if (system_ticks > stop_time) {
+		if (tune != 0) {
 			sound_play_tone(tune[0], tune[1]);
 			tune += 2;
 
 			if (*tune == 0)
 				tune = 0;
-        }
-        else
-        	TIM_Cmd(TIM1, DISABLE);
-    }
+		} else
+			TIM_Cmd(TIM1, DISABLE);
+	}
 
 }
