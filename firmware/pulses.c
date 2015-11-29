@@ -240,17 +240,18 @@ static void pulses_setup(void)
   */
 void pulses_setup_ppm( uint8_t proto )
 {
-	// bail out when model is in flux (read from eeprom) to avoid miscomputation of chanel#/start and hence pointer gone wild
+	// bail out when model is in flux (read from eeprom) to avoid miscomputation of channel#/start and hence pointer gone wild
 	if( g_modelInvalid )
 		return;
 
-	uint8_t startChan = g_model.ppmStart;
 	uint16_t position = 0; // Running total so we can avoid resetting the timer count and avoid jitter.
 
 	// Total frame length = 22500usec
 	// each pulse is 0.5..2.5ms long including a 300us stop tail
-	uint16_t *ptr = (proto == PROTO_PPM) ? pulses_1us.pword : &pulses_1us.pword[PULSES_WORD_SIZE/2] ;
-	uint8_t p = g_model.ppmNCH; // Channels
+	uint16_t *ptr = (proto == PROTO_PPM) ? &pulses_1us.pword[0] : &pulses_1us.pword[PULSES_WORD_SIZE/2] ;
+
+	int8_t startChan = g_model.ppmStart;
+	int8_t p = g_model.ppmNCH; // Channels
 
 	p += startChan;
 
@@ -262,10 +263,10 @@ void pulses_setup_ppm( uint8_t proto )
 	}
 
 	int16_t PPM_range = g_model.extendedLimits ? PPM_LIMIT_EXTENDED : PPM_LIMIT_NORMAL;   // range of 0.7 - 2.3ms or 1.0 - 2.0ms
-	uint8_t start = (proto == PROTO_PPM16) ? p-8 : startChan;
+	int8_t start = (proto == PROTO_PPM16) ? p-8 : startChan;
 	// restore sanity when model got corrupted and avoid wild pointer 'ptr'
-	if( start >= NUM_CHNOUT ) start = NUM_CHNOUT-1;
-	if( p >= NUM_CHNOUT ) p = NUM_CHNOUT-1;
+	if( start > NUM_CHNOUT ) start = NUM_CHNOUT;
+	if( p > NUM_CHNOUT ) p = NUM_CHNOUT;
 	for (uint8_t i = start; i < p; i++)
 	{
 		// Get the channel relative value
