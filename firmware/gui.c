@@ -1587,8 +1587,8 @@ void gui_process(uint32_t data) {
 					lcd_set_cursor(10 * 6, context.cur_row_y);
 					lcd_write_int(mx->weight, LCD_OP_SET, ALIGN_RIGHT);
 					lcd_set_cursor(12 * 6, context.cur_row_y);
-					lcd_write_string(switches_mask[mx->swtch], LCD_OP_SET,
-							FLAGS_NONE);
+					//lcd_write_string(switches_mask[mx->swtch], LCD_OP_SET,FLAGS_NONE);
+					gui_bitfield_edit( &context, "ABCD", mx->swtch, context.inc, 0);
 				}
 				// if we were in the popup then the result would show up, once
 				char popupRes = gui_popup_get_result();
@@ -1747,7 +1747,10 @@ void gui_process(uint32_t data) {
 					GUI_CASE_OFS(2, 96, GUI_EDIT_INT( mx->sOffset, -125, 125 ));
 					GUI_CASE_OFS(3, 96, GUI_EDIT_ENUM( mx->carryTrim, 0, 1, menu_on_off ));
 					GUI_CASE_OFS(4, 96, GUI_EDIT_ENUM( mx->curve, 0, MIX_CURVE_MAX-1, mix_curve));
-					GUI_CASE_OFS(5, 96, GUI_EDIT_ENUM( mx->swtch, 0, 15, switches_mask ) );
+					GUI_CASE_OFS(5, 96,
+							{ mx->swtch = gui_bitfield_edit( &context, "ABCD", mx->swtch ,
+									context.inc, g_key_press); }
+					);
 					// #6 phase
 					GUI_CASE_OFS(7, 96, GUI_EDIT_ENUM( mx->mixWarn, 0, 1, menu_on_off ));
 					GUI_CASE_OFS(8, 96, GUI_EDIT_ENUM( mx->mltpx, 0, 3, mix_mode ));

@@ -721,6 +721,7 @@ static void perOut(volatile int16_t *chanOut, uint8_t att)
     //========== LIMITS ===============
     for(i=0; i<NUM_CHNOUT; i++){
         // chans[i] holds data from mixer.   chans[i] = v*weight => 1024*100
+    	// chans[i] value is -1024..1024 mapped here to full output range (limits)
         // later we multiply by the limit (up to 100) and then we need to normalize
         // at the end chans[i] = chans[i]/100 =>  -1024..1024
         // interpolate value with min/max so we get smooth motion from center to stop
@@ -728,8 +729,7 @@ static void perOut(volatile int16_t *chanOut, uint8_t att)
 
         int32_t q = chans[i];// + (int32_t)g_model.limitData[i].offset*100; // offset before limit
 
-        chans[i] /= 100; // chans back to -1024..1024
-        ex_chans[i] = chans[i]; //for getswitch
+        ex_chans[i] = q/100; //for getswitch back to -1024..1024
 
         int16_t ofs = g_model.limitData[i].offset;
         int16_t lim_p = 10*(g_model.limitData[i].max);//+100);
