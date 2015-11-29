@@ -28,7 +28,7 @@ void settings_preset_current_model_mixers();
 void settings_preset_current_model_limits();
 void settings_read_model_name(char model, char buf[]);
 
-uint16_t model_address(uint8_t modelNumber);
+uint16_t settings_model_address(uint8_t modelNumber);
 void settings_load_current_model();
 
 #endif // _EEPROM_H

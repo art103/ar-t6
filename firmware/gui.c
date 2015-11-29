@@ -194,8 +194,8 @@ static void gui_draw_curve(uint8_t curveNumber, int8_t selectedPoint)
 {
 	int8_t* pCurve =
 			curveNumber < MAX_CURVE5 ?
-					&g_model.curves5[curveNumber] :
-					&g_model.curves9[curveNumber - MAX_CURVE5];
+					(int8_t*)&g_model.curves5[curveNumber] :
+					(int8_t*)&g_model.curves9[curveNumber - MAX_CURVE5];
 
 	const uint8_t NPTS = curveNumber < MAX_CURVE5 ? 5 : 9;
 	// draw curve
@@ -1587,7 +1587,7 @@ void gui_process(uint32_t data) {
 					lcd_set_cursor(10 * 6, context.cur_row_y);
 					lcd_write_int(mx->weight, LCD_OP_SET, ALIGN_RIGHT);
 					lcd_set_cursor(12 * 6, context.cur_row_y);
-					lcd_write_string(switches[mx->swtch], LCD_OP_SET,
+					lcd_write_string(switches_mask[mx->swtch], LCD_OP_SET,
 							FLAGS_NONE);
 				}
 				// if we were in the popup then the result would show up, once
@@ -1747,7 +1747,7 @@ void gui_process(uint32_t data) {
 					GUI_CASE_OFS(2, 96, GUI_EDIT_INT( mx->sOffset, -125, 125 ));
 					GUI_CASE_OFS(3, 96, GUI_EDIT_ENUM( mx->carryTrim, 0, 1, menu_on_off ));
 					GUI_CASE_OFS(4, 96, GUI_EDIT_ENUM( mx->curve, 0, MIX_CURVE_MAX-1, mix_curve));
-					GUI_CASE_OFS(5, 96, GUI_EDIT_ENUM( mx->swtch, 0, 4, switches ));
+					GUI_CASE_OFS(5, 96, GUI_EDIT_ENUM( mx->swtch, 0, 15, switches_mask ) );
 					// #6 phase
 					GUI_CASE_OFS(7, 96, GUI_EDIT_ENUM( mx->mixWarn, 0, 1, menu_on_off ));
 					GUI_CASE_OFS(8, 96, GUI_EDIT_ENUM( mx->mltpx, 0, 3, mix_mode ));
@@ -1775,8 +1775,8 @@ void gui_process(uint32_t data) {
 
 				int8_t* pCurve =
 						sub_edit_item < MAX_CURVE5 ?
-								&g_model.curves5[sub_edit_item] :
-								&g_model.curves9[sub_edit_item - MAX_CURVE5];
+								(int8_t*)&g_model.curves5[sub_edit_item] :
+								(int8_t*)&g_model.curves9[sub_edit_item - MAX_CURVE5];
 
 				FOREACH_ROW{
 					lcd_write_int(row, context.op_list, FLAGS_NONE);

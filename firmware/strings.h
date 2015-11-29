@@ -113,6 +113,7 @@ enum _menu_beeper {
 };
 
 extern const char * const switches[NUM_SWITCHES + 1];
+extern const char * const switches_mask[1<<NUM_SWITCHES];
 extern const char * const sticks[NUM_STICKS];
 extern const char * const pots[NUM_POTS];
 extern const char * const sources[SRC_MAX];

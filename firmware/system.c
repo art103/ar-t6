@@ -142,7 +142,7 @@ void NMI_Handler(void)
 {
 }
 
-#define ENABLE_HARD_FAILURE_HELPER 0
+#define ENABLE_HARD_FAILURE_HELPER 1
 #if ENABLE_HARD_FAILURE_HELPER
 
 static

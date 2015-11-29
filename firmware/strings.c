@@ -28,6 +28,25 @@ const char * const switches[NUM_SWITCHES+1]  = {
 		"SWD",
 };
 
+const char * const switches_mask[1<<NUM_SWITCHES]  = {
+		"----",
+		"A---",
+		"-B--",
+		"AB--",
+		"--C-",
+		"A-C-",
+		"-BC-",
+		"ABC-",
+		"---D",
+		"A--D",
+		"-B-D",
+		"AB-D",
+		"--CD",
+		"A-CD",
+		"-BCD",
+		"ABCD"
+};
+
 
 const char * const sticks[NUM_STICKS] = {
 		"AIL",

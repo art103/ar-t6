@@ -26,6 +26,7 @@
 #include "gui.h"
 #include "lcd.h"
 #include "tasks.h"
+#include "settings.h"
 
 #define DPUTS
 #include "debug.h"
@@ -190,7 +191,7 @@ void settings_preset_current_model_limits() {
  */
 void settings_preset_current_model() {
 	bzero(&g_model, sizeof(g_model));
-	memcpy(&g_model.name, "MODEL    ", sizeof(g_model.name));
+	memcpy(&g_model.name, "MODEL    ", 10);
 	g_model.name[MODEL_NAME_LEN - 3] = '0' + (g_eeGeneral.currModel / 10);
 	g_model.name[MODEL_NAME_LEN - 2] = '0' + (g_eeGeneral.currModel % 10);
 	g_model.name[MODEL_NAME_LEN - 1] = 0;
