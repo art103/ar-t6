@@ -49,10 +49,10 @@
 //#define CONVERT_MODE(x)  (((x)<=4) ? convert_mode_helper(x) : (x))
 ////#define CHANNEL_ORDER(x) (pgm_read_byte(chout_ar + g_eeGeneral.templateSetup*4 + (x)-1))
 //#define CHANNEL_ORDER(x) ( ( (pgm_read_byte(bchout_ar + g_eeGeneral.templateSetup) >> (6-(x-1) * 2)) & 3 ) + 1 )
-#define THR_STICK       ((g_eeGeneral.stickMode&1) ? 1 : 3)
-#define ELE_STICK       ((g_eeGeneral.stickMode&1) ? 3 : 1)
-#define AIL_STICK       ((g_eeGeneral.stickMode==1 || g_eeGeneral.stickMode==2) ? 0 : 2)
-#define RUD_STICK       ((g_eeGeneral.stickMode==1 || g_eeGeneral.stickMode==2) ? 2 : 0)
+#define THR_STICK       ((g_eeGeneral.stickMode&1) ? 1 : 2)
+#define ELE_STICK       ((g_eeGeneral.stickMode&1) ? 2 : 1)
+#define AIL_STICK       ((g_eeGeneral.stickMode==1 || g_eeGeneral.stickMode==2) ? 0 : 3)
+#define RUD_STICK       ((g_eeGeneral.stickMode==1 || g_eeGeneral.stickMode==2) ? 3 : 0)
 //
 //enum EnumKeys {
 //    KEY_MENU ,
