@@ -1486,6 +1486,13 @@ void gui_process(uint32_t data) {
 					GUI_CASE_OFS(10, 96, GUI_EDIT_INT( g_model.ppmDelay, 0, 7 ))
 					GUI_CASE_OFS(11, 96,
 							GUI_EDIT_INT( g_model.ppmFrameLength, 0, 7 ))
+					GUI_CASE_OFS(12, 96, {
+							g_model.beepANACenter = gui_bitfield_edit(
+								&context, "123456",
+								g_model.beepANACenter, context.inc,
+								g_key_press);
+							}
+						);
 					}
 				}
 				break;

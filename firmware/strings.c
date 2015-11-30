@@ -263,6 +263,7 @@ const char * const model_menu_list1[MOD_MENU_LIST1_LEN] = {
 		"PPM #Chanels",
 		"PPM Delay",
 		"PPM Ex Frm Wdth",
+		"Center Beep",
 };
 
 

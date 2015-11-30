@@ -30,6 +30,7 @@
 #include "sound.h"
 
 #define BUZZER_PIN	(1 << 8)
+#define DIM(a) (sizeof(a)/sizeof(a[0]))
 
 static volatile uint32_t stop_time = 0;
 static volatile const uint16_t *tune = 0;
@@ -37,7 +38,23 @@ static volatile const uint16_t *tune = 0;
 static const uint16_t tune_1[] =
 		{ 400, 100, 500, 100, 600, 100, 800, 100, 0, 0 };
 
-static const uint16_t * const tunes[] = { tune_1 };
+static const uint16_t tune_2[] =
+		{ 400, 50, 800, 50, 400, 50, 800, 50, 0, 0 };
+
+static const uint16_t tune_3[] =
+		{ 1000, 50, 1, 50, 1000, 50, 0, 0 };
+
+static const uint16_t tune_4[] =
+		{ 200, 50, 200, 50, 0, 0 };
+
+static const uint16_t * const tunes[] = {
+		tune_1, /* start up */
+		tune_2, /* warn 1 */
+		tune_2, /* warn 2 */
+		tune_2, /* warn 3 */
+		tune_3, /* stics */
+		tune_4  /* inactive */
+};
 
 /**
  * @brief  Initialise the sound timer
@@ -118,15 +135,12 @@ void sound_set_volume(uint8_t volume) {
  * @retval None.
  */
 void sound_play_tune(TUNE index) {
-	// ToDo: Add some more tunes :)
-	index = 0;
-
+	if( index > DIM(tunes) ) index = DIM(tunes);
 	tune = tunes[index];
 
 	if (tune != 0) {
 		sound_play_tone(tune[0], tune[1]);
 		tune += 2;
-
 		if (*tune == 0)
 			tune = 0;
 	}

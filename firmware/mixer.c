@@ -338,7 +338,7 @@ static void perOut(volatile int16_t *chanOut, uint8_t att)
 
             calibratedStick[i] = v; //for show in expo
 
-            if(!(v/16))
+            if(!(v/64))
             	anaCenter |= 1<<i;
 
 
