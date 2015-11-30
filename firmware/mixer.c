@@ -719,7 +719,7 @@ static void perOut(volatile int16_t *chanOut, uint8_t att)
     }
 
     //========== LIMITS ===============
-    for(i=0; i<NUM_CHNOUT; i++){
+    for(i=0; i<NUM_CHNOUT; i++) {
         // chans[i] holds data from mixer.   chans[i] = v*weight => 1024*100
     	// chans[i] value is -1024..1024 mapped here to full output range (limits)
         // later we multiply by the limit (up to 100) and then we need to normalize
@@ -749,7 +749,8 @@ static void perOut(volatile int16_t *chanOut, uint8_t att)
         if(g_model.limitData[i].reverse) q=-q;// finally do the reverse.
 
         if(g_model.safetySw[i].opt.ss.swtch)  //if safety sw available for channel check and replace val if needed
-            if(keypad_get_switch(g_model.safetySw[i].opt.ss.swtch)) q = calc100toRESX(g_model.safetySw[i].opt.ss.val);
+            if(keypad_get_switch(1<<(g_model.safetySw[i].opt.ss.swtch-1)))
+            	q = calc100toRESX(g_model.safetySw[i].opt.ss.val);
 
         chanOut[i] = q; //copy consistent word to int-level
     }

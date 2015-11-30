@@ -1715,10 +1715,10 @@ void gui_process(uint32_t data) {
 						switch (col) {
 						GUI_CASE_OFS(0, 4 * 6,
 								GUI_EDIT_ENUM(d->opt.ss.swtch, 0, 4, switches))
-						GUI_CASE_OFS(1, 9 * 6,
-								GUI_EDIT_ENUM(d->opt.ss.mode, 0, 3, safety_switch_mode_labels ))
-						GUI_CASE_OFS(2, 13 * 6,
+						GUI_CASE_OFS(1, 13 * 6,
 								GUI_EDIT_INT(d->opt.ss.val, -100, 100))
+						/* GUI_CASE_OFS(2, 9 * 6,
+								GUI_EDIT_ENUM(d->opt.ss.mode, 0, 3, safety_switch_mode_labels )) */
 						}
 					}
 				}
