@@ -179,8 +179,6 @@ void settings_preset_current_model_limits() {
 		// so now the min/max are true values (no offsets)
 		p->min = -100;
 		p->max = 100;
-		if (l == 2 /* THROTTLE */)
-			p->offset = -50 * 10;
 	}
 }
 
