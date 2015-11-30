@@ -105,7 +105,14 @@ static void save_current_model_if_modified() {
 		unsigned cs = eeprom_checksum_memory(modelAddress,
 				sizeof(g_model) - sizeof(g_model.chkSum));
 		if (chksum != cs) {
-			gui_popup(GUI_MSG_EEPROM_INVALID, 0);
+			unsigned cs2 = eeprom_checksum_memory(modelAddress,
+					sizeof(g_model) - sizeof(g_model.chkSum));
+			dputs("model save verify failed");
+			dputs_hex4(chksum);
+			dputs_hex4(cs);
+			dputs_hex4(cs2);
+			if(chksum != cs2)
+				gui_popup(GUI_MSG_EEPROM_INVALID, 0);
 		}
 	}
 }
@@ -292,8 +299,16 @@ static void settings_process(uint32_t data) {
 			eeprom_write(0, sizeof(EEGeneral), (void*) &g_eeGeneral);
 			// check after write
 			unsigned cs = eeprom_checksum_memory(0, sizeof(EEGeneral) - 2);
-			if (chksum != cs)
+			if (chksum != cs) {
+				uint16_t chksum2 = eeprom_calc_chksum((void*) &g_eeGeneral,
+						sizeof(EEGeneral) - 2);
+				dputs("eeprom general CS mismatch after write ");
+				dputs_hex4(chksum);
+				dputs_hex4(cs);
+				dputs_hex4(chksum2);
+				dputs("\r\n");
 				gui_popup(GUI_MSG_EEPROM_INVALID, 0);
+			}
 		}
 	}
 

@@ -53,6 +53,8 @@
 #define POT_Y	(BOX_Y + BOX_H)
 #define POT_L_X 59
 #define POT_R_X 65
+// timer value column
+#define TIMER_X 26
 // Switch Labels
 #define SW_Y	(BOX_Y + 6)
 #define SW_L_X	(BOX_L_X - 20)
@@ -467,7 +469,7 @@ void gui_process(uint32_t data) {
 			// Update Battery icon
 			gui_show_battery(83, 0);
 			// Update the timer
-			gui_show_timer(37, 17, timer);
+			gui_show_timer(TIMER_X, 17, timer);
 			// Model Name
 			lcd_set_cursor(8, 0);
 			lcd_write_string((char*) g_model.name, LCD_OP_SET, CHAR_2X);
@@ -523,7 +525,7 @@ void gui_process(uint32_t data) {
 
 		// Update the timer
 		//if ((g_update_type & UPDATE_TIMER) != 0) {
-			gui_show_timer(37, 17, timer);
+			gui_show_timer(TIMER_X, 17, timer);
 		//}
 	}
 
@@ -657,7 +659,7 @@ void gui_process(uint32_t data) {
 		 */
 	case GUI_LAYOUT_MAIN4: {
 
-		gui_show_timer(37, 40, g_model.tmrVal);
+		gui_show_timer(TIMER_X, 40, g_model.tmrVal);
 
 		if ((g_update_type & UPDATE_KEYPRESS) != 0) {
 			if (g_key_press & KEY_RIGHT)
@@ -2080,6 +2082,14 @@ static void gui_show_battery(int x, int y) {
 static void gui_show_timer(int x, int y, int seconds) {
 	// Timer
 	lcd_set_cursor(x, y);
+	if( seconds < 0 ) {
+		lcd_write_string("-", LCD_OP_SET, CHAR_4X);
+		seconds = -seconds;
+	}
+	else {
+		lcd_write_string(" ", LCD_OP_SET, CHAR_4X);
+	}
+
 	lcd_write_int(seconds / 60, LCD_OP_SET, INT_PAD10 | CHAR_4X);
 	lcd_write_string(":", LCD_OP_SET, CHAR_4X);
 	lcd_write_int(seconds % 60, LCD_OP_SET, INT_PAD10 | CHAR_4X);

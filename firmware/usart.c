@@ -176,7 +176,7 @@ void usart_putc(char c) {
  * @param  s string
  * @retval None
  */
-void usart_puts(char* s) {
+void usart_puts(const char* s) {
 	while (*s)
 		usart_putc(*s++);
 }

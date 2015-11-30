@@ -21,8 +21,8 @@ void usart_init();
 void usart_register_rx_handler(void (*rx_handler)(uint8_t data));
 
 void usart_putc(char c);
-void usart_puts(char* s);
-void usart_put(char* s, uint8_t len);
+void usart_puts(const char* s);
+//void usart_put(const char* s, uint8_t len);
 void usart_putc_nb(char c);
 
 uint16_t usart_getc();
