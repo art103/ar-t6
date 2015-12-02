@@ -45,12 +45,13 @@ typedef enum
 {
 	CAL_OFF,
 	CAL_LIMITS,
-	CAL_CENTER
+	CAL_CENTER,
 } CAL_STATE;
 
 extern volatile uint16_t adc_data[STICK_ADC_CHANNELS];
 extern volatile ADC_CAL cal_data[STICK_ADC_CHANNELS];
 extern volatile int16_t stick_data[STICK_ADC_CHANNELS];
+extern CAL_STATE cal_state;
 
 void sticks_init(void);
 void sticks_calibrate(CAL_STATE state);

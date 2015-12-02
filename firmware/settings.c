@@ -307,7 +307,9 @@ static void settings_process(uint32_t data) {
 				dputs_hex4(cs);
 				dputs_hex4(chksum2);
 				dputs("\r\n");
-				gui_popup(GUI_MSG_EEPROM_INVALID, 0);
+				// err message only when struct was not modified in between
+				if( chksum ==chksum2 )
+					gui_popup(GUI_MSG_EEPROM_INVALID, 0);
 			}
 		}
 	}
@@ -330,22 +332,26 @@ static void settings_process(uint32_t data) {
  * @retval None
  */
 void settings_init(void) {
-	task_register(TASK_PROCESS_EEPROM, settings_process);
 
-	// Read the configuration data out of EEPROM.
-	eeprom_read(0, sizeof(EEGeneral), (void*) &g_eeGeneral);
+	// Read the configuration data out of EEPROM. Perform few attempts as it fails occasionally
+	int cnt = 2;
+	while( !eeprom_read(0, sizeof(EEGeneral), (void*) &g_eeGeneral) && --cnt ) ;
 	uint16_t chksum =
 			eeprom_calc_chksum((void*) &g_eeGeneral, sizeof(EEGeneral) - 2);
 	if (chksum != g_eeGeneral.chkSum) {
 		dputs("eeprom general CS bad ");
+		dputs_dec(2);
 		dputs_hex4(chksum);
 		dputs_hex4(g_eeGeneral.chkSum);
 		dputs("\r\n");
 		puts_mem(&g_eeGeneral, sizeof(g_eeGeneral));
-
 		gui_popup(GUI_MSG_EEPROM_INVALID, 0);
-		//settings_preset_general();
+		// re-Read the configuration data out of EEPROM;
+		// perhaps it just fails on first access?
+		eeprom_read(0, sizeof(EEGeneral), (void*) &g_eeGeneral);
 	}
+
+	// now register eeprom update task
 	task_register(TASK_PROCESS_EEPROM, settings_process);
 	settings_process(0);
 }

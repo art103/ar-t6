@@ -67,7 +67,6 @@ uint16_t eeprom_calc_chksum(void *buffer, uint16_t length) {
 	for (i = 0; i < length; ++i) {
 		sum += *ptr++;
 	}
-
 	return sum;
 }
 
@@ -192,9 +191,9 @@ void eeprom_init(void) {
  * @param  offset: EEPROM start byte address
  * @param  length: number of bytes
  * @param  buffer: Destination buffer pointer
- * @retval None
+ * @retval false if failed
  */
-void eeprom_read(uint16_t offset, uint16_t length, void *buffer) {
+bool eeprom_read(uint16_t offset, uint16_t length, void *buffer) {
 	//do we care here that prev transaction erred?
 	//if (state == STATE_ERROR)
 	//return;
@@ -216,6 +215,8 @@ void eeprom_read(uint16_t offset, uint16_t length, void *buffer) {
 
 	// wait for the read to complete
 	eeprom_wait_complete();
+
+	return state == STATE_COMPLETE;
 }
 
 /**
@@ -224,9 +225,9 @@ void eeprom_read(uint16_t offset, uint16_t length, void *buffer) {
  * @param  offset: EEPROM start byte address
  * @param  length: number of bytes
  * @param  buffer: Source buffer pointer
- * @retval None
+ * @retval false if failed
  */
-void eeprom_write(uint16_t offset, uint16_t length, void *buffer) {
+bool eeprom_write(uint16_t offset, uint16_t length, void *buffer) {
 	uint16_t written = 0;
 
 	//do we care here that prev transaction erred?
@@ -268,6 +269,7 @@ void eeprom_write(uint16_t offset, uint16_t length, void *buffer) {
 	}
 
 	// no need to wait for completion here as it was done in the loop above
+	return state == STATE_COMPLETE;
 }
 
 /**

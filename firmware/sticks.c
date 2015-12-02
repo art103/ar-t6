@@ -36,7 +36,7 @@
 volatile uint16_t adc_data[STICK_ADC_CHANNELS];
 volatile int16_t stick_data[STICK_ADC_CHANNELS];
 
-static CAL_STATE cal_state = CAL_OFF;
+CAL_STATE cal_state = CAL_OFF;
 
 /**
  * @brief  Update sticks' GUI. All processing in IRQ.

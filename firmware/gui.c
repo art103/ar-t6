@@ -1824,45 +1824,42 @@ void gui_process(uint32_t data) {
 		 * Main 1 when complete or cancelled.
 		 *
 		 */
-	case GUI_LAYOUT_STICK_CALIBRATION: {
-		static CAL_STATE state;
-		if (full) {
-			// Draw the whole screen.
-			state = CAL_LIMITS;
-			sticks_calibrate(state);
-			lcd_set_cursor(5, 0);
-			lcd_draw_message(msg[GUI_MSG_CAL_MOVE_EXTENTS], LCD_OP_SET, 0, 0);
-		}
+		case GUI_LAYOUT_STICK_CALIBRATION: {
 
-		if ((g_update_type & UPDATE_STICKS) != 0) {
-			gui_show_sticks();
-		}
+			if( full && cal_state == CAL_OFF ) {
+				// Draw the whole screen.
+				lcd_draw_message(msg[GUI_MSG_CAL_MOVE_EXTENTS], LCD_OP_SET, 0, 0);
+				sticks_calibrate(CAL_LIMITS);
+			}
 
-		if ((g_update_type & UPDATE_KEYPRESS) != 0) {
-			lcd_set_cursor(5, 8);
-			if ((g_key_press & KEY_SEL) || (g_key_press & KEY_OK)) {
-				lcd_draw_rect(5, 0, 123, BOX_Y - 1, LCD_OP_CLR, RECT_FILL);
-				if (state == CAL_LIMITS) {
-					state = CAL_CENTER;
-					sticks_calibrate(CAL_CENTER);
-					lcd_draw_message(msg[GUI_MSG_CAL_CENTRE], LCD_OP_SET, 0, 0);
-				} else if (state == CAL_CENTER) {
-					state = CAL_OFF;
-					sticks_calibrate(CAL_OFF);
-					lcd_draw_message(msg[GUI_MSG_OK_CANCEL], LCD_OP_SET, 0, 0);
-				} else {
-					// ToDo: Write the calibration data into EEPROM.
-					// eeprom_set_data(EEPROM_ADC_CAL, cal_data);
+			if ((g_update_type & UPDATE_STICKS) != 0) {
+				gui_show_sticks();
+			}
+
+			if ((g_update_type & UPDATE_KEYPRESS) != 0) {
+				lcd_set_cursor(5, 8);
+				if ((g_key_press & KEY_SEL) || (g_key_press & KEY_OK)) {
+					lcd_draw_rect(5, 0, 123, BOX_Y - 1, LCD_OP_CLR, RECT_FILL);
+					switch(cal_state) {
+					case CAL_LIMITS:
+						sticks_calibrate(CAL_CENTER);
+						lcd_draw_message(msg[GUI_MSG_CAL_CENTRE], LCD_OP_SET, 0, 0);
+						break;
+					case CAL_CENTER:
+						sticks_calibrate(CAL_OFF);
+						lcd_draw_message(msg[GUI_MSG_OK_CANCEL], LCD_OP_SET, 0, 0);
+						break;
+					default:
+						// Cal done, quit and let eeprom task write the data
+						gui_navigate(GUI_LAYOUT_MAIN1);
+					}
+				} else if (g_key_press & KEY_CANCEL) {
+					// ToDo: eeprom_get_data(EEPROM_ADC_CAL, cal_data);
 					gui_navigate(GUI_LAYOUT_MAIN1);
 				}
-			} else if (g_key_press & KEY_CANCEL) {
-				// ToDo: eeprom_get_data(EEPROM_ADC_CAL, cal_data);
-				gui_navigate(GUI_LAYOUT_MAIN1);
 			}
+			break;
 		}
-		break;
-	}
-
 	} // switch (g_current_layout)
 
 	g_key_press = KEY_NONE;

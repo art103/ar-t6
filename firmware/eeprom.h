@@ -17,10 +17,11 @@
 #define _EEPROM_H
 
 #include <stdint.h>
+#include <stdbool.h>
 
 void eeprom_init(void);
-void eeprom_read(uint16_t offset, uint16_t length, void *buffer);
-void eeprom_write(uint16_t offset, uint16_t length, void *buffer);
+bool eeprom_read(uint16_t offset, uint16_t length, void *buffer);
+bool eeprom_write(uint16_t offset, uint16_t length, void *buffer);
 uint16_t eeprom_checksum_memory(uint16_t offset, uint16_t length);
 uint16_t eeprom_calc_chksum(void *buffer, uint16_t length);
 char eeprom_state();
