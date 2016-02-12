@@ -18,6 +18,8 @@
 
 #include <stdint.h>
 
+#define KEYPAD_SAFETY_TUNE_REPEAT 750
+
 #define KEYPAD_EXTI_LINES	(EXTI_Line12 | EXTI_Line13 | EXTI_Line14)
 #define ROTARY_EXTI_LINES	(EXTI_Line15)
 
@@ -56,6 +58,7 @@ KEYPAD_KEY keypad_scan_keys(void);
 uint8_t keypad_get_pressed(KEYPAD_KEY key);
 uint8_t keypad_get_switches(void);
 uint8_t keypad_get_switch(KEYPAD_SWITCH sw);
+void check_switches(void);
 void keypad_cancel_repeat(void);
 
 #endif // _KEYPAD_H
