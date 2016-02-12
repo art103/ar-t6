@@ -165,7 +165,7 @@ uint8_t keypad_get_switch(KEYPAD_SWITCH sw) {
 }
 
 /**
- * @brief  Check if any switches are pressed
+ * @brief  Check if any switches are up.
  * @note   Blocks transmitter startup if switches aren't safe
  * @param  None
  * @retval None
