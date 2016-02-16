@@ -250,7 +250,7 @@ void lcd_set_pixel(uint8_t x, uint8_t y, LCD_OP op) {
  * @brief  Set cursor position in pixels.
  * @note	Top left is (0,0)
  * @param  x: horizontal cursor location
- * @param  y: vertical cusros location
+ * @param  y: vertical cursor location
  * @retval None
  */
 void lcd_set_cursor(uint8_t x, uint8_t y) {

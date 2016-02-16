@@ -197,7 +197,7 @@ int main(void)
 	apply_settings();
 
 	// ToDo: Block here until all switches are set correctly.
-	// check_switches();
+	check_switches();
 
 	// Initialize mixer data
 	mixer_init();

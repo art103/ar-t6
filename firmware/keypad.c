@@ -28,6 +28,8 @@
 #include "tasks.h"
 #include "gui.h"
 #include "myeeprom.h"
+#include "lcd.h"
+#include "sound.h"
 
 #define ROW_MASK       (0x07 << 12)
 #define COL_MASK       (0x0F << 8)
@@ -160,6 +162,46 @@ uint8_t keypad_get_switches(void) {
  */
 uint8_t keypad_get_switch(KEYPAD_SWITCH sw) {
 	return sw == 0 || (keypad_get_switches() & sw);
+}
+
+/**
+ * @brief  Check if any switches are up.
+ * @note   Blocks transmitter startup if switches aren't safe
+ * @param  None
+ * @retval None
+ */
+void check_switches(void) {
+	uint16_t previous_ticks = 0;
+	uint16_t x = keypad_get_switches();
+	sound_set_volume(10);
+	if ( (x & SWITCH_SWA) || (x & SWITCH_SWB) || (x & SWITCH_SWC) || (x & SWITCH_SWD) ) {
+
+		lcd_draw_rect(0, 0, LCD_WIDTH - 1, LCD_HEIGHT - 1, LCD_OP_CLR, RECT_FILL);
+
+		lcd_set_cursor(CHAR_WIDTH*2*2, 0);		// two spaces over, double size
+		lcd_write_string("For your safety!", LCD_OP_SET,
+				 NEW_LINE | CHAR_2X);
+		lcd_set_cursor(3*CHAR_WIDTH, 5*CHAR_HEIGHT);
+		lcd_write_string("Please place all", LCD_OP_SET, NEW_LINE);
+		lcd_set_cursor(2*CHAR_WIDTH, 6*CHAR_HEIGHT);
+		lcd_write_string("switches in the UP", LCD_OP_SET, NEW_LINE);
+		lcd_set_cursor(8*CHAR_WIDTH, 7*CHAR_HEIGHT);
+		lcd_write_string("position.", LCD_OP_SET, FLAGS_NONE);
+		lcd_update();
+
+		previous_ticks = system_ticks;
+		sound_play_tune(AU_POT_STICK_MIDDLE);
+		while( (x & SWITCH_SWA) || (x & SWITCH_SWB) || (x & SWITCH_SWC) || (x & SWITCH_SWD) ) {
+			x = keypad_get_switches();
+			if ( system_ticks == previous_ticks + KEYPAD_SAFETY_TUNE_REPEAT ) {
+				sound_play_tune(AU_POT_STICK_MIDDLE);
+				previous_ticks = system_ticks;
+			}
+		}
+		// since I fiddled with the volume, change it back to user setting.
+		sound_set_volume(g_eeGeneral.volume);
+	}
+
 }
 
 /**

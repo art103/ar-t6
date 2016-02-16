@@ -243,7 +243,7 @@ static void gui_draw_curve(uint8_t curveNumber, int8_t selectedPoint)
 }
 
 /**
- * @brief  Prefill strig with space up to length
+ * @brief  Prefill string with space up to length
  * @note
  * @param  str to fill
  * @param  len size of memory for string
@@ -408,7 +408,7 @@ void gui_process(uint32_t data) {
 	// TODO: separate task
 	timer_update();
 
-	// clear popup reult until OK/SEL/CANCEL pressed,
+	// clear popup result until OK/SEL/CANCEL pressed,
 	// then only allow one chance to process it (for safety of it was not handled)
 	g_popup_result = GUI_POPUP_RESULT_NONE;
 	// If we are currently displaying a popup,
@@ -541,7 +541,7 @@ void gui_process(uint32_t data) {
 		 * Main 1
 		 *
 		 * Displays model name, trim, battery and timer plus a graphical
-		 * representation of the stick and pot postitions and key states.
+		 * representation of the stick and pot positions and key states.
 		 *
 		 */
 	case GUI_LAYOUT_MAIN1:
