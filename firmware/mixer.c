@@ -596,7 +596,7 @@ static void perOut(volatile int16_t *chanOut, uint8_t att)
                 {
                   sDelay[i]-- ;
                 }
-                if (sDelay[i] != 0)
+                if (sDelay[i] > 0)
                 { // At end of delay, use new V and diff
                   v = act[i]/DEL_MULT;   // Stay in old position until delay over
                   diff = 0;
@@ -609,7 +609,8 @@ static void perOut(volatile int16_t *chanOut, uint8_t att)
                 //-100..100 => 32768 ->  100*83886/256 = 32768,   For MAX we divide by 2 sincde it's asymmetrical
                 if(tick10ms) {
                     int32_t rate = (int32_t)DEL_MULT*2048*100;
-                    if(md->weight) rate /= abs(md->weight);
+                
+                if(md->weight) rate /= abs(md->weight);
 
 // The next few lines could replace the long line act[i] = etc. - needs testing
 //										int16_t speed ;
@@ -624,13 +625,14 @@ static void perOut(volatile int16_t *chanOut, uint8_t att)
 //										}
 //										act[i] = (speed) ? act[i]+(rate)/((int16_t)100*speed) : (int32_t)v*DEL_MULT ;
 
-										act[i] = (diff>0) ? ((md->speedUp>0)   ? act[i]+(rate)/((int16_t)100*md->speedUp)   :  (int32_t)v*DEL_MULT) :
+					act[i] = (diff>0) ? ((md->speedUp>0)   ? act[i]+(rate)/((int16_t)100*md->speedUp)   :  (int32_t)v*DEL_MULT) :
                                         ((md->speedDown>0) ? act[i]-(rate)/((int16_t)100*md->speedDown) :  (int32_t)v*DEL_MULT) ;
                 }
-								{
-									int32_t tmp = act[i]/DEL_MULT ;
-                	if(((diff>0) && (v<tmp)) || ((diff<0) && (v>tmp))) act[i]=(int32_t)v*DEL_MULT; //deal with overflow
-								}
+								
+				int32_t tmp = act[i]/DEL_MULT ;
+                
+                if(((diff>0) && (v<tmp)) || ((diff<0) && (v>tmp))) act[i]=(int32_t)v*DEL_MULT; //deal with overflow
+								
                 v = act[i]/DEL_MULT;
             }
             else if (diff)

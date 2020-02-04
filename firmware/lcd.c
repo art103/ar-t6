@@ -222,6 +222,14 @@ void lcd_update(void) {
 	}
 }
 
+uint8_t get_cursor_x() {
+	return cursor_x;
+}
+
+uint8_t get_cursor_y() {
+	return cursor_y;
+}
+
 /**
  * @brief  Set / Clean a specific pixel.
  * @note	Top left is (0,0)
@@ -261,6 +269,25 @@ void lcd_set_cursor(uint8_t x, uint8_t y) {
 
 	cursor_x = x;
 	cursor_y = y;
+}
+
+/**
+ * @brief  Move cursor from current position in pixels.
+ * @note	Top left is (0,0)
+ * @param  x: horizontal cursor movement
+ * @param  y: vertical cursor movement
+ * @retval None
+ */
+void lcd_move_cursor(int8_t x, int8_t y) {
+	if ((cursor_y + y + CHAR_HEIGHT) >= LCD_HEIGHT)
+		return;
+	if ((cursor_x + x + CHAR_WIDTH) >= LCD_WIDTH)
+		return;
+	if (cursor_x + x < 0) return;
+	if (cursor_y + y < 0) return;
+
+	cursor_x += x;
+	cursor_y += y;
 }
 
 /**

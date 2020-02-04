@@ -194,6 +194,8 @@ const char * const msg[GUI_MSG_MAX] = {
 		"Operation Cancelled.",
 		"OK:Save Cancel:Abort",
 		"Please zero throttle to continue.",
+		"SW warning!",
+		"Correct switches.",
 		"Calibration data invalid, please calibrate the sticks.",
 		"OK to preset this model?",
 		"OK to preset all settings?",
