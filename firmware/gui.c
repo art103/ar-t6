@@ -1468,39 +1468,46 @@ void gui_process(uint32_t data) {
 							context.op_list, FLAGS_NONE);
 					lcd_write_string(" ", LCD_OP_SET, FLAGS_NONE);
 					switch (row) {
-					GUI_CASE_OFS(0, 74, GUI_EDIT_STR(g_model.name))
-					GUI_CASE_OFS(1, 96,
-							GUI_EDIT_ENUM( g_model.tmrMode, 0, 5, timer_modes ))
-					GUI_CASE_OFS(2, 96,
-							GUI_EDIT_ENUM( g_model.tmrDir, 0, 1, dir_labels ))
-					GUI_CASE_OFS(3, 96, GUI_EDIT_INT( g_model.tmrVal, 0, 3600 ))
-					GUI_CASE_OFS(4, 96,
-							GUI_EDIT_ENUM( g_model.traineron, 0, 1, menu_on_off ))
-					GUI_CASE_OFS(5, 96,
-							GUI_EDIT_ENUM( g_model.thrTrim, 0, 1, menu_on_off ))
-					GUI_CASE_OFS(6, 96,
-							GUI_EDIT_ENUM( g_model.thrExpo, 0, 1, menu_on_off ))
-					GUI_CASE_OFS(7, 96, GUI_EDIT_INT( g_model.trimInc, 0, 7 ))
-					GUI_CASE_OFS(8, 96,
-							GUI_EDIT_ENUM( g_model.extendedLimits, 0, 1, menu_on_off ))
-					GUI_CASE_OFS(9, 96,
-							GUI_EDIT_INT( g_model.ppmNCH, 1, NUM_CHNOUT ))
-					GUI_CASE_OFS(10, 96, GUI_EDIT_INT( g_model.ppmDelay, 0, 7 ))
-					GUI_CASE_OFS(11, 96,
-							GUI_EDIT_INT( g_model.ppmFrameLength, 0, 7 ))
-					GUI_CASE_OFS(12, 96, {
-							g_model.beepANACenter = gui_bitfield_edit(
-								&context, "123456",
-								g_model.beepANACenter, context.inc,
-								g_key_press);
-							}
+						GUI_CASE_OFS(0, 74, GUI_EDIT_STR(g_model.name))
+						GUI_CASE_OFS(1, 96, GUI_EDIT_ENUM( g_model.tmrMode, 0, 5, timer_modes ))
+						GUI_CASE_OFS(2, 96, GUI_EDIT_ENUM( g_model.tmrDir, 0, 1, dir_labels ))
+						GUI_CASE_OFS(3, 96, GUI_EDIT_INT( g_model.tmrVal, 0, 3600 ))
+						GUI_CASE_OFS(4, 96, GUI_EDIT_ENUM( g_model.traineron, 0, 1, menu_on_off ))
+						GUI_CASE_OFS(5, 96, GUI_EDIT_ENUM( g_model.thrTrim, 0, 1, menu_on_off ))
+						GUI_CASE_OFS(6, 96, GUI_EDIT_ENUM( g_model.thrExpo, 0, 1, menu_on_off ))
+						GUI_CASE_OFS(7, 96, GUI_EDIT_INT( g_model.trimInc, 0, 7 ))
+						GUI_CASE_OFS(8, 96, GUI_EDIT_ENUM( g_model.extendedLimits, 0, 1, menu_on_off ))
+						GUI_CASE_OFS(9, 96, GUI_EDIT_INT( g_model.ppmNCH, 1, NUM_CHNOUT ))
+						GUI_CASE_OFS(10, 96, GUI_EDIT_INT( g_model.ppmDelay, 0, 7 ))
+						GUI_CASE_OFS(11, 96,
+						GUI_EDIT_INT( g_model.ppmFrameLength, 0, 7 ))
+						GUI_CASE_OFS(12, 90, {
+						g_model.beepANACenter = gui_bitfield_edit(
+							&context, "123456",
+							g_model.beepANACenter, context.inc,
+							g_key_press);
+						}
 						);
 					}
 				}
 				break;
 
 			case MOD_PAGE_HELI_SETUP:
-				// ToDo: Implement!
+				context.item_limit = HELI_MENU_LIST_LEN-1;
+				FOREACH_ROW
+				{ 
+					lcd_write_string((char*)heli_menu_list[row], context.op_list, FLAGS_NONE);
+
+					switch (row) {
+						GUI_CASE_OFS(0, 90, GUI_EDIT_ENUM(g_model.swashType, 0, SWASH_TYPE_MAX, swash_type_labels))
+						GUI_CASE_OFS(1, 90, GUI_EDIT_INT_EX2(g_model.swashRingValue, -100, 100, 0, ALIGN_RIGHT,{}))
+						GUI_CASE_OFS(2, 90, GUI_EDIT_ENUM(g_model.swashCollectiveSource, 0, NUM_STICKS, sticks))
+						GUI_CASE_OFS(3, 90, GUI_EDIT_ENUM(g_model.swashInvertELE, 0, 1, inverse_labels))
+						GUI_CASE_OFS(4, 90, GUI_EDIT_ENUM(g_model.swashInvertAIL, 0, 1, inverse_labels))
+						GUI_CASE_OFS(5, 90, GUI_EDIT_ENUM(g_model.swashInvertCOL, 0, 1, inverse_labels))
+					}
+				}
+
 				break;
 
 			case MOD_PAGE_EXPODR: {
@@ -1700,7 +1707,9 @@ void gui_process(uint32_t data) {
 				break;
 
 			case MOD_PAGE_CUST_SW:
-				// ToDo: Implement!
+				// ToDo implement!
+				lcd_set_cursor(2*CHAR_WIDTH, 3*CHAR_HEIGHT);
+				lcd_write_string("ToDo...", LCD_OP_SET, FLAGS_NONE);
 				break;
 
 			case MOD_PAGE_SAFE_SW:
@@ -1728,6 +1737,8 @@ void gui_process(uint32_t data) {
 
 			case MOD_PAGE_TEMPLATES:
 				// ToDo: Implement!
+				lcd_set_cursor(2*CHAR_WIDTH, 3*CHAR_HEIGHT);
+				lcd_write_string("ToDo...", LCD_OP_SET, FLAGS_NONE);
 				break;
 
 				// SubMenus --- Not navigable through left / right scrolling.

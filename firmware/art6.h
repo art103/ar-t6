@@ -171,11 +171,11 @@
 //#define NUM_STICKS	4
 //
 //
-#define SWASH_TYPE_120   1
-#define SWASH_TYPE_120X  2
-#define SWASH_TYPE_140   3
-#define SWASH_TYPE_90    4
-#define SWASH_TYPE_NUM   4
+// #define SWASH_TYPE_120   1
+// #define SWASH_TYPE_120X  2
+// #define SWASH_TYPE_140   3
+// #define SWASH_TYPE_90    4
+// #define SWASH_TYPE_NUM   4
 //
 
 //MIX 0..7 are input channels (AETRVV??)

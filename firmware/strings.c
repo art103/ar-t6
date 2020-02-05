@@ -68,12 +68,12 @@ const char * const sources[SRC_MAX] = {
 		"CYC",	// CYC1-CYC3
 		"PPM",	// PPM1-PPM8
 		"CH",	// CH1-CH16
-		"ch"	// Trainer SRC
+		"TR"	// Trainer SRC
 };
 
 
-const char * const mix_warm[MIX_WARN_MAX] = {
-		"off"
+const char * const mix_warn[MIX_WARN_MAX] = {
+		"off",
 		"W1",
 		"W2",
 		"W3",
@@ -195,7 +195,7 @@ const char * const msg[GUI_MSG_MAX] = {
 		"OK:Save Cancel:Abort",
 		"Please zero throttle to continue.",
 		"SW warning!",
-		"Correct switches.",
+		"",
 		"Calibration data invalid, please calibrate the sticks.",
 		"OK to preset this model?",
 		"OK to preset all settings?",
@@ -286,7 +286,14 @@ const char * const mixer_edit_list1[MIXER_EDIT_LIST1_LEN] = {
 
 };
 
-
+const char * const heli_menu_list[HELI_MENU_LIST_LEN] = {
+		"Swash type",
+		"Swash ring",
+		"Collective source",
+		"ELE invert",
+		"AIL invert",
+		"COL invert"
+};
 
 const char * const timer_modes[] = {
 		"Off",
@@ -310,6 +317,13 @@ const char * const inverse_labels[] = {
 		"INV"
 };
 
+const char * const swash_type_labels[SWASH_TYPE_MAX] = {
+	"---",
+	"120",
+	"120X",
+	"140",
+	"90"
+};
 
 // TODO: what are they?
 
