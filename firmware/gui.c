@@ -472,6 +472,7 @@ void gui_process(uint32_t data) {
 			gui_show_timer(TIMER_X, 17, timer);
 			// Model Name
 			lcd_set_cursor(8, 0);
+
 			lcd_write_string((char*) g_model.name, LCD_OP_SET, CHAR_2X);
 		}
 
@@ -892,7 +893,8 @@ void gui_process(uint32_t data) {
 					GUI_CASE_OFS(1, 92,
 							GUI_EDIT_ENUM(g_eeGeneral.beeperVal, BEEPER_SILENT, BEEPER_NORMAL, system_menu_beeper ))
 					GUI_CASE_OFS(2, 110,
-							GUI_EDIT_INT_EX( g_eeGeneral.volume, 0, 15, NULL, sound_set_volume(g_eeGeneral.volume) ))
+							/*GUI_EDIT_INT_EX( g_eeGeneral.volume, 0, 15, NULL, sound_set_volume(g_eeGeneral.volume) ))*/
+							GUI_EDIT_INT_EX2(g_eeGeneral.volume, 0, 15, 0, ALIGN_RIGHT,sound_set_volume(g_eeGeneral.volume)) )
 					GUI_CASE_OFS(3, 110,
 							GUI_EDIT_INT_EX( g_eeGeneral.contrast, LCD_CONTRAST_MIN, LCD_CONTRAST_MAX, NULL, lcd_set_contrast(g_eeGeneral.contrast) ))
 					GUI_CASE_OFS(4, 102,
@@ -947,7 +949,7 @@ void gui_process(uint32_t data) {
 					case 10: // Light Switch
 					{
 						int8_t sw = g_eeGeneral.lightSw;
-						lcd_set_cursor(104, context.cur_row_y);
+						lcd_set_cursor(110, context.cur_row_y);
 						if (context.edit) {
 							g_eeGeneral.lightSw = gui_int_edit(
 									g_eeGeneral.lightSw, context.inc,
@@ -1064,16 +1066,17 @@ void gui_process(uint32_t data) {
 								context.op_item, FLAGS_NONE);
 						break;
 					case 21: // Channel Order & Mode
-					{
-						int j;
-						for (j = STICK_R_H; j <= STICK_L_H; ++j) {
-							gui_draw_stick_icon(j, j == g_eeGeneral.stickMode);
-							lcd_write_char(' ', LCD_OP_SET, FLAGS_NONE);
+						// ???
+						{
+							int j;
+							for (j = STICK_R_H; j <= STICK_L_H; ++j) {
+								gui_draw_stick_icon(j, j == g_eeGeneral.stickMode);
+								lcd_write_char(' ', LCD_OP_SET, FLAGS_NONE);
+							}
 						}
-					}
-						lcd_set_cursor(110, context.cur_row_y);
-						GUI_EDIT_INT(g_eeGeneral.stickMode, CHAN_ORDER_ATER,
-								CHAN_ORDER_RETA)
+						// ???
+						lcd_set_cursor(116, context.cur_row_y);
+						GUI_EDIT_INT(g_eeGeneral.stickMode, 1, 4)
 						;
 						break;
 						/*
@@ -1500,8 +1503,8 @@ void gui_process(uint32_t data) {
 
 					switch (row) {
 						GUI_CASE_OFS(0, 90, GUI_EDIT_ENUM(g_model.swashType, 0, SWASH_TYPE_MAX, swash_type_labels))
-						GUI_CASE_OFS(1, 90, GUI_EDIT_INT_EX2(g_model.swashRingValue, -100, 100, 0, ALIGN_RIGHT,{}))
-						GUI_CASE_OFS(2, 90, GUI_EDIT_ENUM(g_model.swashCollectiveSource, 0, NUM_STICKS, sticks))
+						GUI_CASE_OFS(1, 102, GUI_EDIT_INT_EX2(g_model.swashRingValue, -100, 100, 0, ALIGN_RIGHT,{}))
+						GUI_CASE_OFS(2, 90, GUI_EDIT_ENUM(g_model.swashCollectiveSource, 0, MIX_SRCS_MAX-1, mix_src))
 						GUI_CASE_OFS(3, 90, GUI_EDIT_ENUM(g_model.swashInvertELE, 0, 1, inverse_labels))
 						GUI_CASE_OFS(4, 90, GUI_EDIT_ENUM(g_model.swashInvertAIL, 0, 1, inverse_labels))
 						GUI_CASE_OFS(5, 90, GUI_EDIT_ENUM(g_model.swashInvertCOL, 0, 1, inverse_labels))

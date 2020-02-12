@@ -48,13 +48,12 @@ const char * const switches_mask[1<<NUM_SWITCHES]  = {
 };
 
 
-const char * const sticks[NUM_STICKS] = {
+const char * const sticks[NUM_STICKS] = { //logical stick names (MODE 2 physical order)
 		"AIL",
-		"ELE",
-		"THR",
-		"RUD",
+		"ELE", 
+		"THR", 
+		"RUD"
 };
-
 
 const char * const pots[NUM_POTS] = {
 		"VRA",
@@ -81,7 +80,7 @@ const char * const mix_warn[MIX_WARN_MAX] = {
 
 
 const char * const mix_src[MIX_SRCS_MAX] = {
-		"off",
+		"---",
 		"AIL",
 		"ELE",
 		"THR",
@@ -288,8 +287,8 @@ const char * const mixer_edit_list1[MIXER_EDIT_LIST1_LEN] = {
 
 const char * const heli_menu_list[HELI_MENU_LIST_LEN] = {
 		"Swash type",
-		"Swash ring",
-		"Collective source",
+		"Swash ring %",
+		"Coll. source",
 		"ELE invert",
 		"AIL invert",
 		"COL invert"

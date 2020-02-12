@@ -23,6 +23,11 @@
 
 #define MIXER_TRIM_LIMIT	100
 
+#define AIL_STICK       0
+#define ELE_STICK       1
+#define THR_STICK       2
+#define RUD_STICK       3
+
 void mixer_init(void);
 void mixer_update(void);
 
@@ -30,5 +35,6 @@ void mixer_input_trim(KEYPAD_KEY key);
 int16_t mixer_get_trim(STICK stick);
 
 int16_t expo(int16_t x, int16_t k);
+int16_t log2physSticks(int16_t log, int16_t mode);
 
 #endif // _MIXER_H
