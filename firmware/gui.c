@@ -32,6 +32,7 @@
 #include "icons.h"
 #include "sound.h"
 #include "strings.h"
+#include "keypad.h"
 
 // Battery values.
 #define BATT_MIN	99	//NiMh: 88
@@ -306,6 +307,20 @@ static void timer_restart() {
 	timer_tick = system_ticks;
 }
 
+static void backlight_management() {
+	// if key g_eeGeneral.lightSw is on - light on
+	// if key g_eeGeneral.lightSw is off - check g_eeGeneral.lightAutoOff 
+	//  0- always on
+	// > 0 No of seconds to light off - key_inactivity returns system ticks inactivity of keys
+	// 
+ 
+	lcd_backlight(
+		(( g_eeGeneral.lightSw && (keypad_get_switches() & g_eeGeneral.lightSw) ) 	// light switch is defined and switched on
+	     || (g_eeGeneral.lightAutoOff == 0)										  	// auto light off is zero - always lit on
+		 || (key_inactivity() < (g_eeGeneral.lightAutoOff * 1000))					// last key activity before timeout
+	   	)
+	);
+}
 ///////////////////////////////////////////////////////////////////////////////
 
 
@@ -407,6 +422,9 @@ void gui_process(uint32_t data) {
 
 	// TODO: separate task
 	timer_update();
+
+	backlight_management();
+
 
 	// clear popup result until OK/SEL/CANCEL pressed,
 	// then only allow one chance to process it (for safety of it was not handled)

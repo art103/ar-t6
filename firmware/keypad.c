@@ -45,7 +45,7 @@ static uint32_t keys_pressed = 0;
 // key repeat/MENU state vars
 static uint32_t key_repeat = 0;
 static uint32_t key_time = 0;
-
+static uint32_t last_keypress = 0;
 
 static void keypad_process(uint32_t data);
 
@@ -286,9 +286,11 @@ static void keypad_process(uint32_t data) {
 		switch (data) {
 			case 1:
 				key = KEY_RIGHT;
+				last_keypress = system_ticks;
 				break;
 			case 2:
 				key = KEY_LEFT;
+				last_keypress = system_ticks;
 				break;
 		}
 		key_time = system_ticks;
@@ -401,6 +403,7 @@ KEYPAD_KEY keypad_scan_keys(void) {
 
 	if (found) {
 		rows = ~rows & ROW_MASK;
+		last_keypress = system_ticks;
 
 		switch (col) {
 		case 0:
@@ -443,6 +446,10 @@ KEYPAD_KEY keypad_scan_keys(void) {
 	}
 
 	return key;
+}
+
+uint32_t key_inactivity() {
+	return system_ticks - last_keypress;
 }
 
 /**

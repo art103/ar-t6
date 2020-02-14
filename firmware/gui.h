@@ -63,6 +63,7 @@ void gui_navigate(GUI_LAYOUT layout);
 void gui_popup(GUI_MSG msg, int16_t timeout);
 void gui_popup_select(GUI_MSG msg);
 char gui_popup_get_result();
+static void light_management();
 
 GUI_LAYOUT gui_get_layout(void);
 
