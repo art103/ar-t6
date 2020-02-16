@@ -37,6 +37,7 @@
 #include "sound.h"
 #include "keypad.h"
 #include "strings.h"
+#include "lcd.h"
 
 static int16_t trim_increment;
 static void perOut(volatile int16_t *chanOut, uint8_t att);
@@ -704,6 +705,7 @@ static void perOut(volatile int16_t *chanOut, uint8_t att)
         default: //c1..c8
             v = intpol(v, md->curve - 7);
         }
+
 
         //========== TRIM ===============
         if((md->carryTrim==0) && (md->srcRaw>0) && (md->srcRaw<=4)) v += trimA[md->srcRaw-1];  //  0 = Trim ON  =  Default

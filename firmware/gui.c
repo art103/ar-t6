@@ -1490,7 +1490,7 @@ void gui_process(uint32_t data) {
 					lcd_write_string(" ", LCD_OP_SET, FLAGS_NONE);
 					switch (row) {
 						GUI_CASE_OFS(0, 74, GUI_EDIT_STR(g_model.name))
-						GUI_CASE_OFS(1, 96, GUI_EDIT_ENUM( g_model.tmrMode, 0, 5, timer_modes ))
+						GUI_CASE_OFS(1, 90, GUI_EDIT_ENUM( g_model.tmrMode, 0, 5, timer_modes ))
 						GUI_CASE_OFS(2, 96, GUI_EDIT_ENUM( g_model.tmrDir, 0, 1, dir_labels ))
 						GUI_CASE_OFS(3, 96, GUI_EDIT_INT( g_model.tmrVal, 0, 3600 ))
 						GUI_CASE_OFS(4, 96, GUI_EDIT_ENUM( g_model.traineron, 0, 1, menu_on_off ))
@@ -2271,8 +2271,8 @@ static void gui_string_edit(MenuContext* pCtx, char *string, uint32_t keys) {
 		string[char_index] += pCtx->inc;
 		if (string[char_index] < 32)
 			string[char_index] = 32;
-		if (string[char_index] > 126)
-			string[char_index] = 126;
+		if (string[char_index] > 127)
+			string[char_index] = 127;
 	} else {
 		char_index += pCtx->inc;
 	}

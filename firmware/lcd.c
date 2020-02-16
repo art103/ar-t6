@@ -201,7 +201,7 @@ void lcd_set_contrast(uint8_t val) {
 		contrast = 0;
 
 	lcd_send_command(KS0713_SET_REF_VOLTAGE); // Set reference voltage Mode (2-part cmd)
-	lcd_send_command(contrast); 			// Set reference voltage register
+	lcd_send_command(contrast); 			  // Set reference voltage register
 }
 
 /**
