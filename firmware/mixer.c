@@ -37,7 +37,7 @@
 #include "sound.h"
 #include "keypad.h"
 #include "strings.h"
-#include "lcd.h"
+//#include "lcd.h"
 
 static int16_t trim_increment;
 static void perOut(volatile int16_t *chanOut, uint8_t att);

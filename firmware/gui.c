@@ -313,9 +313,9 @@ static void backlight_management() {
 	//  0- always on
 	// > 0 No of seconds to light off - key_inactivity returns system ticks inactivity of keys
 	// 
- 
+
 	lcd_backlight(
-		(( g_eeGeneral.lightSw && (keypad_get_switches() & g_eeGeneral.lightSw) ) 	// light switch is defined and switched on
+		(( g_eeGeneral.lightSw && (keypad_get_switches() & (0x01 << (g_eeGeneral.lightSw-1))) ) 	// light switch is defined and switched on
 	     || (g_eeGeneral.lightAutoOff == 0)										  	// auto light off is zero - always lit on
 		 || (key_inactivity() < (g_eeGeneral.lightAutoOff * 1000))					// last key activity before timeout
 	   	)
