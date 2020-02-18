@@ -16,7 +16,7 @@ Main GUI functionality and framework is implemented.
 Rudimentary mixer, limits and curves implemented providing enough functionality for flight control.
 
 ### Build (linux)
-You can try pre-built binary from https://github.com/prikrylm/ar-t6/blob/MPRI/binary/ar-t6.bin .
+You can try pre-built binary from https://github.com/prikrylm/ar-t6/blob/master/binary/ar-t6.bin .
 
 (command line from root of the project)
 ```
