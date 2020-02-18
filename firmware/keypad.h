@@ -60,6 +60,7 @@ uint8_t keypad_get_switches(void);
 uint8_t keypad_get_switch(KEYPAD_SWITCH sw);
 void check_switches(void);
 void keypad_cancel_repeat(void);
+uint32_t key_inactivity();
 
 #endif // _KEYPAD_H
 

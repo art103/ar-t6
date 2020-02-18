@@ -45,7 +45,7 @@ static uint32_t keys_pressed = 0;
 // key repeat/MENU state vars
 static uint32_t key_repeat = 0;
 static uint32_t key_time = 0;
-
+static uint32_t last_keypress = 0;
 
 static void keypad_process(uint32_t data);
 
@@ -172,36 +172,69 @@ uint8_t keypad_get_switch(KEYPAD_SWITCH sw) {
  */
 void check_switches(void) {
 	uint16_t previous_ticks = 0;
-	uint16_t x = keypad_get_switches();
-	sound_set_volume(10);
-	if ( (x & SWITCH_SWA) || (x & SWITCH_SWB) || (x & SWITCH_SWC) || (x & SWITCH_SWD) ) {
+	uint16_t switchStatus = keypad_get_switches();
+	uint8_t mask = 0;
+	char dir = 0x00;
 
-		lcd_draw_rect(0, 0, LCD_WIDTH - 1, LCD_HEIGHT - 1, LCD_OP_CLR, RECT_FILL);
+	sound_set_volume(10); 
 
-		lcd_set_cursor(CHAR_WIDTH*2*2, 0);		// two spaces over, double size
-		lcd_write_string("For your safety!", LCD_OP_SET,
-				 NEW_LINE | CHAR_2X);
-		lcd_set_cursor(3*CHAR_WIDTH, 5*CHAR_HEIGHT);
-		lcd_write_string("Please place all", LCD_OP_SET, NEW_LINE);
-		lcd_set_cursor(2*CHAR_WIDTH, 6*CHAR_HEIGHT);
-		lcd_write_string("switches in the UP", LCD_OP_SET, NEW_LINE);
-		lcd_set_cursor(8*CHAR_WIDTH, 7*CHAR_HEIGHT);
-		lcd_write_string("position.", LCD_OP_SET, FLAGS_NONE);
-		lcd_update();
+	if (g_eeGeneral.disableSwitchWarning == 0 && (g_eeGeneral.switchWarningStates ^ switchStatus) != 0) {
+		lcd_draw_rect(0, 0, LCD_WIDTH - 1, CHAR_HEIGHT*2 + 6, LCD_OP_SET, RECT_FILL);
 
-		previous_ticks = system_ticks;
+
+		lcd_set_cursor(CHAR_WIDTH*2, 3);		
+		lcd_write_string(msg[GUI_MSG_SWITCH_WARNING], LCD_OP_XOR, NEW_LINE | CHAR_4X);
+
+
+		lcd_set_cursor(3*CHAR_WIDTH, 7*CHAR_HEIGHT);
+		lcd_write_string(msg[GUI_MSG_SET_SWITCH_TO_POS], LCD_OP_SET, FLAGS_NONE);
+
+
+
 		sound_play_tune(AU_POT_STICK_MIDDLE);
-		while( (x & SWITCH_SWA) || (x & SWITCH_SWB) || (x & SWITCH_SWC) || (x & SWITCH_SWD) ) {
-			x = keypad_get_switches();
-			if ( system_ticks == previous_ticks + KEYPAD_SAFETY_TUNE_REPEAT ) {
+		previous_ticks = system_ticks;
+		
+		while( (g_eeGeneral.switchWarningStates ^ switchStatus) != 0 ) {
+			// clean row
+					lcd_draw_rect(3*CHAR_WIDTH -1, 5*CHAR_HEIGHT-1,
+								  19*CHAR_WIDTH+18, 6*CHAR_HEIGHT,
+								  LCD_OP_CLR, RECT_FILL);		
+
+			lcd_set_cursor(3*CHAR_WIDTH, 5*CHAR_HEIGHT);
+			// list switches in wrong position
+			for (int i=0; i<4; i++) {
+				// all switches need to be set to appropriate position
+				// list only wrong switched
+				mask = 0x01 << i;
+
+				if (((g_eeGeneral.switchWarningStates ^ switchStatus) & mask) != 0) {
+					lcd_write_string(switches[i+1], LCD_OP_CLR, FLAGS_NONE); // switches[0] is empty switch --> '---'
+					
+					// write appropriate switch direction
+					if( ((0x01 << i) & g_eeGeneral.switchWarningStates) != 0) {
+						dir = 0x01;
+					} else {
+						dir = 0x00; 
+					}
+
+					lcd_write_char(dir, LCD_OP_CLR, FLAGS_NONE); 
+
+					lcd_move_cursor(1, 0);
+				}
+			}
+
+			lcd_update();
+
+			switchStatus = keypad_get_switches();
+			if ( system_ticks >= previous_ticks + KEYPAD_SAFETY_TUNE_REPEAT ) {
 				sound_play_tune(AU_POT_STICK_MIDDLE);
 				previous_ticks = system_ticks;
 			}
 		}
 		// since I fiddled with the volume, change it back to user setting.
-		sound_set_volume(g_eeGeneral.volume);
+		
 	}
-
+	sound_set_volume(g_eeGeneral.volume);
 }
 
 /**
@@ -253,9 +286,11 @@ static void keypad_process(uint32_t data) {
 		switch (data) {
 			case 1:
 				key = KEY_RIGHT;
+				last_keypress = system_ticks;
 				break;
 			case 2:
 				key = KEY_LEFT;
+				last_keypress = system_ticks;
 				break;
 		}
 		key_time = system_ticks;
@@ -368,6 +403,7 @@ KEYPAD_KEY keypad_scan_keys(void) {
 
 	if (found) {
 		rows = ~rows & ROW_MASK;
+		last_keypress = system_ticks;
 
 		switch (col) {
 		case 0:
@@ -410,6 +446,10 @@ KEYPAD_KEY keypad_scan_keys(void) {
 	}
 
 	return key;
+}
+
+uint32_t key_inactivity() {
+	return system_ticks - last_keypress;
 }
 
 /**

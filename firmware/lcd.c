@@ -201,7 +201,7 @@ void lcd_set_contrast(uint8_t val) {
 		contrast = 0;
 
 	lcd_send_command(KS0713_SET_REF_VOLTAGE); // Set reference voltage Mode (2-part cmd)
-	lcd_send_command(contrast); 			// Set reference voltage register
+	lcd_send_command(contrast); 			  // Set reference voltage register
 }
 
 /**
@@ -220,6 +220,14 @@ void lcd_update(void) {
 		lcd_send_command(KS0713_SET_COL_ADDR_MSB | 0x00);
 		lcd_send_data(lcd_buffer + (LCD_WIDTH * row), LCD_WIDTH);
 	}
+}
+
+uint8_t get_cursor_x() {
+	return cursor_x;
+}
+
+uint8_t get_cursor_y() {
+	return cursor_y;
 }
 
 /**
@@ -261,6 +269,25 @@ void lcd_set_cursor(uint8_t x, uint8_t y) {
 
 	cursor_x = x;
 	cursor_y = y;
+}
+
+/**
+ * @brief  Move cursor from current position in pixels.
+ * @note	Top left is (0,0)
+ * @param  x: horizontal cursor movement
+ * @param  y: vertical cursor movement
+ * @retval None
+ */
+void lcd_move_cursor(int8_t x, int8_t y) {
+	if ((cursor_y + y + CHAR_HEIGHT) >= LCD_HEIGHT)
+		return;
+	if ((cursor_x + x + CHAR_WIDTH) >= LCD_WIDTH)
+		return;
+	if (cursor_x + x < 0) return;
+	if (cursor_y + y < 0) return;
+
+	cursor_x += x;
+	cursor_y += y;
 }
 
 /**

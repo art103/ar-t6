@@ -52,6 +52,82 @@ typedef enum _menu_mode {
 	MENU_MODE_EDIT_S, /* used for string editor */
 } MENU_MODE;
 
+// MenuContext used for Page/Subpage edits (System&Model)
+typedef struct {
+	uint8_t page; // current menu page
+	uint8_t submenu_page; // submenu page if any for this page
+	uint8_t popup; // popup id if any for this page
+
+	uint8_t item; // current selected item (row in list or item in the form)
+	uint8_t item_limit; // #-1 of items (rows or fields) in a page
+	int8_t col;  // current column (0 for single column row)
+	int8_t col_limit; // #-1 of columns in this row
+	uint8_t top_row;  // current top row (scroll offset)
+	uint8_t cur_row_y; // precomputed LCD y offset of current line
+	int8_t copy_row; // row # of last "copy" (to be used in next "paste")
+
+	MENU_MODE menu_mode :3; // current state of navigation
+	uint8_t edit :1; // 1 if this row/item is in active "edit" mode; 0 otherwise
+	int8_t inc :2; // -1,0,1 - used to pass to the value editors for increment/decrement
+	LCD_OP op_list :2; // opacity of text currently being printed in a row (used mainly for row heading)
+	LCD_OP op_item :2; // opacity of text of item currently being printed
+	uint8_t form :1; // option - a form like behavior - stops row scrolling
+} MenuContext;
+
+
+// Battery values.
+#define BATT_MIN	99	//NiMh: 88
+#define BATT_MAX	126	//NiMh: 104
+
+// Message Popup
+#define MSG_X	6
+#define MSG_Y	8
+#define MSG_H	46
+
+// Stick boxes
+#define BOX_W	22
+#define BOX_H	22
+#define BOX_Y	34
+#define BOX_L_X	32
+#define BOX_R_X	72
+// POT bars
+#define POT_W	2
+#define POT_Y	(BOX_Y + BOX_H)
+#define POT_L_X 59
+#define POT_R_X 65
+// timer value column
+#define TIMER_X 26
+// Switch Labels
+#define SW_Y	(BOX_Y + 6)
+#define SW_L_X	(BOX_L_X - 20)
+#define SW_R_X	(BOX_R_X + BOX_W + 4)
+
+#define LIST_ROWS	7
+
+#define PAGE_LIMIT	((g_current_layout == GUI_LAYOUT_SYSTEM_MENU)?5:9)
+#define COL_IGNORE 255
+
+static volatile GUI_LAYOUT g_new_layout = GUI_LAYOUT_NONE;
+static GUI_LAYOUT g_current_layout = GUI_LAYOUT_SPLASH;
+static volatile GUI_MSG g_new_msg = GUI_MSG_NONE;
+static GUI_MSG g_current_msg = GUI_MSG_NONE;
+
+static char g_popup_selected_line = 0;
+static char g_popup_lines = 0;
+#define GUI_POPUP_RESULT_NONE 0
+#define GUI_POPUP_RESULT_CANCEL -1
+static char g_popup_result = GUI_POPUP_RESULT_NONE;
+
+static volatile uint32_t g_key_press = KEY_NONE;
+static volatile uint32_t g_gui_timeout = 0;
+static volatile uint8_t g_update_type = 0;
+
+static GUI_LAYOUT g_main_layout = GUI_LAYOUT_MAIN1;
+static int8_t g_menu_mode_dir = 1;
+
+
+
+
 
 void gui_init(void);
 void gui_process(uint32_t data);
@@ -63,7 +139,68 @@ void gui_navigate(GUI_LAYOUT layout);
 void gui_popup(GUI_MSG msg, int16_t timeout);
 void gui_popup_select(GUI_MSG msg);
 char gui_popup_get_result();
+static void light_management();
 
 GUI_LAYOUT gui_get_layout(void);
+
+//static MenuContext g_menuContext = {0};
+
+static void gui_show_sticks(void);
+static void gui_show_switches(void);
+static void gui_show_battery(int x, int y);
+static void gui_show_timer(int x, int y, int seconds);
+static void gui_update_trim(void);
+static void gui_draw_trim(int x, int y, uint8_t h_v, int value);
+static void gui_draw_slider(int x, int y, int w, int h, int range, int value);
+static void gui_draw_stick_icon(STICK stick, uint8_t inverse);
+
+static void gui_string_edit(MenuContext* pCtx, char *string, uint32_t keys);
+static uint32_t gui_bitfield_edit(MenuContext* pCtx, char *string,
+		uint32_t field, int8_t delta, uint32_t keys);
+static int32_t gui_int_edit(int32_t data, int32_t delta, int32_t min,
+		int32_t max);
+
+#define FOREACH_ROW \
+for (int row = context.top_row;\
+		prepare_context_for_list_rowcol(&context, row, COL_IGNORE),\
+	   (row < context.top_row + LIST_ROWS) && (row <= context.item_limit);  \
+	 ++row )
+
+//#define FOREACH_ROW(BODY) FOREACH_ROW_BARE{ BODY }
+
+#define FOREACH_COL \
+for(int col = 0;\
+	prepare_context_for_list_rowcol(&context, row, col),col <= context.col_limit;\
+	++col )
+
+#define GUI_EDIT_INT_EX2( VAR, MIN, MAX, UNITS, FLAGS, EDITACTION ) \
+		if (context.edit) { VAR = gui_int_edit((int)VAR, context.inc, MIN, MAX); EDITACTION; } \
+		lcd_write_int((int)VAR, context.op_item, FLAGS); \
+		if(UNITS != 0) lcd_write_string(UNITS, context.op_item, FLAGS_NONE);
+
+#define GUI_EDIT_INT_EX( VAR, MIN, MAX, UNITS, EDITACTION ) \
+		GUI_EDIT_INT_EX2( VAR, MIN, MAX, UNITS, FLAGS_NONE, EDITACTION )
+
+#define GUI_EDIT_INT( VAR, MIN, MAX ) GUI_EDIT_INT_EX(VAR, MIN, MAX, 0, {})
+
+#define GUI_EDIT_ENUM( VAR, MIN, MAX, LABELS ) \
+		if (context.edit) VAR = gui_int_edit(VAR, context.inc, MIN, MAX); \
+		lcd_write_string(LABELS[VAR], context.op_item, FLAGS_NONE);
+
+#define GUI_EDIT_STR( VAR ) \
+			prefill_string((char*)VAR, sizeof(VAR));\
+			if (!context.edit) lcd_write_string((char*)VAR, LCD_OP_SET, FLAGS_NONE); \
+			else       gui_string_edit(&context, (char*)VAR, g_key_press);
+
+#define GUI_CASE( CASE, ACTION ) \
+case CASE: \
+	{ ACTION } \
+	break; \
+
+#define GUI_CASE_OFS( CASE, OFFSET, ACTION ) \
+case CASE: \
+	lcd_set_cursor(OFFSET, context.cur_row_y); \
+	{ ACTION } \
+	break; \
 
 #endif // _GUI_H

@@ -137,7 +137,7 @@ void eeprom_init(void) {
 	I2C_DeInit(I2C1);
 
 	I2C_StructInit(&i2cInit);
-	i2cInit.I2C_ClockSpeed = 200000;
+	i2cInit.I2C_ClockSpeed = 400000;            // sky59  bolo 200000
 	I2C_Init(I2C1, &i2cInit);
 	I2C_Cmd(I2C1, ENABLE);
 	I2C_DMACmd(I2C1, DISABLE);
@@ -158,7 +158,7 @@ void eeprom_init(void) {
 	NVIC_Init(&nvicInit);
 
 	// Enable the event interrupt
-	I2C_ITConfig(I2C1, I2C_IT_EVT | I2C_IT_ERR | I2C_IT_BUF, ENABLE);
+	I2C_ITConfig(I2C1, I2C_IT_EVT | I2C_IT_ERR, ENABLE);         // sky59  bolo aj        | I2C_IT_BUF, ENABLE
 
 	// DMA Configuration
 	DMA_DeInit(DMA1_Channel6);	// TX
@@ -371,7 +371,8 @@ void I2C1_EV_IRQHandler(void) {
 			state = STATE_TRANSFERRING;
 			DMA_Channel_TypeDef *channel = (is_read) ? DMA1_Channel7 :
 			DMA1_Channel6;
-			DMA_Cmd(channel, DISABLE);
+			DMA_Cmd(DMA1_Channel6, DISABLE);              // sky59
+			DMA_Cmd(DMA1_Channel7, DISABLE);
 			DMA_ClearFlag(DMA1_FLAG_TC7);
 			DMA_ClearFlag(DMA1_FLAG_TC6);
 			DMA_Init(channel, (DMA_InitTypeDef*) &g_dmaInit);

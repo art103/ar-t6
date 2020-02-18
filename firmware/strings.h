@@ -23,6 +23,7 @@
 #define SYS_MENU_LIST1_LEN	22
 #define MOD_MENU_LIST1_LEN	13
 #define MIXER_EDIT_LIST1_LEN 13
+#define HELI_MENU_LIST_LEN 6
 #define MIX_SRCS_MAX 29
 #define MIX_WARN_MAX 4
 #define MIX_CURVE_MAX 15
@@ -37,6 +38,8 @@ typedef enum {
 	GUI_MSG_CANCELLED,
 	GUI_MSG_OK_CANCEL,
 	GUI_MSG_ZERO_THROTTLE,
+	GUI_MSG_SWITCH_WARNING,
+	GUI_MSG_SET_SWITCH_TO_POS,
 	GUI_MSG_EEPROM_INVALID,
 	GUI_MSG_OK_TO_PRESET_MODEL,
 	GUI_MSG_OK_TO_PRESET_ALL,
@@ -93,11 +96,20 @@ enum _model_page {
 };
 
 enum _mix_mode {
-	MIX_MODE_ADD, MIX_MODE_MULTIPLY, MIX_MODE_REPLACE, MIX_MODE_MAX
+	MIX_MODE_ADD = 0, 
+	MIX_MODE_MULTIPLY, 
+	MIX_MODE_REPLACE, 
+	MIX_MODE_MAX
 };
 
 enum _sources {
-	SRC_HALF = 0, SRC_FULL, SRC_CYC, SRC_PPM, SRC_MIX, SRC_TRN, SRC_MAX
+	SRC_HALF = 0, 
+	SRC_FULL, 
+	SRC_CYC, 
+	SRC_PPM, 
+	SRC_MIX, 
+	SRC_TRN, 
+	SRC_MAX
 };
 
 enum _chan_order {
@@ -109,7 +121,19 @@ enum _chan_order {
 };
 
 enum _menu_beeper {
-	BEEPER_SILENT = 0, BEEPER_NOKEY, BEEPER_NORMAL, BEEPER_MAX
+	BEEPER_SILENT = 0, 
+	BEEPER_NOKEY, 
+	BEEPER_NORMAL, 
+	BEEPER_MAX
+};
+
+enum _swash_type {
+	SWASH_NONE =0,
+	SWASH_TYPE_120, 
+	SWASH_TYPE_120X,
+	SWASH_TYPE_140,
+	SWASH_TYPE_90,
+	SWASH_TYPE_MAX   
 };
 
 extern const char * const switches[NUM_SWITCHES + 1];
@@ -135,5 +159,6 @@ extern const char * const timer_modes[];
 extern const char * const dir_labels[];
 extern const char * const inverse_labels[];
 extern const char * const safety_switch_mode_labels[];
-
+extern const char * const swash_type_labels[SWASH_TYPE_MAX];
+extern const char * const heli_menu_list[HELI_MENU_LIST_LEN];
 #endif // _STRINGS_H
