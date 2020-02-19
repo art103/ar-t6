@@ -18,6 +18,8 @@
 
 #include "keypad.h"
 #include "strings.h"
+#include "lcd.h"
+#include "sticks.h"
 
 typedef enum
 {

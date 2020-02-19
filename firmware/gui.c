@@ -175,10 +175,10 @@ static void timer_restart() {
 
 static void backlight_management() {
 	// if key g_eeGeneral.lightSw is on - light on
-	// if key g_eeGeneral.lightSw is off - check g_eeGeneral.lightAutoOff 
+	// if key g_eeGeneral.lightSw is off - check g_eeGeneral.lightAutoOff
 	//  0- always on
 	// > 0 No of seconds to light off - key_inactivity returns system ticks inactivity of keys
-	// 
+	//
 
 	lcd_backlight(
 		(( g_eeGeneral.lightSw && (keypad_get_switches() & (0x01 << (g_eeGeneral.lightSw-1))) ) 	// light switch is defined and switched on
@@ -784,7 +784,7 @@ void gui_process(uint32_t data) {
 					GUI_CASE_OFS(7, 110, GUI_EDIT_ENUM(g_eeGeneral.minuteBeep, 0, 1, menu_on_off))
 					GUI_CASE_OFS(8, 110, GUI_EDIT_ENUM(g_eeGeneral.preBeep, 0, 1, menu_on_off)) // Beep Countdown
 					GUI_CASE_OFS(9, 110, GUI_EDIT_ENUM(g_eeGeneral.flashBeep, 0, 1, menu_on_off)) // Flash on beep
-					GUI_CASE_OFS(10, 110, GUI_EDIT_ENUM(g_eeGeneral.lightSw, 0, NUM_SWITCHES, switches)) 
+					GUI_CASE_OFS(10, 110, GUI_EDIT_ENUM(g_eeGeneral.lightSw, 0, NUM_SWITCHES, switches))
 
 /* how to with oposit switch direction ???
 					case 10: // Light Switch
@@ -828,7 +828,7 @@ void gui_process(uint32_t data) {
 					case 21: // Channel Order & Mode
 						lcd_set_cursor(116, context.cur_row_y);
 						GUI_EDIT_INT(g_eeGeneral.stickMode, 1, 4);
-						
+
 						lcd_set_cursor(0, context.cur_row_y);
 
 						// ???
@@ -1260,7 +1260,7 @@ void gui_process(uint32_t data) {
 			case MOD_PAGE_HELI_SETUP:
 				context.item_limit = HELI_MENU_LIST_LEN-1;
 				FOREACH_ROW
-				{ 
+				{
 					lcd_write_string((char*)heli_menu_list[row], context.op_list, FLAGS_NONE);
 
 					switch (row) {
