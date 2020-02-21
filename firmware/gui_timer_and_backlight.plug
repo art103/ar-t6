@@ -1,0 +1,62 @@
+///////////////////////////////////////////////////////////////////////////////
+// TODO: timers deserve separate module
+
+static uint32_t minute_tick = 0;
+static uint32_t timer_tick = 0;
+static int16_t timer = 0;
+
+static void timer_update() {
+	if (timer_tick != 0) {
+		if (system_ticks >= timer_tick + 1000) {
+			timer += g_model.tmrDir ? 1 : -1;
+			timer_tick += 1000;
+			// reached timer val
+			if( g_model.tmrVal - timer == 0  )
+				sound_play_tune(AU_INACTIVITY);
+			// count down
+			if( g_eeGeneral.preBeep ) {
+				int d = (int)timer - (int)g_model.tmrVal;
+				d = g_model.tmrDir ? -d : d;
+				if( d > 0 && d  < 10 )
+				{
+					sound_play_tone(700-d*50, 20);
+				}
+			}
+		}
+	}
+	// one mninute beeps
+	if( g_eeGeneral.minuteBeep && system_ticks - minute_tick > 1000*60 ) {
+		minute_tick = system_ticks;
+		sound_play_tone(800, 20);
+		//sound_play_tune(AU_INACTIVITY);
+	}
+}
+
+static void timer_pause() {
+	if (timer_tick == 0)
+		timer_tick = system_ticks;
+	else
+		timer_tick = 0;
+}
+
+
+static void timer_restart() {
+	timer = g_model.tmrDir ? 0 : g_model.tmrVal;
+	timer_tick = system_ticks;
+}
+
+static void backlight_management() {
+	// if key g_eeGeneral.lightSw is on - light on
+	// if key g_eeGeneral.lightSw is off - check g_eeGeneral.lightAutoOff 
+	//  0- always on
+	// > 0 No of seconds to light off - key_inactivity returns system ticks inactivity of keys
+	// 
+
+	lcd_backlight(
+		(( g_eeGeneral.lightSw && (keypad_get_switches() & (0x01 << (g_eeGeneral.lightSw-1))) ) 	// light switch is defined and switched on
+	     || (g_eeGeneral.lightAutoOff == 0)										  	// auto light off is zero - always lit on
+		 || (key_inactivity() < (g_eeGeneral.lightAutoOff * 1000))					// last key activity before timeout
+	   	)
+	);
+}
+///////////////////////////////////////////////////////////////////////////////
