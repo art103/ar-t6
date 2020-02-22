@@ -615,9 +615,9 @@
 				}
 				// check if popup was finished, if so the result would show up
 				char popupRes = gui_popup_get_result();
-				if (popupRes) {
+				if (popupRes > 0) {
 					// "preset" popup was answered "OK" so preset the model
-					if (popupRes > 0) {
+					if (popupRes == 1) {
 						g_eeGeneral.currModel = context.item;
 						settings_preset_current_model();
 					}
