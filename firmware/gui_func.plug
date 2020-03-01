@@ -67,10 +67,10 @@ void gui_popup(GUI_MSG msg, int16_t timeout) {
  * @note   The location and translation will be specific to the current state.
  * @retval None
  */
-void gui_popup_select(GUI_MSG msg) {
+void gui_popup_select(GUI_MSG msg, uint8_t first_line) {
 	g_new_msg = msg;
 	g_current_msg = 0;
-	g_popup_selected_line = 1;
+	g_popup_selected_line = first_line;
 	g_popup_result = GUI_POPUP_RESULT_NONE;
 	g_gui_timeout = 0;
 	task_schedule(TASK_PROCESS_GUI, UPDATE_MSG, 0);

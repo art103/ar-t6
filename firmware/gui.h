@@ -58,7 +58,9 @@ typedef enum _menu_mode {
 typedef struct {
 	uint8_t page; // current menu page
 	uint8_t submenu_page; // submenu page if any for this page
-	uint8_t popup; // popup id if any for this page
+	uint8_t popup_menu; // popup id if any for this page - menu type
+	uint8_t popup_menu_first_line; // first line of menu - some rows for menu explaining
+	uint8_t popup;     // popup id if any for this page - OK / Cancel type
 
 	uint8_t item; // current selected item (row in list or item in the form)
 	uint8_t item_limit; // #-1 of items (rows or fields) in a page
@@ -112,7 +114,7 @@ void gui_input_key(KEYPAD_KEY key);
 
 void gui_navigate(GUI_LAYOUT layout);
 void gui_popup(GUI_MSG msg, int16_t timeout);
-void gui_popup_select(GUI_MSG msg);
+void gui_popup_select(GUI_MSG msg, uint8_t first_line);
 char gui_popup_get_result();
 static void light_management();
 

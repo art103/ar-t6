@@ -68,6 +68,9 @@ void gui_init(void) {
  * @retval None
  */
 void gui_process(uint32_t data) {
+
+	static MenuContext context = { 0 };
+
 	uint8_t full = FALSE;
 
 	// TODO: separate task
@@ -91,8 +94,8 @@ void gui_process(uint32_t data) {
 					g_popup_selected_line--;
 				if (g_key_press & KEY_RIGHT)
 					g_popup_selected_line++;
-				if (g_popup_selected_line < 1)
-					g_popup_selected_line = 1;
+				if (g_popup_selected_line < context.popup_menu_first_line)
+					g_popup_selected_line = context.popup_menu_first_line; // = 1
 				if (g_popup_selected_line > g_popup_lines)
 					g_popup_selected_line = g_popup_lines;
 				g_new_msg = g_current_msg;

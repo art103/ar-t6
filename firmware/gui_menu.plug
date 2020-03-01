@@ -1,6 +1,5 @@
 	{
 		// @formatter:off
-		static MenuContext context = { 0 };
 		static MenuContext return_context = { 0 };
 		static uint8_t sub_edit_item;
 
@@ -108,8 +107,10 @@
 				}
 			}
 		} else if (g_key_press & KEY_MENU) {
-			if (context.popup)
-				gui_popup_select(context.popup);
+			if (context.popup_menu) // menu popup
+				gui_popup_select(context.popup_menu, context.popup_menu_first_line);
+			if (context.popup) // OK / exit popup
+				gui_popup(context.popup, 0); // timeout
 		}
 
 		// speed up the increment after MAX_INC_CNT of the same direction change
@@ -143,7 +144,8 @@
 		// defaults - can be changed by particular menu later for next call of gui_process
 		context.submenu_page = 0;
 		context.col_limit = 0;
-		context.popup = 0;
+		context.popup_menu = 0;
+		context.popup_menu_first_line = 0;
 
 		// actual handling of particular layouts/menus
 
@@ -171,9 +173,10 @@
 			switch (context.page) {
 			case SYS_PAGE_SETUP: {
 				context.item_limit = SYS_MENU_LIST1_LEN - 1;
-				context.popup = GUI_MSG_OK_TO_PRESET_ALL;
+				context.popup_menu = GUI_MSG_OK_TO_PRESET_ALL;
+				context.popup_menu_first_line = 4;
 				char popupRes = gui_popup_get_result();
-				if (popupRes == 1) {
+				if (popupRes == 5) {
 					settings_preset_all();
 				}
 
@@ -418,10 +421,11 @@
 				// count to differ entering the bootloader so screen can get updated
 				static uint8_t deffercount = 0;
 				// FW upgrade popup
-				context.popup = GUI_MSG_FW_UPGRADE;
+				context.popup_menu = GUI_MSG_FW_UPGRADE;
+				context.popup_menu_first_line = 3;
 				// check popup result
 				char popupRes = gui_popup_get_result();
-				if (popupRes == 1) {
+				if (popupRes == 4) {
 					deffercount = 3;
 				}
 				if (deffercount > 0) {
@@ -595,7 +599,8 @@
 			switch (context.page) {
 			case MOD_PAGE_SELECT: {
 				context.item_limit = MAX_MODELS - 1;
-				context.popup = GUI_MSG_OK_TO_PRESET_MODEL;
+				context.popup_menu = GUI_MSG_OK_TO_PRESET_MODEL;
+				context.popup_menu_first_line = 3;
 				for (uint8_t row = context.top_row;
 						(row < context.top_row + LIST_ROWS)
 								&& (row <= context.item_limit); ++row) {
@@ -617,7 +622,7 @@
 				char popupRes = gui_popup_get_result();
 				if (popupRes > 0) {
 					// "preset" popup was answered "OK" so preset the model
-					if (popupRes == 1) {
+					if (popupRes == 4) {
 						g_eeGeneral.currModel = context.item;
 						settings_preset_current_model();
 					}
@@ -752,7 +757,8 @@
 			case MOD_PAGE_MIXER: {
 				context.item_limit = MAX_MIXERS - 1;
 				context.submenu_page = MOD_PAGE_MIX_EDIT;
-				context.popup = GUI_MSG_ROW_MENU;
+				context.popup_menu = GUI_MSG_ROW_MENU;
+				context.popup_menu_first_line = 1;
 				FOREACH_ROW
 				{
 					MixData* const mx = &g_model.mixData[row];

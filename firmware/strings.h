@@ -161,4 +161,7 @@ extern const char * const inverse_labels[];
 extern const char * const safety_switch_mode_labels[];
 extern const char * const swash_type_labels[SWASH_TYPE_MAX];
 extern const char * const heli_menu_list[HELI_MENU_LIST_LEN];
+
+// char * get_popup_content(char * str);
+// char * get_popup_header(char * str);
 #endif // _STRINGS_H
