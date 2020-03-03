@@ -3,7 +3,7 @@
 		static MenuContext return_context = { 0 };
 		static uint8_t sub_edit_item;
 
-		#define MAX_INC_CNT 5 // ignore 0
+		#define MAX_INC_CNT 10 // ignore 0
 		#define INC_CNT_SPEEDUP 8
 		static uint8_t inc_cnt = MAX_INC_CNT; // used for speed up the increment
 		static int32_t last_inc = 0;
