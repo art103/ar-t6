@@ -298,10 +298,10 @@ const char * const heli_menu_list[HELI_MENU_LIST_LEN] = {
 const char * const timer_modes[] = {
 		"Off",
 		"Abs",
-		"Stk",
+		"Stk>",
 		"Stk%",
-		"Sw/!Sw",
-		"!m_sw/!m_sw"
+		// "Sw/!Sw", // not used
+		// "!m_sw/!m_sw" // not used
 };
 
 

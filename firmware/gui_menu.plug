@@ -4,7 +4,7 @@
 		static uint8_t sub_edit_item;
 
 		#define MAX_INC_CNT 5 // ignore 0
-		#define INC_CNT_SPEEDUP 4
+		#define INC_CNT_SPEEDUP 8
 		static uint8_t inc_cnt = MAX_INC_CNT; // used for speed up the increment
 		static int32_t last_inc = 0;
 
@@ -653,9 +653,9 @@
 					lcd_write_string(" ", LCD_OP_SET, FLAGS_NONE);
 					switch (row) {
 						GUI_CASE_OFS(0, 74, GUI_EDIT_STR(g_model.name))
-						GUI_CASE_OFS(1, 90, GUI_EDIT_ENUM( g_model.tmrMode, 0, 5, timer_modes ))
+						GUI_CASE_OFS(1, 90, GUI_EDIT_ENUM( g_model.tmrMode, 0, 3, timer_modes ))
 						GUI_CASE_OFS(2, 96, GUI_EDIT_ENUM( g_model.tmrDir, 0, 1, dir_labels ))
-						GUI_CASE_OFS(3, 96, GUI_EDIT_INT( g_model.tmrVal, 0, 3600 ))
+						GUI_CASE_OFS(3, 96, GUI_EDIT_INT_EX( g_model.tmrVal, 0, 3600, "s", {} ))
 						GUI_CASE_OFS(4, 96, GUI_EDIT_ENUM( g_model.traineron, 0, 1, menu_on_off ))
 						GUI_CASE_OFS(5, 96, GUI_EDIT_ENUM( g_model.thrTrim, 0, 1, menu_on_off ))
 						GUI_CASE_OFS(6, 96, GUI_EDIT_ENUM( g_model.thrExpo, 0, 1, menu_on_off ))
