@@ -68,6 +68,9 @@ void gui_init(void) {
  * @retval None
  */
 void gui_process(uint32_t data) {
+
+	static MenuContext context = { 0 };
+
 	uint8_t full = FALSE;
 
 	// TODO: separate task
@@ -91,8 +94,8 @@ void gui_process(uint32_t data) {
 					g_popup_selected_line--;
 				if (g_key_press & KEY_RIGHT)
 					g_popup_selected_line++;
-				if (g_popup_selected_line < 1)
-					g_popup_selected_line = 1;
+				if (g_popup_selected_line < context.popup_menu_first_line)
+					g_popup_selected_line = context.popup_menu_first_line; // = 1
 				if (g_popup_selected_line > g_popup_lines)
 					g_popup_selected_line = g_popup_lines;
 				g_new_msg = g_current_msg;
@@ -274,44 +277,35 @@ void gui_process(uint32_t data) {
 			const int spacing = 28;
 			const int scale = 1024;
 
-			lcd_draw_rect(left, top, left + spacing * 4 - 4, top + 16, LCD_OP_CLR,
-					RECT_FILL);
+			lcd_draw_rect(left, top, left + spacing * 4 - 4, top + 16, LCD_OP_CLR, RECT_FILL);
 
 			lcd_set_cursor(left, top);
 			left += spacing;
-			lcd_write_int(1000 * g_chans[0] / scale, LCD_OP_SET,
-					INT_DIV10 | CHAR_CONDENSED);
+			lcd_write_int(1000 * g_chans[0] / scale, LCD_OP_SET, INT_DIV10 | CHAR_CONDENSED);
 			lcd_set_cursor(left, top);
 			left += spacing;
-			lcd_write_int(1000 * g_chans[1] / scale, LCD_OP_SET,
-					INT_DIV10 | CHAR_CONDENSED);
+			lcd_write_int(1000 * g_chans[1] / scale, LCD_OP_SET, INT_DIV10 | CHAR_CONDENSED);
 			lcd_set_cursor(left, top);
 			left += spacing;
-			lcd_write_int(1000 * g_chans[2] / scale, LCD_OP_SET,
-					INT_DIV10 | CHAR_CONDENSED);
+			lcd_write_int(1000 * g_chans[2] / scale, LCD_OP_SET, INT_DIV10 | CHAR_CONDENSED);
 			lcd_set_cursor(left, top);
 			left += spacing;
-			lcd_write_int(1000 * g_chans[3] / scale, LCD_OP_SET,
-					INT_DIV10 | CHAR_CONDENSED);
+			lcd_write_int(1000 * g_chans[3] / scale, LCD_OP_SET, INT_DIV10 | CHAR_CONDENSED);
 
 			top += 8;
 			left = 12;
 			lcd_set_cursor(left, top);
 			left += spacing;
-			lcd_write_int(1000 * g_chans[4] / scale, LCD_OP_SET,
-					INT_DIV10 | CHAR_CONDENSED);
+			lcd_write_int(1000 * g_chans[4] / scale, LCD_OP_SET, INT_DIV10 | CHAR_CONDENSED);
 			lcd_set_cursor(left, top);
 			left += spacing;
-			lcd_write_int(1000 * g_chans[5] / scale, LCD_OP_SET,
-					INT_DIV10 | CHAR_CONDENSED);
+			lcd_write_int(1000 * g_chans[5] / scale, LCD_OP_SET, INT_DIV10 | CHAR_CONDENSED);
 			lcd_set_cursor(left, top);
 			left += spacing;
-			lcd_write_int(1000 * g_chans[6] / scale, LCD_OP_SET,
-					INT_DIV10 | CHAR_CONDENSED);
+			lcd_write_int(1000 * g_chans[6] / scale, LCD_OP_SET, INT_DIV10 | CHAR_CONDENSED);
 			lcd_set_cursor(left, top);
 			left += spacing;
-			lcd_write_int(1000 * g_chans[7] / scale, LCD_OP_SET,
-					INT_DIV10 | CHAR_CONDENSED);
+			lcd_write_int(1000 * g_chans[7] / scale, LCD_OP_SET, INT_DIV10 | CHAR_CONDENSED);
 
 			if ((g_update_type & UPDATE_KEYPRESS) != 0) {
 				if (g_key_press & KEY_RIGHT)
@@ -336,11 +330,11 @@ void gui_process(uint32_t data) {
 				gui_navigate(GUI_LAYOUT_MAIN1);
 			else if (g_key_press & KEY_LEFT)
 				gui_navigate(GUI_LAYOUT_MAIN3);
-			else if (g_key_press & (KEY_MENU | KEY_CANCEL))
-				timer_pause();
-			else if (g_key_press & (KEY_OK | KEY_SEL)) {
-				timer_restart();
-			}
+			// else if (g_key_press & (KEY_MENU | KEY_CANCEL))
+			// 	timer_start_stop();
+			// else if (g_key_press & (KEY_OK | KEY_SEL)) {
+			// 	timer_restart();
+			// }
 		}
 		break; // GUI_LAYOUT_MAIN4
 

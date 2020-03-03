@@ -14,6 +14,7 @@
  */
 
 #include "strings.h"
+#include "system.h"
 
 
 // declaring arrays to hold *const (constant pointers)
@@ -196,10 +197,10 @@ const char * const msg[GUI_MSG_MAX] = {
 		"SW warning!",
 		"\x09",
 		"Calibration data invalid, please calibrate the sticks.",
-		"OK to preset this model?",
-		"OK to preset all settings?",
+		"Preset model?\n\nNo\nYes",
+		"Reset to factory default?\n\nNo\nYes",
 		"Preset\nInsert\nDelete\nCopy\nPaste",/*GUI_MSG_ROW_MENU*/
-		"OK to Enter Firmware Upgrade?",/*GUI_MSG_FW_UPGRADE*/
+		"Firmware Upgrade?\n\nNo\nYes",/*GUI_MSG_FW_UPGRADE*/
 
 		// Headings (System)
 		"RADIO SETUP",
@@ -297,10 +298,10 @@ const char * const heli_menu_list[HELI_MENU_LIST_LEN] = {
 const char * const timer_modes[] = {
 		"Off",
 		"Abs",
-		"Stk",
+		"Stk>",
 		"Stk%",
-		"Sw/!Sw",
-		"!m_sw/!m_sw"
+		// "Sw/!Sw", // not used
+		// "!m_sw/!m_sw" // not used
 };
 
 
@@ -332,3 +333,45 @@ const char * const safety_switch_mode_labels[] = {
 		"M2?",
 		"M3?"
 };
+
+// future??? - popup header
+// #define HEADER_SEPARATOR '\x05' // make header text from text before HEADER_SEPARATOR char
+// int char_pos(char *s, char c) { //
+// 	int retval = -1;
+// 	int auxI = 0;
+// 	char *auxS;
+// 	auxS = s;
+// 	while (*auxS != 0) {
+// 		if (*auxS == HEADER_SEPARATOR) {
+// 			retval = auxI;
+// 			break;
+// 		}
+// 		auxS++;
+// 		auxI++;
+// 	}
+
+// 	return retval;
+// }
+
+// char * get_popup_content(char * str) {
+// 	char *auxS;
+// 	auxS = str;
+// 	str = str + char_pos(str, HEADER_SEPARATOR) +1;
+// 	return str;
+// }
+
+// char * get_popup_header(char * str) {
+// 	char *auxS;
+// 	auxS = str;
+// 	char *retval;
+// 	retval = 0;
+// 	int pos = char_pos(str, HEADER_SEPARATOR);
+// 	if (pos >= 0) {
+// 		*retval = (char*) malloc(pos+1);
+// 		for(int i=0; i<pos; i++) {
+// 			retval[i] = str[i];
+// 		}
+// 		retval[pos] = 0x00;
+//  	}
+// 	return retval;
+// }

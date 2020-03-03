@@ -58,7 +58,9 @@ typedef enum _menu_mode {
 typedef struct {
 	uint8_t page; // current menu page
 	uint8_t submenu_page; // submenu page if any for this page
-	uint8_t popup; // popup id if any for this page
+	uint8_t popup_menu; // popup id if any for this page - menu type
+	uint8_t popup_menu_first_line; // first line of menu - some rows for menu explaining
+	uint8_t popup;     // popup id if any for this page - OK / Cancel type
 
 	uint8_t item; // current selected item (row in list or item in the form)
 	uint8_t item_limit; // #-1 of items (rows or fields) in a page
@@ -70,7 +72,7 @@ typedef struct {
 
 	MENU_MODE menu_mode :3; // current state of navigation
 	uint8_t edit :1; // 1 if this row/item is in active "edit" mode; 0 otherwise
-	int8_t inc :4; // -1,0,1 - used to pass to the value editors for increment/decrement, bigger values for accelerated inc on int edit 
+	int8_t inc; // -1,0,1 - used to pass to the value editors for increment/decrement, bigger values for accelerated inc on int edit 
 	LCD_OP op_list :2; // opacity of text currently being printed in a row (used mainly for row heading)
 	LCD_OP op_item :2; // opacity of text of item currently being printed
 	uint8_t form :1; // option - a form like behavior - stops row scrolling
@@ -112,7 +114,7 @@ void gui_input_key(KEYPAD_KEY key);
 
 void gui_navigate(GUI_LAYOUT layout);
 void gui_popup(GUI_MSG msg, int16_t timeout);
-void gui_popup_select(GUI_MSG msg);
+void gui_popup_select(GUI_MSG msg, uint8_t first_line);
 char gui_popup_get_result();
 static void light_management();
 
@@ -135,6 +137,9 @@ static uint32_t gui_bitfield_edit(MenuContext* pCtx, char *string,
 static int32_t gui_int_edit(int32_t data, int32_t delta, int32_t min,
 		int32_t max);
 
-
+static void timer_start();
+static void timer_stop();
+static void timer_start_stop();
+static void timer_restart();
 
 #endif // _GUI_H
