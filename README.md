@@ -43,12 +43,12 @@ This produces "ar-t6.bin" that is ready to flash.
 
 ### Current ToDo List
 
-- Flight modes
-- Heli related functionality
-- Custom switches
+- Flight modes - done
+- Heli related functionality - done
+- Custom switches - todo
 - Safety switches
 - Several radio settings
-- Timers
-- Bugs
+- Timers - done
+- Bugs - I hope done
 
 # **Patches and developers welcome!**
