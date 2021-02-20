@@ -1,6 +1,6 @@
 # ar-t6
 
-forged from art103/ar-t6
+forked from art103/ar-t6
 
 ...working modes and heli settings
 ### Known issues
