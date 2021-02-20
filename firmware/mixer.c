@@ -273,7 +273,7 @@ const int16_t stick_map[4][4] = { // define some constants ???
 
 // translate logical stick numbers to physical acording to mode
 // src can be sticks or mix_src (sticks only)
-// log==0 je off 1 first stick (depends on mode)
+// log is number from mix_src variable - sticks are 1-4 
 int16_t log2physSticks(int16_t log, int16_t mode){
     if (log > 0 && log < 5) {
         return stick_map[mode-1][log-1];
@@ -332,11 +332,11 @@ static void perOut(volatile int16_t *chanOut, uint8_t att)
     uint8_t ele_stick_m = log2physSticks(ELE_STICK+1, g_eeGeneral.stickMode);
     uint8_t thr_stick_m = log2physSticks(THR_STICK+1, g_eeGeneral.stickMode);
 
-    { // heli?
-        // int8_t rud_stick_m = log2physSticks(RUD_STICK, g_eeGeneral.stickMode); // no occurence
+    { 
+        // int8_t rud_stick_m = log2physSticks(RUD_STICK, g_eeGeneral.stickMode); // no need for the heli mix
     
         //===========Swash Ring================
-        if(g_model.swashRingValue)
+        if(g_model.swashType)
         {
             uint32_t v = ((int32_t)(calibratedStick[ele_stick_m])*calibratedStick[ele_stick_m] +
                           (int32_t)(calibratedStick[ail_stick_m])*calibratedStick[ail_stick_m]);
@@ -441,6 +441,9 @@ static void perOut(volatile int16_t *chanOut, uint8_t att)
         for(i=0; i<NUM_CHNOUT; i++) 				anas[i+CHOUT_BASE] = chans[i]; //other mixes previous outputs
 
         //===========Swash Ring================
+        // recalculated swash ring values for ele and ail
+        int32_t sw_ring_ele = anas[ele_stick_m];
+        int32_t sw_ring_ail = anas[ail_stick_m];
         if(g_model.swashRingValue)
         {
             uint32_t v = ((int32_t)anas[ele_stick_m]*anas[ele_stick_m] + (int32_t)anas[ail_stick_m]*anas[ail_stick_m]);
@@ -449,8 +452,8 @@ static void perOut(volatile int16_t *chanOut, uint8_t att)
             if(v>q)
             {
                 uint16_t d = isqrt32(v);
-                anas[ele_stick_m] = (int32_t)anas[ele_stick_m]*g_model.swashRingValue*RESX/((int32_t)d*100);
-                anas[ail_stick_m] = (int32_t)anas[ail_stick_m]*g_model.swashRingValue*RESX/((int32_t)d*100);
+                sw_ring_ele = (int32_t)anas[ele_stick_m]*g_model.swashRingValue*RESX/((int32_t)d*100);
+                sw_ring_ail = (int32_t)anas[ail_stick_m]*g_model.swashRingValue*RESX/((int32_t)d*100);
             }
         }
 
@@ -459,8 +462,8 @@ static void perOut(volatile int16_t *chanOut, uint8_t att)
 
         if(g_model.swashType)
         {
-            int16_t vp = anas[ele_stick_m]+trimA[ele_stick_m];
-            int16_t vr = anas[ail_stick_m]+trimA[ail_stick_m];
+            int16_t vp = sw_ring_ele + trimA[ele_stick_m];
+            int16_t vr = sw_ring_ail + trimA[ail_stick_m];
 
             if(att&NO_INPUT)  //zero input for setStickCenter()
             {

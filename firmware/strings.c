@@ -247,7 +247,7 @@ const char * const system_menu_list1[SYS_MENU_LIST1_LEN] = {
 		"Default Sw",
 		"Memory Warning",
 		"Alarm Warning",
-		"Enable PPMSIM",
+		// "Enable PPMSIM", ppmout is directly connected to ppm on rf module, so there is no extra ppmout
 		"Mode",
 };
 

@@ -121,7 +121,7 @@
 				}
 				else {
 					if (context.inc > 0) {
-					context.inc = INC_CNT_SPEEDUP;
+						context.inc = INC_CNT_SPEEDUP;
 					} else {
 						context.inc = -INC_CNT_SPEEDUP;
 					}
@@ -240,9 +240,9 @@
 						break;
 					GUI_CASE_OFS(18, 110, GUI_EDIT_ENUM(g_eeGeneral.disableMemoryWarning, 0, 1, menu_on_off))
 					GUI_CASE_OFS(19, 110, GUI_EDIT_ENUM(g_eeGeneral.disableAlarmWarning, 0, 1, menu_on_off))
-					GUI_CASE_OFS(20, 110, GUI_EDIT_ENUM(g_eeGeneral.enablePpmsim, 0, 1, menu_on_off))
+					//GUI_CASE_OFS(20, 110, GUI_EDIT_ENUM(g_eeGeneral.enablePpmsim, 0, 1, menu_on_off))
 
-					case 21: // Channel Order & Mode
+					case 20: // Channel Order & Mode
 						lcd_set_cursor(116, context.cur_row_y);
 						GUI_EDIT_INT(g_eeGeneral.stickMode, 1, 4);
 						
@@ -683,7 +683,7 @@
 					lcd_write_string((char*)heli_menu_list[row], context.op_list, FLAGS_NONE);
 
 					switch (row) {
-						GUI_CASE_OFS(0, 90, GUI_EDIT_ENUM(g_model.swashType, 0, SWASH_TYPE_MAX, swash_type_labels))
+						GUI_CASE_OFS(0, 90, GUI_EDIT_ENUM(g_model.swashType, 0, SWASH_TYPE_MAX-1, swash_type_labels))
 						GUI_CASE_OFS(1, 102, GUI_EDIT_INT_EX2(g_model.swashRingValue, 0, 100, 0, ALIGN_RIGHT,{}))
 						GUI_CASE_OFS(2, 90, GUI_EDIT_ENUM(g_model.swashCollectiveSource, 0, MIX_SRCS_MAX-1, mix_src))
 						GUI_CASE_OFS(3, 90, GUI_EDIT_ENUM(g_model.swashInvertELE, 0, 1, inverse_labels))
