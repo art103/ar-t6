@@ -23,13 +23,14 @@ static void timer_update() {
 	
 	if (g_model.tmrMode > 1) { // stk x
 		thr_stick_m = log2physSticks(THR_STICK+1, g_eeGeneral.stickMode);
-		if (g_model.tmrMode == 2) { // Stk>
-			if (stick_data[thr_stick_m] < -1000) { // stick_data[x]  -1024 .. +1024 
+		if (g_model.tmrMode == 2 || g_model.tmrMode == 3) { // any Stk start/stop timer
+			if (stick_data[thr_stick_m] < -900) { // stick_data[x]  -1024 .. +1024 
 				timer_stop();
 			} else {
 				timer_start();
 			}
-		} else if (g_model.tmrMode ==3) {
+		}
+		if (g_model.tmrMode ==3) {
 			time_multiplier = (stick_data[thr_stick_m]+1024) >> 7; // 0-2048 -> 0-16
 		}
 	}
@@ -49,7 +50,7 @@ static void timer_update() {
 				if( g_eeGeneral.preBeep ) {
 					if( timer > 0 && timer  <= 10 )
 					{
-						sound_play_tone(700 - timer * 50, 20);
+						sound_play_tone(700 - timer * 50, 30);
 					}
 				}
 			}
