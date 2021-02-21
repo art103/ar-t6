@@ -14,7 +14,7 @@ main improvements
 - almost nice roller accelerating for faster move to bigger "numbers" (ie. moving curve point from -100 to 100)
 
 ### Known issues
-- if some heli cyclic is selected AIL and ELE behaves as 90° CYC1 and CYC2
+- if some heli swash plate type is selected, AIL and ELE behaves as 90° CYC1 and CYC2
 
 
 ### Current ToDo List
