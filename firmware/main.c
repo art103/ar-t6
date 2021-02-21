@@ -149,7 +149,7 @@ void apply_settings()
 	// update volume from global settings
     sound_set_volume(g_eeGeneral.volume);
 
-	if( !g_eeGeneral.disableSplashScreen )
+	if( g_eeGeneral.disableSplashScreen == 1) // 1 is off (why?)
 	{
 		// Put the logo into out frame buffer
 		memcpy(lcd_buffer, logo, LCD_WIDTH * LCD_HEIGHT / 8);

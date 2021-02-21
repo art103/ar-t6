@@ -229,7 +229,11 @@ uint8_t get_cursor_x() {
 uint8_t get_cursor_y() {
 	return cursor_y;
 }
-
+void lcd_clear() {
+	lcd_buffer[0] = 0;
+	memcpy(lcd_buffer+1, lcd_buffer, LCD_WIDTH * LCD_HEIGHT / 8 -1);
+	lcd_update();
+}
 /**
  * @brief  Set / Clean a specific pixel.
  * @note	Top left is (0,0)

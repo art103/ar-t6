@@ -4,9 +4,11 @@
 		static uint8_t sub_edit_item;
 
 		#define MAX_INC_CNT 10 // ignore 0
-		#define INC_CNT_SPEEDUP 8
+		#define INC_CNT_SPEEDUP 4
+		#define MAX_TIME_SPEEDUP 800 // speedup is erased after x system_ticks
 		static uint8_t inc_cnt = MAX_INC_CNT; // used for speed up the increment
 		static int32_t last_inc = 0;
+		static uint32_t same_inc_time = 0;
 
 		// Clear the screen.
 		lcd_draw_rect(0, 0, LCD_WIDTH - 1, LCD_HEIGHT - 1, LCD_OP_CLR, RECT_FILL);
@@ -114,8 +116,14 @@
 		}
 
 		// speed up the increment after MAX_INC_CNT of the same direction change
+		// speed up reset after MAX_TIME_SPEEDUP system_ticks
 		if (context.inc != 0) {
+			if(system_ticks - same_inc_time > MAX_TIME_SPEEDUP) {
+				inc_cnt = MAX_INC_CNT;
+			}
 			if (context.inc == last_inc) {
+				same_inc_time = system_ticks;
+
 				if (inc_cnt > 0) {
 					inc_cnt--;
 				}
