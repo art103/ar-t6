@@ -241,10 +241,11 @@ uint8_t get_cursor_y()
 }
 void lcd_clear()
 {
-	// for(int i=lcd_buffer; i<lcd_buffer + LCD_WIDTH * LCD_HEIGHT / 8; i++) {
-	// lcd_buffer[i] = 0;
-	// lcd_update();
-	lcd_draw_rect(0, 0, LCD_WIDTH, LCD_HEIGHT, LCD_OP_CLR, RECT_FILL);
+	for (int i = 0; i < LCD_WIDTH * LCD_HEIGHT / 8; i++)
+	{
+		lcd_buffer[i] = 0;
+	}
+	// lcd_draw_rect(0, 0, LCD_WIDTH, LCD_HEIGHT, LCD_OP_CLR, RECT_FILL);
 }
 /**
  * @brief  Set / Clean a specific pixel.
