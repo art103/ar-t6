@@ -336,15 +336,18 @@ static void perOut(volatile int16_t *chanOut, uint8_t att)
         // int8_t rud_stick_m = log2physSticks(RUD_STICK, g_eeGeneral.stickMode); // no need for the heli mix
     
         //===========Swash Ring================
-        if(g_model.swashType)
-        {
-            uint32_t v = ((int32_t)(calibratedStick[ele_stick_m])*calibratedStick[ele_stick_m] +
-                          (int32_t)(calibratedStick[ail_stick_m])*calibratedStick[ail_stick_m]);
-            uint32_t q = (int32_t)(RESX)*g_model.swashRingValue/100;
-            q *= q;
-            if(v>q)
-                d = isqrt32(v);
-        }
+        // if(g_model.swashType)
+        // {
+        //     // v - "polomer kruznice", urceny velikosti ele a ail
+        //     // q - maximalni polomer kruznice (v rozich ALI, ELE max je v vetsi jak q)
+        //     // d - bude pomer zmenseni, aby max ELE a AIL nepresahly danou max kruznici
+        //     uint32_t v = ((int32_t)(calibratedStick[ele_stick_m])*calibratedStick[ele_stick_m] +
+        //                   (int32_t)(calibratedStick[ail_stick_m])*calibratedStick[ail_stick_m]);
+        //     uint32_t q = (int32_t)(RESX)*g_model.swashRingValue/100;
+        //     q *= q;
+        //     if(v>q)
+        //         d = isqrt32(v);
+        // }
         //===========Swash Ring================
 
         // Calc Sticks
@@ -389,14 +392,16 @@ static void perOut(volatile int16_t *chanOut, uint8_t att)
                     }
                 }
 
-                //===========Swash Ring================
-                if(d && (i==ele_stick_m || i==ail_stick_m))
-                    v = (int32_t)(v)*g_model.swashRingValue*RESX/((int32_t)(d)*100);
-                //===========Swash Ring================
+                // //===========Swash Ring================
+                // // je potreba korekce na velikost vychylky, do v se spocita korekce pro ele a ail
+                // if(d && (i==ele_stick_m || i==ail_stick_m))
+                //     v = (int32_t)(v)*g_model.swashRingValue*RESX/((int32_t)(d)*100);
+                // //===========Swash Ring================
 
                 uint8_t expoDrOn = GET_DR_STATE(i);
                 uint8_t stkDir = v>0 ? DR_RIGHT : DR_LEFT;
 
+                // expo 
                 if(i == thr_stick_m && g_model.thrExpo){
                     v  = 2*expo((v+RESX)/2,g_model.expoData[i].expo[expoDrOn][DR_EXPO][DR_RIGHT]);
                     stkDir = DR_RIGHT;
@@ -425,7 +430,7 @@ static void perOut(volatile int16_t *chanOut, uint8_t att)
                 //trim
                 trimA[i] = (vv==2*RESX) ? *TrimPtr[i]*2 : (int16_t)vv*2; //    if throttle trim -> trim low end
             }
-            anas[i] = v; //set values for mixer
+            anas[i] = v; //set values for mixer after input correction (expo & DR, sw)
         }
 
         //===========BEEP CENTER================
