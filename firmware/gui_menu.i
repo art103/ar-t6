@@ -199,17 +199,17 @@
 					lcd_write_string(" ", LCD_OP_SET, FLAGS_NONE);
 
 					switch (row) {
-					GUI_CASE_OFS(0, 74, GUI_EDIT_STR(g_eeGeneral.ownerName))
-					GUI_CASE_OFS(1, 92, GUI_EDIT_ENUM(g_eeGeneral.beeperVal, BEEPER_SILENT, BEEPER_NORMAL, system_menu_beeper ))
-					GUI_CASE_OFS(2, 110, GUI_EDIT_INT_EX2(g_eeGeneral.volume, 0, 15, 0, ALIGN_RIGHT,sound_set_volume(g_eeGeneral.volume)) )
-					GUI_CASE_OFS(3, 110, GUI_EDIT_INT_EX( g_eeGeneral.contrast, LCD_CONTRAST_MIN, LCD_CONTRAST_MAX, NULL, lcd_set_contrast(g_eeGeneral.contrast) ))
-					GUI_CASE_OFS(4, 102, GUI_EDIT_INT_EX2( g_eeGeneral.vBatWarn, BATT_MIN, BATT_MAX, "V", INT_DIV10, {} ))
-					GUI_CASE_OFS(5, 110, GUI_EDIT_INT_EX2( g_eeGeneral.inactivityTimer, 0, 99, "m", ALIGN_RIGHT, {} ))
-					GUI_CASE_OFS(6, 110, GUI_EDIT_ENUM(g_eeGeneral.throttleReversed, 0, 1, menu_on_off))
-					GUI_CASE_OFS(7, 110, GUI_EDIT_ENUM(g_eeGeneral.minuteBeep, 0, 1, menu_on_off))
-					GUI_CASE_OFS(8, 110, GUI_EDIT_ENUM(g_eeGeneral.preBeep, 0, 1, menu_on_off)) // Beep Countdown
-					GUI_CASE_OFS(9, 110, GUI_EDIT_ENUM(g_eeGeneral.flashBeep, 0, 1, menu_on_off)) // Flash on beep
-					GUI_CASE_OFS(10, 110, GUI_EDIT_ENUM(g_eeGeneral.lightSw, 0, NUM_SWITCHES, switches)) 
+					GUI_CASE_OFS(0, 74, gui_edit_str(g_eeGeneral.ownerName))
+					GUI_CASE_OFS(1, 92, gui_edit_enum(g_eeGeneral.beeperVal, BEEPER_SILENT, BEEPER_NORMAL, system_menu_beeper ))
+					GUI_CASE_OFS(2, 110, gui_edit_int_ex2(g_eeGeneral.volume, 0, 15, 0, ALIGN_RIGHT,sound_set_volume) )
+					GUI_CASE_OFS(3, 110, gui_edit_int_ex( g_eeGeneral.contrast, LCD_CONTRAST_MIN, LCD_CONTRAST_MAX, NULL, lcd_set_contrast ))
+					GUI_CASE_OFS(4, 102, gui_edit_int_ex2( g_eeGeneral.vBatWarn, BATT_MIN, BATT_MAX, "V", INT_DIV10, NULL ))
+					GUI_CASE_OFS(5, 110, gui_edit_int_ex2( g_eeGeneral.inactivityTimer, 0, 99, "m", ALIGN_RIGHT, NULL ))
+					GUI_CASE_OFS(6, 110, gui_edit_enum(g_eeGeneral.throttleReversed, 0, 1, menu_on_off))
+					GUI_CASE_OFS(7, 110, gui_edit_enum(g_eeGeneral.minuteBeep, 0, 1, menu_on_off))
+					GUI_CASE_OFS(8, 110, gui_edit_enum(g_eeGeneral.preBeep, 0, 1, menu_on_off)) // Beep Countdown
+					GUI_CASE_OFS(9, 110, gui_edit_enum(g_eeGeneral.flashBeep, 0, 1, menu_on_off)) // Flash on beep
+					GUI_CASE_OFS(10, 110, gui_edit_enum(g_eeGeneral.lightSw, 0, NUM_SWITCHES, switches)) 
 
 			/* how to with oposit switch direction ???
 					case 10: // Light Switch
@@ -231,13 +231,13 @@
 					}
 						break;
 			*/
-					GUI_CASE_OFS(11, 110, GUI_EDIT_ENUM(g_eeGeneral.blightinv, 0, 1, menu_on_off)) // what???
+					GUI_CASE_OFS(11, 110, gui_edit_enum(g_eeGeneral.blightinv, 0, 1, menu_on_off)) // what???
 
-					GUI_CASE_OFS(12, 110, GUI_EDIT_INT_EX2( g_eeGeneral.lightAutoOff, 0, 99, "s", ALIGN_RIGHT, {} ))
-					GUI_CASE_OFS(13, 110, GUI_EDIT_ENUM(g_eeGeneral.lightOnStickMove, 0, 1, menu_on_off))
-					GUI_CASE_OFS(14, 110, GUI_EDIT_ENUM(g_eeGeneral.disableSplashScreen, 0, 1, menu_on_off))
-					GUI_CASE_OFS(15, 110, GUI_EDIT_ENUM(g_eeGeneral.disableThrottleWarning, 0, 1, menu_on_off))
-					GUI_CASE_OFS(16, 110, GUI_EDIT_ENUM(g_eeGeneral.disableSwitchWarning, 0, 1, menu_on_off))
+					GUI_CASE_OFS(12, 110, gui_edit_int_ex2( g_eeGeneral.lightAutoOff, 0, 99, "s", ALIGN_RIGHT, NULL ))
+					GUI_CASE_OFS(13, 110, gui_edit_enum(g_eeGeneral.lightOnStickMove, 0, 1, menu_on_off))
+					GUI_CASE_OFS(14, 110, gui_edit_enum(g_eeGeneral.disableSplashScreen, 0, 1, menu_on_off))
+					GUI_CASE_OFS(15, 110, gui_edit_enum(g_eeGeneral.disableThrottleWarning, 0, 1, menu_on_off))
+					GUI_CASE_OFS(16, 110, gui_edit_enum(g_eeGeneral.disableSwitchWarning, 0, 1, menu_on_off))
 
 					case 17: // Default Sw
 						lcd_set_cursor(104, context.cur_row_y);
@@ -246,13 +246,13 @@
 								g_eeGeneral.switchWarningStates, context.inc,
 								g_key_press);
 						break;
-					GUI_CASE_OFS(18, 110, GUI_EDIT_ENUM(g_eeGeneral.disableMemoryWarning, 0, 1, menu_on_off))
-					GUI_CASE_OFS(19, 110, GUI_EDIT_ENUM(g_eeGeneral.disableAlarmWarning, 0, 1, menu_on_off))
-					//GUI_CASE_OFS(20, 110, GUI_EDIT_ENUM(g_eeGeneral.enablePpmsim, 0, 1, menu_on_off))
+					GUI_CASE_OFS(18, 110, gui_edit_enum(g_eeGeneral.disableMemoryWarning, 0, 1, menu_on_off))
+					GUI_CASE_OFS(19, 110, gui_edit_enum(g_eeGeneral.disableAlarmWarning, 0, 1, menu_on_off))
+					//GUI_CASE_OFS(20, 110, gui_edit_enum(g_eeGeneral.enablePpmsim, 0, 1, menu_on_off))
 
 					case 20: // Channel Order & Mode
 						lcd_set_cursor(116, context.cur_row_y);
-						GUI_EDIT_INT(g_eeGeneral.stickMode, 1, 4);
+						gui_edit_int(g_eeGeneral.stickMode, 1, 4);
 						
 						lcd_set_cursor(0, context.cur_row_y);
 
@@ -660,19 +660,19 @@
 							context.op_list, FLAGS_NONE);
 					lcd_write_string(" ", LCD_OP_SET, FLAGS_NONE);
 					switch (row) {
-						GUI_CASE_OFS(0, 74, GUI_EDIT_STR(g_model.name))
-						GUI_CASE_OFS(1, 90, GUI_EDIT_ENUM( g_model.tmrMode, 0, 3, timer_modes ))
-						GUI_CASE_OFS(2, 96, GUI_EDIT_ENUM( g_model.tmrDir, 0, 1, dir_labels ))
-						GUI_CASE_OFS(3, 96, GUI_EDIT_INT_EX( g_model.tmrVal, 0, 3600, "s", {} ))
-						GUI_CASE_OFS(4, 96, GUI_EDIT_ENUM( g_model.traineron, 0, 1, menu_on_off ))
-						GUI_CASE_OFS(5, 96, GUI_EDIT_ENUM( g_model.thrTrim, 0, 1, menu_on_off ))
-						GUI_CASE_OFS(6, 96, GUI_EDIT_ENUM( g_model.thrExpo, 0, 1, menu_on_off ))
-						GUI_CASE_OFS(7, 96, GUI_EDIT_INT( g_model.trimInc, 0, 7 ))
-						GUI_CASE_OFS(8, 96, GUI_EDIT_ENUM( g_model.extendedLimits, 0, 1, menu_on_off ))
-						GUI_CASE_OFS(9, 96, GUI_EDIT_INT( g_model.ppmNCH, 1, NUM_CHNOUT ))
-						GUI_CASE_OFS(10, 96, GUI_EDIT_INT( g_model.ppmDelay, 0, 7 ))
+						GUI_CASE_OFS(0, 74, gui_edit_str(g_model.name))
+						GUI_CASE_OFS(1, 90, gui_edit_enum( g_model.tmrMode, 0, 3, timer_modes ))
+						GUI_CASE_OFS(2, 96, gui_edit_enum( g_model.tmrDir, 0, 1, dir_labels ))
+						GUI_CASE_OFS(3, 96, gui_edit_int_ex( g_model.tmrVal, 0, 3600, "s", NULL ))
+						GUI_CASE_OFS(4, 96, gui_edit_enum( g_model.traineron, 0, 1, menu_on_off ))
+						GUI_CASE_OFS(5, 96, gui_edit_enum( g_model.thrTrim, 0, 1, menu_on_off ))
+						GUI_CASE_OFS(6, 96, gui_edit_enum( g_model.thrExpo, 0, 1, menu_on_off ))
+						GUI_CASE_OFS(7, 96, gui_edit_int( g_model.trimInc, 0, 7 ))
+						GUI_CASE_OFS(8, 96, gui_edit_enum( g_model.extendedLimits, 0, 1, menu_on_off ))
+						GUI_CASE_OFS(9, 96, gui_edit_int( g_model.ppmNCH, 1, NUM_CHNOUT ))
+						GUI_CASE_OFS(10, 96, gui_edit_int( g_model.ppmDelay, 0, 7 ))
 						GUI_CASE_OFS(11, 96,
-						GUI_EDIT_INT( g_model.ppmFrameLength, 0, 7 ))
+						gui_edit_int( g_model.ppmFrameLength, 0, 7 ))
 						GUI_CASE_OFS(12, 90, {
 						g_model.beepANACenter = gui_bitfield_edit(
 							&context, "123456",
@@ -691,12 +691,12 @@
 					lcd_write_string((char*)heli_menu_list[row], context.op_list, FLAGS_NONE);
 
 					switch (row) {
-						GUI_CASE_OFS(0, 90, GUI_EDIT_ENUM(g_model.swashType, 0, SWASH_TYPE_MAX-1, swash_type_labels))
-						GUI_CASE_OFS(1, 102, GUI_EDIT_INT_EX2(g_model.swashRingValue, 0, 100, 0, ALIGN_RIGHT,{}))
-						GUI_CASE_OFS(2, 90, GUI_EDIT_ENUM(g_model.swashCollectiveSource, 0, MIX_SRCS_MAX-1, mix_src))
-						GUI_CASE_OFS(3, 90, GUI_EDIT_ENUM(g_model.swashInvertELE, 0, 1, inverse_labels))
-						GUI_CASE_OFS(4, 90, GUI_EDIT_ENUM(g_model.swashInvertAIL, 0, 1, inverse_labels))
-						GUI_CASE_OFS(5, 90, GUI_EDIT_ENUM(g_model.swashInvertCOL, 0, 1, inverse_labels))
+						GUI_CASE_OFS(0, 90, gui_edit_enum(g_model.swashType, 0, SWASH_TYPE_MAX-1, swash_type_labels))
+						GUI_CASE_OFS(1, 102, gui_edit_int_ex2(g_model.swashRingValue, 0, 100, 0, ALIGN_RIGHT,NULL))
+						GUI_CASE_OFS(2, 90, gui_edit_enum(g_model.swashCollectiveSource, 0, MIX_SRCS_MAX-1, mix_src))
+						GUI_CASE_OFS(3, 90, gui_edit_enum(g_model.swashInvertELE, 0, 1, inverse_labels))
+						GUI_CASE_OFS(4, 90, gui_edit_enum(g_model.swashInvertAIL, 0, 1, inverse_labels))
+						GUI_CASE_OFS(5, 90, gui_edit_enum(g_model.swashInvertCOL, 0, 1, inverse_labels))
 					}
 				}
 
@@ -726,19 +726,19 @@
 					prepare_context_for_field(&context, fld);
 					switch (fld) {
 					GUI_CASE_OFS(0, 4 * 6,
-						GUI_EDIT_ENUM( curr_chan, 0, DIM(g_model.expoData), sticks ));
+						gui_edit_enum( curr_chan, 0, DIM(g_model.expoData), sticks ));
 					GUI_CASE_OFS(1, 4 * 6,
-						GUI_EDIT_INT_EX2(ed->expo[dr][DR_EXPO][DR_RIGHT], -100, 100, 0, ALIGN_RIGHT,{}));
+						gui_edit_int_ex2(ed->expo[dr][DR_EXPO][DR_RIGHT], -100, 100, 0, ALIGN_RIGHT,NULL));
 					GUI_CASE_OFS(2, 8 * 6,
-						GUI_EDIT_INT_EX2(ed->expo[dr][DR_EXPO][DR_LEFT], -100, 100, 0, ALIGN_RIGHT,{}));
+						gui_edit_int_ex2(ed->expo[dr][DR_EXPO][DR_LEFT], -100, 100, 0, ALIGN_RIGHT,NULL));
 					GUI_CASE_OFS(3, 4 * 6,
-						GUI_EDIT_INT_EX2(ed->expo[dr][DR_WEIGHT][DR_RIGHT], -100, 100, 0, ALIGN_RIGHT,{}));
+						gui_edit_int_ex2(ed->expo[dr][DR_WEIGHT][DR_RIGHT], -100, 100, 0, ALIGN_RIGHT,NULL));
 					GUI_CASE_OFS(4, 8 * 6,
-						GUI_EDIT_INT_EX2(ed->expo[dr][DR_WEIGHT][DR_LEFT], -100, 100, 0, ALIGN_RIGHT,{}));
+						gui_edit_int_ex2(ed->expo[dr][DR_WEIGHT][DR_LEFT], -100, 100, 0, ALIGN_RIGHT,NULL));
 					GUI_CASE_OFS(5, 4 * 6,
-						GUI_EDIT_ENUM( ed->drSw1, 0, NUM_SWITCHES, switches));
+						gui_edit_enum( ed->drSw1, 0, NUM_SWITCHES, switches));
 					GUI_CASE_OFS(6, 4 * 6,
-						GUI_EDIT_ENUM( ed->drSw2, 0, NUM_SWITCHES, switches));
+						gui_edit_enum( ed->drSw2, 0, NUM_SWITCHES, switches));
 					}
 				}
 				// draw curve
@@ -872,14 +872,14 @@
 					{
 						switch (col) {
 						GUI_CASE_OFS(0, (3 + 6 - 1) * 6 + 2,
-								GUI_EDIT_INT_EX2(p->offset,-1000, 1000, 0 , INT_DIV10|ALIGN_RIGHT, {}))
+								gui_edit_int_ex2(p->offset,-1000, 1000, 0 , INT_DIV10|ALIGN_RIGHT, NULL))
 							;
 						GUI_CASE_OFS(1, (3 + 6 + 4 - 1) * 6 + 2,
-								GUI_EDIT_INT_EX2(p->min, -100, 100, 0, ALIGN_RIGHT, {}))
+								gui_edit_int_ex2(p->min, -100, 100, 0, ALIGN_RIGHT, NULL))
 						GUI_CASE_OFS(2, (3 + 6 + 4 + 4 - 1) * 6 + 2,
-								GUI_EDIT_INT_EX2(p->max, -100, 100, 0, ALIGN_RIGHT,{}))
+								gui_edit_int_ex2(p->max, -100, 100, 0, ALIGN_RIGHT,NULL))
 						GUI_CASE_OFS(3, (3 + 6 + 4 + 4 + 2 - 1) * 6 + 2,
-								GUI_EDIT_ENUM(p->reverse, 0, 1, inverse_labels))
+								gui_edit_enum(p->reverse, 0, 1, inverse_labels))
 						}
 					}
 				}
@@ -918,11 +918,11 @@
 						SafetySwData* d = &g_model.safetySw[row];
 						switch (col) {
 						GUI_CASE_OFS(0, 4 * 6,
-								GUI_EDIT_ENUM(d->opt.ss.swtch, 0, 4, switches))
+								gui_edit_enum(d->opt.ss.swtch, 0, 4, switches))
 						GUI_CASE_OFS(1, 13 * 6,
-								GUI_EDIT_INT(d->opt.ss.val, -100, 100))
+								gui_edit_int(d->opt.ss.val, -100, 100))
 						/* GUI_CASE_OFS(2, 9 * 6,
-								GUI_EDIT_ENUM(d->opt.ss.mode, 0, 3, safety_switch_mode_labels )) */
+								gui_edit_enum(d->opt.ss.mode, 0, 3, safety_switch_mode_labels )) */
 						}
 					}
 				}
@@ -955,22 +955,22 @@
 					lcd_write_string(" ", LCD_OP_SET, FLAGS_NONE);
 
 					switch (row) {
-					GUI_CASE_OFS(0, 96, GUI_EDIT_ENUM( mx->srcRaw, 0, MIX_SRCS_MAX-1, mix_src ));
-					GUI_CASE_OFS(1, 96, GUI_EDIT_INT( mx->weight, -125, 125 ));
-					GUI_CASE_OFS(2, 96, GUI_EDIT_INT( mx->sOffset, -125, 125 ));
-					GUI_CASE_OFS(3, 96, GUI_EDIT_ENUM( mx->carryTrim, 0, 1, menu_on_off ));
-					GUI_CASE_OFS(4, 96, GUI_EDIT_ENUM( mx->curve, 0, MIX_CURVE_MAX-1, mix_curve));
+					GUI_CASE_OFS(0, 96, gui_edit_enum( mx->srcRaw, 0, MIX_SRCS_MAX-1, mix_src ));
+					GUI_CASE_OFS(1, 96, gui_edit_int( mx->weight, -125, 125 ));
+					GUI_CASE_OFS(2, 96, gui_edit_int( mx->sOffset, -125, 125 ));
+					GUI_CASE_OFS(3, 96, gui_edit_enum( mx->carryTrim, 0, 1, menu_on_off ));
+					GUI_CASE_OFS(4, 96, gui_edit_enum( mx->curve, 0, MIX_CURVE_MAX-1, mix_curve));
 					GUI_CASE_OFS(5, 96,
 							{ mx->swtch = gui_bitfield_edit( &context, "ABCD", mx->swtch ,
 									context.inc, g_key_press); }
 					);
 					// #6 phase
-					GUI_CASE_OFS(7, 96, GUI_EDIT_ENUM( mx->mixWarn, 0, 1, menu_on_off ));
-					GUI_CASE_OFS(8, 96, GUI_EDIT_ENUM( mx->mltpx, 0, 3, mix_mode ));
-					GUI_CASE_OFS(9, 96, GUI_EDIT_INT( mx->delayUp, 0, 255 ));
-					GUI_CASE_OFS(10, 96, GUI_EDIT_INT( mx->delayDown, 0, 255 ));
-					GUI_CASE_OFS(11, 96, GUI_EDIT_INT( mx->speedUp, 0, 255 ));
-					GUI_CASE_OFS(12, 96, GUI_EDIT_INT( mx->speedDown, 0, 255 ));
+					GUI_CASE_OFS(7, 96, gui_edit_enum( mx->mixWarn, 0, 1, menu_on_off ));
+					GUI_CASE_OFS(8, 96, gui_edit_enum( mx->mltpx, 0, 3, mix_mode ));
+					GUI_CASE_OFS(9, 96, gui_edit_int( mx->delayUp, 0, 255 ));
+					GUI_CASE_OFS(10, 96, gui_edit_int( mx->delayDown, 0, 255 ));
+					GUI_CASE_OFS(11, 96, gui_edit_int( mx->speedUp, 0, 255 ));
+					GUI_CASE_OFS(12, 96, gui_edit_int( mx->speedDown, 0, 255 ));
 					}
 				}
 				break;
@@ -1002,15 +1002,15 @@
 				FOREACH_ROW{
 					const int X = 5*6;
 					switch (row) {
-					GUI_CASE_OFS(0, X, GUI_EDIT_INT_EX2( pCurve[0], -100, 100, "", ALIGN_RIGHT, {} ));
-					GUI_CASE_OFS(1, X, GUI_EDIT_INT_EX2( pCurve[1], -100, 100, "", ALIGN_RIGHT, {} ));
-					GUI_CASE_OFS(2, X, GUI_EDIT_INT_EX2( pCurve[2], -100, 100, "", ALIGN_RIGHT, {} ));
-					GUI_CASE_OFS(3, X, GUI_EDIT_INT_EX2( pCurve[3], -100, 100, "", ALIGN_RIGHT, {} ));
-					GUI_CASE_OFS(4, X, GUI_EDIT_INT_EX2( pCurve[4], -100, 100, "", ALIGN_RIGHT, {} ));
-					GUI_CASE_OFS(5, X, GUI_EDIT_INT_EX2( pCurve[5], -100, 100, "", ALIGN_RIGHT, {} ));
-					GUI_CASE_OFS(6, X, GUI_EDIT_INT_EX2( pCurve[6], -100, 100, "", ALIGN_RIGHT, {} ));
-					GUI_CASE_OFS(7, X, GUI_EDIT_INT_EX2( pCurve[7], -100, 100, "", ALIGN_RIGHT, {} ));
-					GUI_CASE_OFS(8, X, GUI_EDIT_INT_EX2( pCurve[8], -100, 100, "", ALIGN_RIGHT, {} ));
+					GUI_CASE_OFS(0, X, gui_edit_int_ex2( pCurve[0], -100, 100, "", ALIGN_RIGHT, NULL ));
+					GUI_CASE_OFS(1, X, gui_edit_int_ex2( pCurve[1], -100, 100, "", ALIGN_RIGHT, NULL ));
+					GUI_CASE_OFS(2, X, gui_edit_int_ex2( pCurve[2], -100, 100, "", ALIGN_RIGHT, NULL ));
+					GUI_CASE_OFS(3, X, gui_edit_int_ex2( pCurve[3], -100, 100, "", ALIGN_RIGHT, NULL ));
+					GUI_CASE_OFS(4, X, gui_edit_int_ex2( pCurve[4], -100, 100, "", ALIGN_RIGHT, NULL ));
+					GUI_CASE_OFS(5, X, gui_edit_int_ex2( pCurve[5], -100, 100, "", ALIGN_RIGHT, NULL ));
+					GUI_CASE_OFS(6, X, gui_edit_int_ex2( pCurve[6], -100, 100, "", ALIGN_RIGHT, NULL ));
+					GUI_CASE_OFS(7, X, gui_edit_int_ex2( pCurve[7], -100, 100, "", ALIGN_RIGHT, NULL ));
+					GUI_CASE_OFS(8, X, gui_edit_int_ex2( pCurve[8], -100, 100, "", ALIGN_RIGHT, NULL ));
 					}
 				}
 				break;

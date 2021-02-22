@@ -1,4 +1,3 @@
-
 /**
  * @brief  Update a specific GUI component.
  * @note

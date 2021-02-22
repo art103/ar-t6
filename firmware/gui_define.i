@@ -11,24 +11,24 @@ for(int col = 0;\
 	prepare_context_for_list_rowcol(&context, row, col),col <= context.col_limit;\
 	++col )
 
-#define GUI_EDIT_INT_EX2( VAR, MIN, MAX, UNITS, FLAGS, EDITACTION ) \
-		if (context.edit) { VAR = gui_int_edit((int)VAR, context.inc, MIN, MAX); EDITACTION; } \
-		lcd_write_int((int)VAR, context.op_item, FLAGS); \
-		if(UNITS != 0) lcd_write_string(UNITS, context.op_item, FLAGS_NONE);
+// #define GUI_EDIT_INT_EX2( VAR, MIN, MAX, UNITS, FLAGS, EDITACTION ) \
+// 		if (context.edit) { VAR = gui_int_edit((int)VAR, context.inc, MIN, MAX); EDITACTION; } \
+// 		lcd_write_int((int)VAR, context.op_item, FLAGS); \
+// 		if(UNITS != 0) lcd_write_string(UNITS, context.op_item, FLAGS_NONE);
 
-#define GUI_EDIT_INT_EX( VAR, MIN, MAX, UNITS, EDITACTION ) \
-		GUI_EDIT_INT_EX2( VAR, MIN, MAX, UNITS, FLAGS_NONE, EDITACTION )
+// #define GUI_EDIT_INT_EX( VAR, MIN, MAX, UNITS, EDITACTION ) \
+// 		GUI_EDIT_INT_EX2( VAR, MIN, MAX, UNITS, FLAGS_NONE, EDITACTION )
 
-#define GUI_EDIT_INT( VAR, MIN, MAX ) GUI_EDIT_INT_EX(VAR, MIN, MAX, 0, {})
+// #define GUI_EDIT_INT( VAR, MIN, MAX ) GUI_EDIT_INT_EX(VAR, MIN, MAX, 0, {})
 
-#define GUI_EDIT_ENUM( VAR, MIN, MAX, LABELS ) \
-		if (context.edit) VAR = gui_int_edit(VAR, context.inc, MIN, MAX); \
-		lcd_write_string(LABELS[VAR], context.op_item, FLAGS_NONE);
+// #define GUI_EDIT_ENUM( VAR, MIN, MAX, LABELS ) \
+// 		if (context.edit) VAR = gui_int_edit(VAR, context.inc, MIN, MAX); \
+// 		lcd_write_string(LABELS[VAR], context.op_item, FLAGS_NONE);
 
-#define GUI_EDIT_STR( VAR ) \
-			prefill_string((char*)VAR, sizeof(VAR));\
-			if (!context.edit) lcd_write_string((char*)VAR, LCD_OP_SET, FLAGS_NONE); \
-			else       gui_string_edit(&context, (char*)VAR, g_key_press);
+// #define GUI_EDIT_STR( VAR ) \
+// 			prefill_string((char*)VAR, sizeof(VAR));\
+// 			if (!context.edit) lcd_write_string((char*)VAR, LCD_OP_SET, FLAGS_NONE); \
+// 			else       gui_string_edit(&context, (char*)VAR, g_key_press);
 
 #define GUI_CASE( CASE, ACTION ) \
 case CASE: \
@@ -38,7 +38,7 @@ case CASE: \
 #define GUI_CASE_OFS( CASE, OFFSET, ACTION ) \
 case CASE: \
 	lcd_set_cursor(OFFSET, context.cur_row_y); \
-	{ ACTION } \
+	ACTION;  \
 	break; \
 
 // Message Popup
