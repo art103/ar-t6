@@ -38,7 +38,7 @@ case CASE: \
 #define GUI_CASE_OFS( CASE, OFFSET, ACTION ) \
 case CASE: \
 	lcd_set_cursor(OFFSET, context.cur_row_y); \
-	ACTION;  \
+	ACTION;   \
 	break; \
 
 // Message Popup

@@ -178,7 +178,7 @@ void check_switches(void) {
 
 	sound_set_volume(10); 
 
-	if (g_eeGeneral.disableSwitchWarning == 0 && (g_eeGeneral.switchWarningStates ^ switchStatus) != 0) {
+	if (g_eeGeneral.disableSwitchWarning == 1 && (g_eeGeneral.switchWarningStates ^ switchStatus) != 0) {
 		lcd_clear();
 		lcd_draw_rect(0, 0, LCD_WIDTH - 1, CHAR_HEIGHT*2 + 6, LCD_OP_SET, RECT_FILL);
 		
