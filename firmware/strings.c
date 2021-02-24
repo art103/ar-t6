@@ -14,6 +14,7 @@
  */
 
 #include "strings.h"
+#include "system.h"
 
 
 // declaring arrays to hold *const (constant pointers)
@@ -48,13 +49,12 @@ const char * const switches_mask[1<<NUM_SWITCHES]  = {
 };
 
 
-const char * const sticks[NUM_STICKS] = {
+const char * const sticks[NUM_STICKS] = { //logical stick names (MODE 2 physical order)
 		"AIL",
-		"ELE",
-		"THR",
-		"RUD",
+		"ELE", 
+		"THR", 
+		"RUD"
 };
-
 
 const char * const pots[NUM_POTS] = {
 		"VRA",
@@ -68,12 +68,12 @@ const char * const sources[SRC_MAX] = {
 		"CYC",	// CYC1-CYC3
 		"PPM",	// PPM1-PPM8
 		"CH",	// CH1-CH16
-		"ch"	// Trainer SRC
+		"TR"	// Trainer SRC
 };
 
 
-const char * const mix_warm[MIX_WARN_MAX] = {
-		"off"
+const char * const mix_warn[MIX_WARN_MAX] = {
+		"off",
 		"W1",
 		"W2",
 		"W3",
@@ -81,7 +81,7 @@ const char * const mix_warm[MIX_WARN_MAX] = {
 
 
 const char * const mix_src[MIX_SRCS_MAX] = {
-		"off",
+		"---",
 		"AIL",
 		"ELE",
 		"THR",
@@ -194,11 +194,13 @@ const char * const msg[GUI_MSG_MAX] = {
 		"Operation Cancelled.",
 		"OK:Save Cancel:Abort",
 		"Please zero throttle to continue.",
+		"SW warning!",
+		"\x09",
 		"Calibration data invalid, please calibrate the sticks.",
-		"OK to preset this model?",
-		"OK to preset all settings?",
+		"Preset model?\n\nNo\nYes",
+		"Reset to factory default?\n\nNo\nYes",
 		"Preset\nInsert\nDelete\nCopy\nPaste",/*GUI_MSG_ROW_MENU*/
-		"OK to Enter Firmware Upgrade?",/*GUI_MSG_FW_UPGRADE*/
+		"Firmware Upgrade?\n\nNo\nYes",/*GUI_MSG_FW_UPGRADE*/
 
 		// Headings (System)
 		"RADIO SETUP",
@@ -245,7 +247,7 @@ const char * const system_menu_list1[SYS_MENU_LIST1_LEN] = {
 		"Default Sw",
 		"Memory Warning",
 		"Alarm Warning",
-		"Enable PPMSIM",
+		// "Enable PPMSIM", ppmout is directly connected to ppm on rf module, so there is no extra ppmout
 		"Mode",
 };
 
@@ -284,15 +286,22 @@ const char * const mixer_edit_list1[MIXER_EDIT_LIST1_LEN] = {
 
 };
 
-
+const char * const heli_menu_list[HELI_MENU_LIST_LEN] = {
+		"Swash type",
+		"Swash ring %",
+		"Coll. source",
+		"ELE invert",
+		"AIL invert",
+		"COL invert"
+};
 
 const char * const timer_modes[] = {
 		"Off",
 		"Abs",
-		"Stk",
+		"Stk>",
 		"Stk%",
-		"Sw/!Sw",
-		"!m_sw/!m_sw"
+		// "Sw/!Sw", // not used
+		// "!m_sw/!m_sw" // not used
 };
 
 
@@ -308,6 +317,13 @@ const char * const inverse_labels[] = {
 		"INV"
 };
 
+const char * const swash_type_labels[SWASH_TYPE_MAX] = {
+	"---",
+	"120",
+	"120X",
+	"140",
+	"90"
+};
 
 // TODO: what are they?
 
@@ -317,3 +333,45 @@ const char * const safety_switch_mode_labels[] = {
 		"M2?",
 		"M3?"
 };
+
+// future??? - popup header
+// #define HEADER_SEPARATOR '\x05' // make header text from text before HEADER_SEPARATOR char
+// int char_pos(char *s, char c) { //
+// 	int retval = -1;
+// 	int auxI = 0;
+// 	char *auxS;
+// 	auxS = s;
+// 	while (*auxS != 0) {
+// 		if (*auxS == HEADER_SEPARATOR) {
+// 			retval = auxI;
+// 			break;
+// 		}
+// 		auxS++;
+// 		auxI++;
+// 	}
+
+// 	return retval;
+// }
+
+// char * get_popup_content(char * str) {
+// 	char *auxS;
+// 	auxS = str;
+// 	str = str + char_pos(str, HEADER_SEPARATOR) +1;
+// 	return str;
+// }
+
+// char * get_popup_header(char * str) {
+// 	char *auxS;
+// 	auxS = str;
+// 	char *retval;
+// 	retval = 0;
+// 	int pos = char_pos(str, HEADER_SEPARATOR);
+// 	if (pos >= 0) {
+// 		*retval = (char*) malloc(pos+1);
+// 		for(int i=0; i<pos; i++) {
+// 			retval[i] = str[i];
+// 		}
+// 		retval[pos] = 0x00;
+//  	}
+// 	return retval;
+// }

@@ -322,7 +322,7 @@ static void settings_process(uint32_t data) {
 			   sizeof(g_model) - sizeof(g_model.chkSum)));
 #endif
 
-	task_schedule(TASK_PROCESS_EEPROM, 0, 1000);
+	task_schedule(TASK_PROCESS_EEPROM, 0, 2000);         // sky59   bolo 1000
 }
 
 /**
@@ -334,7 +334,7 @@ static void settings_process(uint32_t data) {
 void settings_init(void) {
 
 	// Read the configuration data out of EEPROM. Perform few attempts as it fails occasionally
-	int cnt = 2;
+	int cnt = 3;              // sky59   bolo 2krat
 	while( !eeprom_read(0, sizeof(EEGeneral), (void*) &g_eeGeneral) && --cnt ) ;
 	uint16_t chksum =
 			eeprom_calc_chksum((void*) &g_eeGeneral, sizeof(EEGeneral) - 2);

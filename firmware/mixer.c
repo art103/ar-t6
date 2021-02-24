@@ -36,6 +36,8 @@
 #include "mixer.h"
 #include "sound.h"
 #include "keypad.h"
+#include "strings.h"
+//#include "lcd.h"
 
 static int16_t trim_increment;
 static void perOut(volatile int16_t *chanOut, uint8_t att);
@@ -237,8 +239,8 @@ static inline int16_t calc1000toRESX(int16_t x)  // improve calc time by Pat Mac
 
 int16_t intpol(int16_t x, uint8_t idx) // -100, -75, -50, -25, 0 ,25 ,50, 75, 100
 {
-#define D9 (RESX * 2 / 8)
-#define D5 (RESX * 2 / 4)
+ #define D9 (RESX * 2 / 8)
+ #define D5 (RESX * 2 / 4)
     bool    cv9 = idx >= MAX_CURVE5;
     int8_t *crv = cv9 ? g_model.curves9[idx-MAX_CURVE5] : g_model.curves5[idx];
     int16_t erg;
@@ -262,6 +264,23 @@ int16_t intpol(int16_t x, uint8_t idx) // -100, -75, -50, -25, 0 ,25 ,50, 75, 10
     return erg / 25; // 100*D5/RESX;
 }
 
+const int16_t stick_map[4][4] = { // define some constants ???
+    {0, 2, 1, 3}, // mode 1 
+    {0, 1, 2, 3}, // mode 2
+    {3, 2, 1, 0}, // mode 3 
+    {3, 1, 2, 0}, // mode 4 
+};
+
+// translate logical stick numbers to physical acording to mode
+// src can be sticks or mix_src (sticks only)
+// log is number from mix_src variable - sticks are 1-4 
+int16_t log2physSticks(int16_t log, int16_t mode){
+    if (log > 0 && log < 5) {
+        return stick_map[mode-1][log-1];
+    } else {
+        return log-1;
+    }
+}
 
 static void perOut(volatile int16_t *chanOut, uint8_t att)
 {
@@ -308,18 +327,27 @@ static void perOut(volatile int16_t *chanOut, uint8_t att)
             }
         }
     }
+    // mode depend stick numbers
+    uint8_t ail_stick_m = log2physSticks(AIL_STICK+1, g_eeGeneral.stickMode);
+    uint8_t ele_stick_m = log2physSticks(ELE_STICK+1, g_eeGeneral.stickMode);
+    uint8_t thr_stick_m = log2physSticks(THR_STICK+1, g_eeGeneral.stickMode);
 
-    {
+    { 
+        // int8_t rud_stick_m = log2physSticks(RUD_STICK, g_eeGeneral.stickMode); // no need for the heli mix
+    
         //===========Swash Ring================
-        if(g_model.swashRingValue)
-        {
-            uint32_t v = ((int32_t)(calibratedStick[ELE_STICK])*calibratedStick[ELE_STICK] +
-                          (int32_t)(calibratedStick[AIL_STICK])*calibratedStick[AIL_STICK]);
-            uint32_t q = (int32_t)(RESX)*g_model.swashRingValue/100;
-            q *= q;
-            if(v>q)
-                d = isqrt32(v);
-        }
+        // if(g_model.swashType)
+        // {
+        //     // v - "polomer kruznice", urceny velikosti ele a ail
+        //     // q - maximalni polomer kruznice (v rozich ALI, ELE max je v vetsi jak q)
+        //     // d - bude pomer zmenseni, aby max ELE a AIL nepresahly danou max kruznici
+        //     uint32_t v = ((int32_t)(calibratedStick[ele_stick_m])*calibratedStick[ele_stick_m] +
+        //                   (int32_t)(calibratedStick[ail_stick_m])*calibratedStick[ail_stick_m]);
+        //     uint32_t q = (int32_t)(RESX)*g_model.swashRingValue/100;
+        //     q *= q;
+        //     if(v>q)
+        //         d = isqrt32(v);
+        // }
         //===========Swash Ring================
 
         // Calc Sticks
@@ -330,7 +358,7 @@ static void perOut(volatile int16_t *chanOut, uint8_t att)
 
             if ( g_eeGeneral.throttleReversed )
             {
-                if ( i == THR_STICK )
+                if ( i == thr_stick_m )
                 {
                     v = -v ;
                 }
@@ -364,15 +392,17 @@ static void perOut(volatile int16_t *chanOut, uint8_t att)
                     }
                 }
 
-                //===========Swash Ring================
-                if(d && (i==ELE_STICK || i==AIL_STICK))
-                    v = (int32_t)(v)*g_model.swashRingValue*RESX/((int32_t)(d)*100);
-                //===========Swash Ring================
+                // //===========Swash Ring================
+                // // je potreba korekce na velikost vychylky, do v se spocita korekce pro ele a ail
+                // if(d && (i==ele_stick_m || i==ail_stick_m))
+                //     v = (int32_t)(v)*g_model.swashRingValue*RESX/((int32_t)(d)*100);
+                // //===========Swash Ring================
 
                 uint8_t expoDrOn = GET_DR_STATE(i);
                 uint8_t stkDir = v>0 ? DR_RIGHT : DR_LEFT;
 
-                if(IS_THROTTLE(i) && g_model.thrExpo){
+                // expo 
+                if(i == thr_stick_m && g_model.thrExpo){
                     v  = 2*expo((v+RESX)/2,g_model.expoData[i].expo[expoDrOn][DR_EXPO][DR_RIGHT]);
                     stkDir = DR_RIGHT;
                 }
@@ -381,11 +411,11 @@ static void perOut(volatile int16_t *chanOut, uint8_t att)
 
                 int32_t x = (int32_t)v * (g_model.expoData[i].expo[expoDrOn][DR_WEIGHT][stkDir]+100)/100;
                 v = (int16_t)x;
-                if (IS_THROTTLE(i) && g_model.thrExpo) v -= RESX;
+                if (i == thr_stick_m && g_model.thrExpo) v -= RESX;
 
                 //do trim -> throttle trim if applicable
                 int32_t vv = 2*RESX;
-				if(IS_THROTTLE(i) && g_model.thrTrim)
+				if(i == thr_stick_m && g_model.thrTrim)
 				{
 					int8_t ttrim ;
 					ttrim = *TrimPtr[i] ;
@@ -395,12 +425,12 @@ static void perOut(volatile int16_t *chanOut, uint8_t att)
 					}
 					vv = ((int32_t)ttrim+125)*(RESX-v)/(2*RESX);
 				}
-//                if(IS_THROTTLE(i) && g_model.thrTrim) vv = ((int32_t)*TrimPtr[i]+125)*(RESX-v)/(2*RESX);
+                // if(i == thr_stick_m && g_model.thrTrim) vv = ((int32_t)*TrimPtr[i]+125)*(RESX-v)/(2*RESX);
 
                 //trim
                 trimA[i] = (vv==2*RESX) ? *TrimPtr[i]*2 : (int16_t)vv*2; //    if throttle trim -> trim low end
             }
-            anas[i] = v; //set values for mixer
+            anas[i] = v; //set values for mixer after input correction (expo & DR, sw)
         }
 
         //===========BEEP CENTER================
@@ -416,26 +446,29 @@ static void perOut(volatile int16_t *chanOut, uint8_t att)
         for(i=0; i<NUM_CHNOUT; i++) 				anas[i+CHOUT_BASE] = chans[i]; //other mixes previous outputs
 
         //===========Swash Ring================
+        // recalculated swash ring values for ele and ail
+        int32_t sw_ring_ele = anas[ele_stick_m];
+        int32_t sw_ring_ail = anas[ail_stick_m];
         if(g_model.swashRingValue)
         {
-            uint32_t v = ((int32_t)anas[ELE_STICK]*anas[ELE_STICK] + (int32_t)anas[AIL_STICK]*anas[AIL_STICK]);
+            uint32_t v = ((int32_t)anas[ele_stick_m]*anas[ele_stick_m] + (int32_t)anas[ail_stick_m]*anas[ail_stick_m]);
             uint32_t q = (int32_t)RESX*g_model.swashRingValue/100;
             q *= q;
             if(v>q)
             {
                 uint16_t d = isqrt32(v);
-                anas[ELE_STICK] = (int32_t)anas[ELE_STICK]*g_model.swashRingValue*RESX/((int32_t)d*100);
-                anas[AIL_STICK] = (int32_t)anas[AIL_STICK]*g_model.swashRingValue*RESX/((int32_t)d*100);
+                sw_ring_ele = (int32_t)anas[ele_stick_m]*g_model.swashRingValue*RESX/((int32_t)d*100);
+                sw_ring_ail = (int32_t)anas[ail_stick_m]*g_model.swashRingValue*RESX/((int32_t)d*100);
             }
         }
 
-#define REZ_SWASH_X(x)  ((x) - (x)/8 - (x)/128 - (x)/512)   //  1024*sin(60) ~= 886
-#define REZ_SWASH_Y(x)  ((x))   //  1024 => 1024
+ #define REZ_SWASH_X(x)  ((x) - (x)/8 - (x)/128 - (x)/512)   //  1024*sin(60) ~= 886
+ #define REZ_SWASH_Y(x)  ((x))   //  1024 => 1024
 
         if(g_model.swashType)
         {
-            int16_t vp = anas[ELE_STICK]+trimA[ELE_STICK];
-            int16_t vr = anas[AIL_STICK]+trimA[AIL_STICK];
+            int16_t vp = sw_ring_ele + trimA[ele_stick_m];
+            int16_t vr = sw_ring_ail + trimA[ail_stick_m];
 
             if(att&NO_INPUT)  //zero input for setStickCenter()
             {
@@ -444,7 +477,7 @@ static void perOut(volatile int16_t *chanOut, uint8_t att)
 
             int16_t vc = 0;
             if(g_model.swashCollectiveSource)
-                vc = anas[g_model.swashCollectiveSource-1];
+                vc = anas[log2physSticks(g_model.swashCollectiveSource, g_eeGeneral.stickMode)];
 
             if(g_model.swashInvertELE) vp = -vp;
             if(g_model.swashInvertAIL) vr = -vr;
@@ -490,7 +523,7 @@ static void perOut(volatile int16_t *chanOut, uint8_t att)
 
     if(att&NO_INPUT) { //zero input for setStickCenter()
         for(i=0;i<4;i++) {
-            if(!IS_THROTTLE(i)) {
+            if(i != thr_stick_m) {
                 anas[i]  = 0;
                 trimA[i] = 0;
             }
@@ -510,7 +543,7 @@ static void perOut(volatile int16_t *chanOut, uint8_t att)
         MixData *md = &g_model.mixData[i];
 
         // first unused entry (channel==0) marks an end
-        if((md->destCh==0) || (md->destCh>NUM_CHNOUT)) break;
+        if((md->destCh==0) || (md->destCh>NUM_CHNOUT) || md->srcRaw == 0) break;
 
         /* srcRaw
         STK1..STK4
@@ -543,11 +576,12 @@ static void perOut(volatile int16_t *chanOut, uint8_t att)
         else {
             swTog = !swOn[i];
             swOn[i] = 1;
-            uint8_t k = md->srcRaw-1;
+            // uint8_t k = md->srcRaw-1;
+            uint8_t k = log2physSticks(md->srcRaw, g_eeGeneral.stickMode); // function handles 0 as no input (returns  -1)
             v = anas[k]; //Switch is on. MAX=FULL=512 or value.
             if(k>=CHOUT_BASE && (k<i)) v = chans[k-CHOUT_BASE]; // if we've already calculated the value - take it instead // anas[i+CHOUT_BASE] = chans[i]
             if(md->mixWarn) mixWarning |= 1<<(md->mixWarn-1); // Mix warning
-#ifdef FMODE_TRIM
+ #ifdef FMODE_TRIM
             if ( md->enableFmTrim )
             {
                 if ( md->srcRaw <= 4 )
@@ -555,13 +589,13 @@ static void perOut(volatile int16_t *chanOut, uint8_t att)
                     TrimPtr[md->srcRaw-1] = &md->sOffset ;		// Use the value stored here for the trim
                 }
             }
-#endif
+ #endif
         }
 
         //========== INPUT OFFSET ===============
-#ifdef FMODE_TRIM
+ #ifdef FMODE_TRIM
         if ( md->enableFmTrim == 0 )
-#endif
+ #endif
         {
             if(md->sOffset) v += calc100toRESX(md->sOffset);
         }
@@ -569,7 +603,7 @@ static void perOut(volatile int16_t *chanOut, uint8_t att)
         //========== DELAY and PAUSE ===============
         if (md->speedUp || md->speedDown || md->delayUp || md->delayDown)  // there are delay values
         {
-#define DEL_MULT 256
+ #define DEL_MULT 256
 
             //if(init) {
             //act[i]=(int32_t)v*DEL_MULT;
@@ -596,7 +630,7 @@ static void perOut(volatile int16_t *chanOut, uint8_t att)
                 {
                   sDelay[i]-- ;
                 }
-                if (sDelay[i] != 0)
+                if (sDelay[i] > 0)
                 { // At end of delay, use new V and diff
                   v = act[i]/DEL_MULT;   // Stay in old position until delay over
                   diff = 0;
@@ -609,28 +643,30 @@ static void perOut(volatile int16_t *chanOut, uint8_t att)
                 //-100..100 => 32768 ->  100*83886/256 = 32768,   For MAX we divide by 2 sincde it's asymmetrical
                 if(tick10ms) {
                     int32_t rate = (int32_t)DEL_MULT*2048*100;
-                    if(md->weight) rate /= abs(md->weight);
+                
+                if(md->weight) rate /= abs(md->weight);
 
-// The next few lines could replace the long line act[i] = etc. - needs testing
-//										int16_t speed ;
-//                    if ( diff>0 )
-//										{
-//											speed = md->speedUp ;
-//										}
-//										else
-//										{
-//											rate = -rate ;
-//											speed = md->speedDown ;
-//										}
-//										act[i] = (speed) ? act[i]+(rate)/((int16_t)100*speed) : (int32_t)v*DEL_MULT ;
+    // The next few lines could replace the long line act[i] = etc. - needs testing
+    //										int16_t speed ;
+    //                    if ( diff>0 )
+    //										{
+    //											speed = md->speedUp ;
+    //										}
+    //										else
+    //										{
+    //											rate = -rate ;
+    //											speed = md->speedDown ;
+    //										}
+    //										act[i] = (speed) ? act[i]+(rate)/((int16_t)100*speed) : (int32_t)v*DEL_MULT ;
 
-										act[i] = (diff>0) ? ((md->speedUp>0)   ? act[i]+(rate)/((int16_t)100*md->speedUp)   :  (int32_t)v*DEL_MULT) :
+					act[i] = (diff>0) ? ((md->speedUp>0)   ? act[i]+(rate)/((int16_t)100*md->speedUp)   :  (int32_t)v*DEL_MULT) :
                                         ((md->speedDown>0) ? act[i]-(rate)/((int16_t)100*md->speedDown) :  (int32_t)v*DEL_MULT) ;
                 }
-								{
-									int32_t tmp = act[i]/DEL_MULT ;
-                	if(((diff>0) && (v<tmp)) || ((diff<0) && (v>tmp))) act[i]=(int32_t)v*DEL_MULT; //deal with overflow
-								}
+								
+				int32_t tmp = act[i]/DEL_MULT ;
+                
+                if(((diff>0) && (v<tmp)) || ((diff<0) && (v>tmp))) act[i]=(int32_t)v*DEL_MULT; //deal with overflow
+								
                 v = act[i]/DEL_MULT;
             }
             else if (diff)
@@ -678,6 +714,7 @@ static void perOut(volatile int16_t *chanOut, uint8_t att)
             v = intpol(v, md->curve - 7);
         }
 
+
         //========== TRIM ===============
         if((md->carryTrim==0) && (md->srcRaw>0) && (md->srcRaw<=4)) v += trimA[md->srcRaw-1];  //  0 = Trim ON  =  Default
 
@@ -694,8 +731,8 @@ static void perOut(volatile int16_t *chanOut, uint8_t att)
 			dv *= *ptr ;
             dv /= RESXl;
             *ptr = dv ;
-//            chans[md->destCh-1] *= dv/100l;
-//            chans[md->destCh-1] /= RESXl;
+        //    chans[md->destCh-1] *= dv/100l;
+        //    chans[md->destCh-1] /= RESXl;
             break;
         default:  // MLTPX_ADD
             *ptr += dv; //Mixer output add up to the line (dv + (dv>0 ? 100/2 : -100/2))/(100);

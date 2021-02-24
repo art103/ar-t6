@@ -30,41 +30,41 @@
 
 #include "lcd_font_medium.h"
 
-#define LCD_PIN_MASK	(0x1FFF)
+#define LCD_PIN_MASK (0x1FFF)
 
-#define LCD_DATA		(0xFF)		// D0-D7
-#define LCD_RD			(1 << 8)	// RD / E
-#define LCD_WR			(1 << 9)	// RD / #WR
-#define LCD_A0			(1 << 10)	// A0 / RS / Data / #CMD
-#define LCD_RES			(1 << 11)	// Reset
-#define LCD_CS1			(1 << 12)	// Chip Select 1
+#define LCD_DATA (0xFF)	  // D0-D7
+#define LCD_RD (1 << 8)	  // RD / E
+#define LCD_WR (1 << 9)	  // RD / #WR
+#define LCD_A0 (1 << 10)  // A0 / RS / Data / #CMD
+#define LCD_RES (1 << 11) // Reset
+#define LCD_CS1 (1 << 12) // Chip Select 1
 
-#define LCD_BACKLIGHT	(1 << 2)
+#define LCD_BACKLIGHT (1 << 2)
 
-#define KS0713_DISP_ON_OFF		(0xAE)
-#define KS0713_DISPLAY_LINE		(0x40)
-#define KS0713_SET_REF_VOLTAGE	(0x81)	// 2-byte cmd
-#define KS0713_SET_PAGE_ADDR	(0xB0)
-#define KS0713_SET_COL_ADDR_MSB	(0x10)
-#define KS0713_SET_COL_ADDR_LSB	(0x00)
-#define KS0713_ADC_SELECT		(0xA0)
-#define KS0713_REVERSE_DISP		(0xA6)
-#define KS0713_ENTIRE_DISP		(0xA4)
-#define KS0713_LCD_BIAS			(0xA2)
-#define KS0713_SET_MOD_READ		(0xE0)
-#define KS0713_UNSET_MOD_READ	(0xEE)
-#define KS0713_RESET			(0xE2)
-#define KS0713_SHL_SELECT		(0xC0)
-#define KS0713_POWER_CTRL		(0x28)
-#define KS0713_REG_RES_SEL		(0x20)
-#define KS0713_STATIC_IND_MODE	(0xAC)	// 2-byte cmd
+#define KS0713_DISP_ON_OFF (0xAE)
+#define KS0713_DISPLAY_LINE (0x40)
+#define KS0713_SET_REF_VOLTAGE (0x81) // 2-byte cmd
+#define KS0713_SET_PAGE_ADDR (0xB0)
+#define KS0713_SET_COL_ADDR_MSB (0x10)
+#define KS0713_SET_COL_ADDR_LSB (0x00)
+#define KS0713_ADC_SELECT (0xA0)
+#define KS0713_REVERSE_DISP (0xA6)
+#define KS0713_ENTIRE_DISP (0xA4)
+#define KS0713_LCD_BIAS (0xA2)
+#define KS0713_SET_MOD_READ (0xE0)
+#define KS0713_UNSET_MOD_READ (0xEE)
+#define KS0713_RESET (0xE2)
+#define KS0713_SHL_SELECT (0xC0)
+#define KS0713_POWER_CTRL (0x28)
+#define KS0713_REG_RES_SEL (0x20)
+#define KS0713_STATIC_IND_MODE (0xAC) // 2-byte cmd
 //#define KS0713_POWER_SAVE		Display off, Entire display ON.
 
 static uint8_t contrast = 0x28;
 
 uint8_t lcd_buffer[LCD_WIDTH * LCD_HEIGHT / 8];
 
-#define FONT_STRIDE				(16 * 5)
+#define FONT_STRIDE (16 * 5)
 
 static uint8_t cursor_x = 0;
 static uint8_t cursor_y = 0;
@@ -77,7 +77,8 @@ static const unsigned char *font = font_medium;
  * @param  cmd: Command to send
  * @retval None
  */
-static void lcd_send_command(uint8_t cmd) {
+static void lcd_send_command(uint8_t cmd)
+{
 	uint16_t gpio = GPIO_ReadOutputData(GPIOC);
 
 	gpio &= ~(LCD_WR | LCD_DATA | LCD_A0);
@@ -100,7 +101,8 @@ static void lcd_send_command(uint8_t cmd) {
  * @param  len: Number of bytes of data to send
  * @retval None
  */
-static void lcd_send_data(uint8_t *data, uint16_t len) {
+static void lcd_send_data(uint8_t *data, uint16_t len)
+{
 	uint16_t i;
 	uint16_t gpio = GPIO_ReadOutputData(GPIOC);
 
@@ -109,7 +111,8 @@ static void lcd_send_data(uint8_t *data, uint16_t len) {
 
 	data += (len - 1);
 
-	for (i = 0; i < len; ++i) {
+	for (i = 0; i < len; ++i)
+	{
 		gpio &= ~LCD_DATA;
 		gpio |= *data--;
 		GPIO_Write(GPIOC, gpio);
@@ -130,7 +133,8 @@ static void lcd_send_data(uint8_t *data, uint16_t len) {
  * @param  None
  * @retval None
  */
-void lcd_init(void) {
+void lcd_init(void)
+{
 	GPIO_InitTypeDef gpioInit;
 
 	// Enable the GPIO block clocks and setup the pins.
@@ -157,18 +161,18 @@ void lcd_init(void) {
 	// Wait for reset to complete.
 	delay_us(50);
 
-	lcd_send_command(KS0713_RESET); // Initialize the internal functions (Reset)
-	lcd_send_command(KS0713_DISP_ON_OFF | 0x00); // Turn off LCD panel (DON = 0)
-	lcd_send_command(KS0713_ADC_SELECT | 0x01); // Select SEG output direction reversed (ADC = 1)
+	lcd_send_command(KS0713_RESET);				  // Initialize the internal functions (Reset)
+	lcd_send_command(KS0713_DISP_ON_OFF | 0x00);  // Turn off LCD panel (DON = 0)
+	lcd_send_command(KS0713_ADC_SELECT | 0x01);	  // Select SEG output direction reversed (ADC = 1)
 	lcd_send_command(KS0713_REVERSE_DISP | 0x00); // Select normal / reverse display (REV = 0)
-	lcd_send_command(KS0713_ENTIRE_DISP | 0x00); // Select normal display ON (EON = 0)
-	lcd_send_command(KS0713_LCD_BIAS | 0x00); 		// Select LCD bias (0)
-	lcd_send_command(KS0713_SHL_SELECT | 0x08); // Select COM output direction normal (SHL = 0)
-	lcd_send_command(KS0713_POWER_CTRL | 0x07); // Control power circuit operation (VC,VR,VF on)
-	lcd_send_command(KS0713_REG_RES_SEL | 0x04); // Select internal resistance ratio (0x05)
-	lcd_send_command(KS0713_SET_REF_VOLTAGE); // Set reference voltage Mode (2-part cmd)
-	lcd_send_command(contrast); 			// Set reference voltage register
-	lcd_send_command(KS0713_DISP_ON_OFF | 0x01); // Turn on LCD panel (DON = 1)
+	lcd_send_command(KS0713_ENTIRE_DISP | 0x00);  // Select normal display ON (EON = 0)
+	lcd_send_command(KS0713_LCD_BIAS | 0x00);	  // Select LCD bias (0)
+	lcd_send_command(KS0713_SHL_SELECT | 0x08);	  // Select COM output direction normal (SHL = 0)
+	lcd_send_command(KS0713_POWER_CTRL | 0x07);	  // Control power circuit operation (VC,VR,VF on)
+	lcd_send_command(KS0713_REG_RES_SEL | 0x04);  // Select internal resistance ratio (0x05)
+	lcd_send_command(KS0713_SET_REF_VOLTAGE);	  // Set reference voltage Mode (2-part cmd)
+	lcd_send_command(contrast);					  // Set reference voltage register
+	lcd_send_command(KS0713_DISP_ON_OFF | 0x01);  // Turn on LCD panel (DON = 1)
 
 	lcd_update();
 	lcd_backlight(TRUE);
@@ -180,7 +184,8 @@ void lcd_init(void) {
  * @param  on: Whether the backlight should be on or off.
  * @retval None
  */
-void lcd_backlight(bool state) {
+void lcd_backlight(bool state)
+{
 	if (state)
 		GPIO_SetBits(GPIOD, LCD_BACKLIGHT);
 	else
@@ -193,7 +198,8 @@ void lcd_backlight(bool state) {
  * @param  val: Set contrast to this value.
  * @retval None
  */
-void lcd_set_contrast(uint8_t val) {
+void lcd_set_contrast(uint8_t val)
+{
 	contrast = val;
 	if ((contrast + val) > 0xff)
 		contrast = 0xff;
@@ -201,7 +207,7 @@ void lcd_set_contrast(uint8_t val) {
 		contrast = 0;
 
 	lcd_send_command(KS0713_SET_REF_VOLTAGE); // Set reference voltage Mode (2-part cmd)
-	lcd_send_command(contrast); 			// Set reference voltage register
+	lcd_send_command(contrast);				  // Set reference voltage register
 }
 
 /**
@@ -210,11 +216,13 @@ void lcd_set_contrast(uint8_t val) {
  * @param  None
  * @retval None
  */
-void lcd_update(void) {
+void lcd_update(void)
+{
 	int row;
 
 	// Update CGRAM
-	for (row = 0; row < LCD_HEIGHT / 8; ++row) {
+	for (row = 0; row < LCD_HEIGHT / 8; ++row)
+	{
 		lcd_send_command(KS0713_SET_PAGE_ADDR | row);
 		lcd_send_command(KS0713_SET_COL_ADDR_LSB | 0x04); // low col
 		lcd_send_command(KS0713_SET_COL_ADDR_MSB | 0x00);
@@ -222,6 +230,23 @@ void lcd_update(void) {
 	}
 }
 
+uint8_t get_cursor_x()
+{
+	return cursor_x;
+}
+
+uint8_t get_cursor_y()
+{
+	return cursor_y;
+}
+void lcd_clear()
+{
+	for (int i = 0; i < LCD_WIDTH * LCD_HEIGHT / 8; i++)
+	{
+		lcd_buffer[i] = 0;
+	}
+	// lcd_draw_rect(0, 0, LCD_WIDTH, LCD_HEIGHT, LCD_OP_CLR, RECT_FILL);
+}
 /**
  * @brief  Set / Clean a specific pixel.
  * @note	Top left is (0,0)
@@ -230,8 +255,10 @@ void lcd_update(void) {
  * @param  operation: 0 - off, 1 - on, 2 - xor
  * @retval None
  */
-void lcd_set_pixel(uint8_t x, uint8_t y, LCD_OP op) {
-	switch (op) {
+void lcd_set_pixel(uint8_t x, uint8_t y, LCD_OP op)
+{
+	switch (op)
+	{
 	case LCD_OP_NONE:
 		break;
 	case LCD_OP_CLR:
@@ -253,7 +280,8 @@ void lcd_set_pixel(uint8_t x, uint8_t y, LCD_OP op) {
  * @param  y: vertical cursor location
  * @retval None
  */
-void lcd_set_cursor(uint8_t x, uint8_t y) {
+void lcd_set_cursor(uint8_t x, uint8_t y)
+{
 	if ((y + CHAR_HEIGHT) >= LCD_HEIGHT)
 		return;
 	if ((x + CHAR_WIDTH) >= LCD_WIDTH)
@@ -264,6 +292,28 @@ void lcd_set_cursor(uint8_t x, uint8_t y) {
 }
 
 /**
+ * @brief  Move cursor from current position in pixels.
+ * @note	Top left is (0,0)
+ * @param  x: horizontal cursor movement
+ * @param  y: vertical cursor movement
+ * @retval None
+ */
+void lcd_move_cursor(int8_t x, int8_t y)
+{
+	if ((cursor_y + y + CHAR_HEIGHT) >= LCD_HEIGHT)
+		return;
+	if ((cursor_x + x + CHAR_WIDTH) >= LCD_WIDTH)
+		return;
+	if (cursor_x + x < 0)
+		return;
+	if (cursor_y + y < 0)
+		return;
+
+	cursor_x += x;
+	cursor_y += y;
+}
+
+/**
  * @brief  Write a character.
  * @note
  * @param  c: ASCII character to write
@@ -271,7 +321,8 @@ void lcd_set_cursor(uint8_t x, uint8_t y) {
  * @param  flags: LCD_FLAGS (CHAR_*)
  * @retval None
  */
-void lcd_write_char(uint8_t c, LCD_OP op, LCD_FLAGS flags) {
+void lcd_write_char(uint8_t c, LCD_OP op, LCD_FLAGS flags)
+{
 	uint8_t x, y;
 	uint8_t x1, y1, divX = 1, divY = 1;
 	uint8_t height = CHAR_HEIGHT;
@@ -280,11 +331,14 @@ void lcd_write_char(uint8_t c, LCD_OP op, LCD_FLAGS flags) {
 	LCD_OP op_set = (op == LCD_OP_SET) ? LCD_OP_SET : LCD_OP_CLR;
 	LCD_OP op_clr = (op == LCD_OP_SET) ? LCD_OP_CLR : LCD_OP_SET;
 
-	if ((flags & CHAR_2X) != 0) {
+	if ((flags & CHAR_2X) != 0)
+	{
 		height *= 2;
 		width *= 1;
 		divY = 2;
-	} else if ((flags & CHAR_4X) != 0) {
+	}
+	else if ((flags & CHAR_4X) != 0)
+	{
 		height *= 2;
 		width *= 2;
 		divX = 2;
@@ -292,7 +346,8 @@ void lcd_write_char(uint8_t c, LCD_OP op, LCD_FLAGS flags) {
 	}
 
 	// CR/LF - note LF == CR+LF
-	switch (c) {
+	switch (c)
+	{
 	case 10:
 		cursor_y += height;
 		/* no break */
@@ -301,7 +356,8 @@ void lcd_write_char(uint8_t c, LCD_OP op, LCD_FLAGS flags) {
 		return;
 	}
 
-	if (op == LCD_OP_XOR) {
+	if (op == LCD_OP_XOR)
+	{
 		op_set = LCD_OP_XOR;
 		op_clr = LCD_OP_NONE;
 	}
@@ -315,9 +371,11 @@ void lcd_write_char(uint8_t c, LCD_OP op, LCD_FLAGS flags) {
 	else if ((cursor_x + width) >= LCD_WIDTH)
 		return;
 
-	for (x = 0; x < width; x++) {
+	for (x = 0; x < width; x++)
+	{
 		row = 0;
-		for (y = 0; y < height + 1; y++) {
+		for (y = 0; y < height + 1; y++)
+		{
 			uint8_t d;
 			x1 = x / divX;
 			y1 = y / divY;
@@ -356,13 +414,14 @@ void lcd_write_char(uint8_t c, LCD_OP op, LCD_FLAGS flags) {
  * @param  flags: LCD_FLAGS (CHAR_*)
  * @retval None
  */
-void lcd_write_string(const char *s, LCD_OP op, LCD_FLAGS flags) {
+void lcd_write_string(const char *s, LCD_OP op, LCD_FLAGS flags)
+{
 	const char *ptr = s;
 	uint8_t n = strlen(s);
 
-	if (flags & ALIGN_RIGHT) {
-		cursor_x -= n
-				* ((flags & CHAR_CONDENSED) ? CHAR_WIDTH : (CHAR_WIDTH + 1));
+	if (flags & ALIGN_RIGHT)
+	{
+		cursor_x -= n * ((flags & CHAR_CONDENSED) ? CHAR_WIDTH : (CHAR_WIDTH + 1));
 	}
 
 	for (ptr = s; n > 0; ptr++, n--)
@@ -389,7 +448,8 @@ static int16_t u;
  * @param  flags: LCD_LCD_FLAGS
  * @retval None
  */
-void lcd_write_int(int32_t val, LCD_OP op, LCD_FLAGS flags) {
+void lcd_write_int(int32_t val, LCD_OP op, LCD_FLAGS flags)
+{
 	int count = 0;
 
 	if (val < 0)
@@ -405,7 +465,8 @@ void lcd_write_int(int32_t val, LCD_OP op, LCD_FLAGS flags) {
 	t = u / 10;
 	u -= t * 10;
 
-	if (flags & ALIGN_RIGHT) {
+	if (flags & ALIGN_RIGHT)
+	{
 		if (val < 0)
 			count++;
 		//if (val >= 0) lcd_write_char('+', op);
@@ -416,8 +477,7 @@ void lcd_write_int(int32_t val, LCD_OP op, LCD_FLAGS flags) {
 			count++;
 		if (tth > 0 || th > 0 || h > 0)
 			count++;
-		if (tth > 0 || th > 0 || h > 0 || t > 0 || (flags & INT_DIV10)
-				|| (flags & INT_PAD10))
+		if (tth > 0 || th > 0 || h > 0 || t > 0 || (flags & INT_DIV10) || (flags & INT_PAD10))
 			count++;
 		if (flags & INT_DIV10)
 			count++;
@@ -441,8 +501,7 @@ void lcd_write_int(int32_t val, LCD_OP op, LCD_FLAGS flags) {
 	if (tth > 0 || th > 0 || h > 0)
 		lcd_write_char(h + '0', op, flags);
 
-	if (tth > 0 || th > 0 || h > 0 || t > 0 || (flags & INT_DIV10)
-			|| (flags & INT_PAD10))
+	if (tth > 0 || th > 0 || h > 0 || t > 0 || (flags & INT_DIV10) || (flags & INT_PAD10))
 		lcd_write_char(t + '0', op, flags);
 	if (flags & INT_DIV10)
 		lcd_write_char('.', op, flags);
@@ -463,13 +522,15 @@ void lcd_write_int(int32_t val, LCD_OP op, LCD_FLAGS flags) {
  * @param  flags: LCD_FLAGS
  * @retval None
  */
-void lcd_write_hex(uint32_t val, LCD_OP op, LCD_FLAGS flags) {
+void lcd_write_hex(uint32_t val, LCD_OP op, LCD_FLAGS flags)
+{
 	int digits = 4;
 	int i;
 	if (val > 0xFFFF)
 		digits = 8;
 
-	for (i = 0; i < digits; ++i) {
+	for (i = 0; i < digits; ++i)
+	{
 		int digit = (val >> (4 * (digits - i - 1))) & 0xF;
 
 		if (digit > 9)
@@ -489,7 +550,8 @@ void lcd_write_hex(uint32_t val, LCD_OP op, LCD_FLAGS flags) {
  * @param  op: LCD_OP
  * @retval None
  */
-void lcd_draw_line(uint8_t x0, uint8_t y0, uint8_t x1, uint8_t y1, LCD_OP op) {
+void lcd_draw_line(uint8_t x0, uint8_t y0, uint8_t x1, uint8_t y1, LCD_OP op)
+{
 	// from http://rosettacode.org/wiki/Bitmap/Bresenham%27s_line_algorithm#C
 	int dx = x1 > x0 ? x1 - x0 : x0 - x1;
 	int sx = x0 < x1 ? 1 : -1;
@@ -497,16 +559,19 @@ void lcd_draw_line(uint8_t x0, uint8_t y0, uint8_t x1, uint8_t y1, LCD_OP op) {
 	int sy = y0 < y1 ? 1 : -1;
 	int err = (dx > dy ? dx : -dy) / 2, e2;
 
-	for (;;) {
+	for (;;)
+	{
 		lcd_set_pixel(x0, y0, op);
 		if (x0 == x1 && y0 == y1)
 			break;
 		e2 = err;
-		if (e2 > -dx) {
+		if (e2 > -dx)
+		{
 			err -= dy;
 			x0 += sx;
 		}
-		if (e2 < dy) {
+		if (e2 < dy)
+		{
 			err += dx;
 			y0 += sy;
 		}
@@ -523,23 +588,27 @@ void lcd_draw_line(uint8_t x0, uint8_t y0, uint8_t x1, uint8_t y1, LCD_OP op) {
  * @retval None
  */
 void lcd_draw_rect(uint8_t x1, uint8_t y1, uint8_t x2, uint8_t y2, LCD_OP op,
-		uint16_t flags) {
+				   uint16_t flags)
+{
 	uint8_t x, y;
 
 	if (x1 > x2 || y1 > y2)
 		return;
 
-	for (y = y1; y <= y2; ++y) {
-		for (x = x1; x <= x2; ++x) {
-			if ((flags & RECT_FILL) || y == y1 || y == y2 || x == x1
-					|| x == x2) {
-				if (flags & RECT_ROUNDED) {
-					if (!((x == x1 && y == y1) || (x == x2 && y == y1)
-							|| (x == x1 && y == y2) || (x == x2 && y == y2))) {
+	for (y = y1; y <= y2; ++y)
+	{
+		for (x = x1; x <= x2; ++x)
+		{
+			if ((flags & RECT_FILL) || y == y1 || y == y2 || x == x1 || x == x2)
+			{
+				if (flags & RECT_ROUNDED)
+				{
+					if (!((x == x1 && y == y1) || (x == x2 && y == y1) || (x == x1 && y == y2) || (x == x2 && y == y2)))
+					{
 						lcd_set_pixel(x, y, op);
 					}
-
-				} else
+				}
+				else
 					lcd_set_pixel(x, y, op);
 			}
 		}
@@ -555,7 +624,8 @@ void lcd_draw_rect(uint8_t x1, uint8_t y1, uint8_t x2, uint8_t y2, LCD_OP op,
  * @param: selected line or 0 for none
  * @retval lines drawed
  */
-char lcd_draw_message(const char *msg, LCD_OP op, LCD_OP op2, char selectedLine) {
+char lcd_draw_message(const char *msg, LCD_OP op, LCD_OP op2, char selectedLine)
+{
 	char line = 1;
 	const int width = (LCD_WIDTH - 2 * cursor_x) / (CHAR_WIDTH + 1);
 	char line_buffer[LCD_WIDTH / (CHAR_WIDTH + 1)];
@@ -564,21 +634,25 @@ char lcd_draw_message(const char *msg, LCD_OP op, LCD_OP op2, char selectedLine)
 	int x = cursor_x;
 
 	// Iterate through the string to print it
-	while (*ptr) {
+	while (*ptr)
+	{
 		const char *p;
 		const char *pspace = 0;
 		// find next wrap point
-		for (p = ptr; *p; ++p) {
+		for (p = ptr; *p; ++p)
+		{
 			// remember last place with space
 			if (*p == ' ')
 				pspace = p;
 			// out of width so it's a break place
-			if (p - ptr > width) {
+			if (p - ptr > width)
+			{
 				p = pspace ? pspace : p;
 				break;
 			}
 			// new line - must break
-			if (*p == '\n') {
+			if (*p == '\n')
+			{
 				break;
 			}
 		}
@@ -587,7 +661,7 @@ char lcd_draw_message(const char *msg, LCD_OP op, LCD_OP op2, char selectedLine)
 		line_buffer[nchars] = 0;
 		cursor_x = x + (width - nchars) * (CHAR_WIDTH + 1) / 2;
 		lcd_write_string(line_buffer, line == selectedLine ? op2 : op,
-				FLAGS_NONE);
+						 FLAGS_NONE);
 		cursor_y += (CHAR_HEIGHT + 1);
 		line++;
 		ptr = *p ? p + 1 : p;

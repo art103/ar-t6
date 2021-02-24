@@ -49,10 +49,10 @@
 //#define CONVERT_MODE(x)  (((x)<=4) ? convert_mode_helper(x) : (x))
 ////#define CHANNEL_ORDER(x) (pgm_read_byte(chout_ar + g_eeGeneral.templateSetup*4 + (x)-1))
 //#define CHANNEL_ORDER(x) ( ( (pgm_read_byte(bchout_ar + g_eeGeneral.templateSetup) >> (6-(x-1) * 2)) & 3 ) + 1 )
-#define THR_STICK       ((g_eeGeneral.stickMode&1) ? 1 : 2)
-#define ELE_STICK       ((g_eeGeneral.stickMode&1) ? 2 : 1)
-#define AIL_STICK       ((g_eeGeneral.stickMode==1 || g_eeGeneral.stickMode==2) ? 0 : 3)
-#define RUD_STICK       ((g_eeGeneral.stickMode==1 || g_eeGeneral.stickMode==2) ? 3 : 0)
+// #define THR_STICK       ((g_eeGeneral.stickMode&1) ? 1 : 2)
+// #define ELE_STICK       ((g_eeGeneral.stickMode&1) ? 2 : 1)
+// #define AIL_STICK       ((g_eeGeneral.stickMode==1 || g_eeGeneral.stickMode==2) ? 0 : 3)
+// #define RUD_STICK       ((g_eeGeneral.stickMode==1 || g_eeGeneral.stickMode==2) ? 3 : 0)
 //
 //enum EnumKeys {
 //    KEY_MENU ,
@@ -171,11 +171,11 @@
 //#define NUM_STICKS	4
 //
 //
-#define SWASH_TYPE_120   1
-#define SWASH_TYPE_120X  2
-#define SWASH_TYPE_140   3
-#define SWASH_TYPE_90    4
-#define SWASH_TYPE_NUM   4
+// #define SWASH_TYPE_120   1
+// #define SWASH_TYPE_120X  2
+// #define SWASH_TYPE_140   3
+// #define SWASH_TYPE_90    4
+// #define SWASH_TYPE_NUM   4
 //
 
 //MIX 0..7 are input channels (AETRVV??)
@@ -237,7 +237,7 @@
 //#define SPLASH_TIMEOUT  (4*100)  //400 msec - 4 seconds
 //
 //#ifdef FIX_MODE
-#define IS_THROTTLE(x)  ((x) == THR_STICK)
+//#define IS_THROTTLE(x)  ((x) == THR_STICK)
 //#else
 //uint8_t IS_THROTTLE( uint8_t x ) ;
 //#endif
